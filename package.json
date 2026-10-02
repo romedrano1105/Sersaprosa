@@ -1,9 +1,10 @@
 {
   "name": "sersa",
   "version": "1.0.0",
-  "description": "��#\u0000 \u0000S\u0000e\u0000r\u0000s\u0000a\u0000p\u0000r\u0000o\u0000s\u0000a\u0000\r\u0000 \u0000",
-  "main": "index.js",
+  "description": "Sersaprosa - rutas seguras",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -14,6 +15,9 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
   "bugs": {
     "url": "https://github.com/romedrano1105/Sersaprosa/issues"
   },
