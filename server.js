@@ -17,7 +17,7 @@ const TYPES = {
  
 http.createServer((req, res) => {
   const urlPath = decodeURIComponent(req.url.split('?')[0]);
-  let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
+  let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'PaginaPrincipal.html' : urlPath));
  
   // Evita salir de la carpeta public
   if (!file.startsWith(ROOT)) {
