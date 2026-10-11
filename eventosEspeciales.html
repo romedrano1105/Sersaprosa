@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eventos especiales · SERSAPROSA</title>
+<!-- Mapa (el mismo Leaflet de PaginaPrincipal.html) y tipografías. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<!-- Estilos del módulo (todas sus clases empiezan con ev-). -->
+<link rel="stylesheet" href="eventosEspecialesCSS.css">
+</head>
+<!-- Clase ev-page: solo para esta página independiente. Al fusionar, no se copia. -->
+<body class="ev-page">
+  <div class="ev-shell">
+    <!-- El atributo data-eventos monta la sección sola. -->
+    <!-- Al fusionar con PaginaPrincipal.html se usa un <div id="panelEventos"> y se llama a EventosEspeciales.mount(). -->
+    <div data-eventos></div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="eventosEspecialesJS.js"></script>
+</body>
+</html>

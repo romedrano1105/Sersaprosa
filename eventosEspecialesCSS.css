@@ -1,0 +1,123 @@
+/* =====================================================================
+   EVENTOS ESPECIALES — estilos aislados (FCJ1-15)
+   - Todas las clases empiezan con "ev-" y cuelgan de .ev, para no chocar con
+     los estilos globales de PaginaPrincipal.html (label, input, .btn, .meta, .demo...).
+   - Usa las variables de PaginaPrincipal (--bg, --panel, --line, --tx, --mut,
+     --route, --high, --mid, --low) y, si no existen, sus mismos valores por defecto.
+   ===================================================================== */
+
+/* Solo para la página independiente (eventosEspeciales.html). */
+body.ev-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a6b5;--route:#3cc8b4;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+.ev-shell{max-width:1200px;margin:0 auto;padding:20px 16px 48px}
+
+/* MÓDULO: variables propias (--e-*) tomadas de PaginaPrincipal. */
+.ev{--e-bg:var(--bg,#14202b);--e-panel:var(--panel,#1d2c3a);--e-line:var(--line,#2e4153);--e-tx:var(--tx,#e8eef2);--e-mut:var(--mut,#93a6b5);--e-brand:var(--route,#3cc8b4);--e-no:var(--high,#e5533d);--e-warn:var(--mid,#f2b544);--e-low:var(--low,#7fb2e5);--e-ok:#5fd0a0;color:var(--e-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+.ev,.ev *{box-sizing:border-box}
+.ev-root{display:block}
+
+/* ENCABEZADO */
+.ev-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--e-brand);padding-bottom:12px;margin-bottom:18px}
+.ev .ev-title{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
+.ev .ev-h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
+.ev .ev-h2{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:16px;margin:16px 0 8px}
+.ev .ev-sub{margin:2px 0 0;color:var(--e-mut)}
+.ev .ev-who{text-align:right;font-size:14px;color:var(--e-mut)}
+.ev .ev-who b{color:var(--e-tx);font-weight:500}
+
+/* MENSAJES: verde = ok, rojo = error, amarillo = aviso. */
+.ev .ev-msgbox{margin:0 0 14px}
+.ev .ev-msg{padding:10px 14px;border-left:5px solid;font-weight:500;margin-bottom:14px}
+.ev .ev-msgbox .ev-msg{margin-bottom:0}
+.ev .ev-msg-ok{background:rgba(95,208,160,.14);color:var(--e-ok);border-color:var(--e-ok)}
+.ev .ev-msg-err{background:rgba(229,83,61,.14);color:#f4a496;border-color:var(--e-no)}
+.ev .ev-msg-warn{background:rgba(242,181,68,.14);color:var(--e-warn);border-color:var(--e-warn)}
+.ev .ev-errs{margin:0;padding-left:18px}
+
+/* CONTADORES */
+.ev .ev-counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.ev .ev-cnt{background:var(--e-panel);border:1px solid var(--e-line);border-left:5px solid var(--e-brand);border-radius:4px;padding:12px 14px}
+.ev .ev-n{font-family:'Barlow Semi Condensed',sans-serif;font-size:38px;font-weight:700;line-height:1}
+.ev .ev-n small{font-size:16px;color:var(--e-mut);font-weight:500}
+.ev .ev-l{color:var(--e-mut);font-size:14px;margin-top:4px}
+
+/* PANELES, BOTONES y CAMPOS (anulan los estilos globales de label/input/button). */
+.ev .ev-panel{background:var(--e-panel);border:1px solid var(--e-line);border-radius:4px;padding:14px;min-width:0;margin-bottom:14px}
+.ev .ev-gap{margin-top:16px}
+.ev .ev-btn{font:inherit;font-weight:500;cursor:pointer;background:transparent;color:var(--e-tx);border:1px solid var(--e-line);border-radius:4px;padding:7px 12px;width:auto;display:inline-block}
+.ev .ev-btn.ev-primary{background:var(--e-brand);color:#06241f;border-color:var(--e-brand)}
+.ev .ev-btn:disabled{opacity:.5;cursor:not-allowed}
+.ev :focus-visible{outline:2px solid var(--e-brand);outline-offset:2px}
+.ev .ev-input,.ev .ev-select{display:block;width:100%;margin:0;padding:8px 10px;font:inherit;background:var(--e-bg);color:var(--e-tx);border:1px solid var(--e-line);border-radius:4px}
+.ev .ev-area{resize:vertical;margin:4px 0 8px}
+.ev .ev-select.ev-auto{display:inline-block;width:auto;margin-left:4px;padding:5px 8px}
+.ev .ev-lbl{display:block;font-size:14px;color:var(--e-mut);margin:0 0 4px}
+.ev .ev-field{min-width:0}
+.ev .ev-end{display:flex;align-items:flex-end}
+.ev .ev-meta{color:var(--e-mut);font-size:14px;margin:4px 0 0}
+
+/* BARRA: pestañas y filtros */
+.ev .ev-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-bottom:12px}
+.ev .ev-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.ev .ev-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+
+/* ETIQUETAS: impacto (bajo/medio/alto) y estado (ok/warn) */
+.ev .ev-pill{display:inline-block;font-size:13px;font-weight:500;padding:1px 9px;border-radius:99px;margin-left:8px;white-space:nowrap}
+.ev td .ev-pill{margin-left:0}
+.ev .ev-pill.ev-alto{background:rgba(229,83,61,.18);color:#f4a496}
+.ev .ev-pill.ev-medio{background:rgba(242,181,68,.18);color:var(--e-warn)}
+.ev .ev-pill.ev-bajo{background:rgba(127,178,229,.18);color:var(--e-low)}
+.ev .ev-pill.ev-ok{background:rgba(95,208,160,.16);color:var(--e-ok)}
+.ev .ev-pill.ev-warn{background:rgba(242,181,68,.18);color:var(--e-warn)}
+
+/* TABLA del listado y de auditoría */
+.ev .ev-scroll{overflow-x:auto}
+.ev .ev-table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+.ev .ev-table-sm{min-width:480px}
+.ev .ev-table th,.ev .ev-table td{text-align:left;padding:8px;border-bottom:1px solid var(--e-line);vertical-align:top}
+.ev .ev-table th{color:var(--e-mut);font-weight:500}
+.ev .ev-table tr.ev-sel{background:rgba(242,181,68,.10)}
+.ev .ev-pager{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}
+
+/* ESTADOS: cargando, error con Reintentar y acceso restringido */
+.ev .ev-state{background:var(--e-panel);border:1px solid var(--e-line);border-radius:4px;padding:28px;text-align:center}
+.ev .ev-state-err{border-color:var(--e-no)}
+
+/* CALENDARIO */
+.ev .ev-cal-nav{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.ev .ev-cal-nav .ev-h{margin:0;text-transform:capitalize}
+.ev .ev-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.ev .ev-cal-h{text-align:center;color:var(--e-mut);font-size:13px;text-transform:uppercase}
+.ev .ev-cal-c{min-height:92px;background:var(--e-bg);border:1px solid var(--e-line);border-radius:4px;padding:4px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ev .ev-cal-x{background:transparent;border-color:transparent}
+.ev .ev-cal-off{opacity:.45}
+.ev .ev-cal-today{border-color:var(--e-brand)}
+.ev .ev-cal-d{font-size:13px;color:var(--e-mut)}
+.ev .ev-chip{font:inherit;font-size:12px;text-align:left;cursor:pointer;border:0;border-left:4px solid;border-radius:3px;padding:1px 5px;color:var(--e-tx);background:rgba(255,255,255,.06);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.ev .ev-chip-alto{border-color:var(--e-no)}
+.ev .ev-chip-medio{border-color:var(--e-warn)}
+.ev .ev-chip-bajo{border-color:var(--e-low)}
+.ev .ev-chip-more{border-color:var(--e-line);color:var(--e-mut)}
+
+/* MAPA */
+.ev .ev-map{height:440px;border-radius:4px;background:#0e1822;margin-bottom:8px}
+.ev .ev-map-sm{height:300px}
+
+/* DETALLE */
+.ev .ev-detail-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ev .ev-detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px}
+.ev .ev-name{font-weight:500;font-size:17px;margin:0 0 8px}
+.ev .ev-dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}
+.ev .ev-dl dt{color:var(--e-mut)}
+.ev .ev-dl dd{margin:0}
+.ev .ev-routes{margin:0;padding-left:18px}
+.ev .ev-box{border:1px dashed var(--e-line);border-radius:4px;padding:10px;margin-top:12px}
+
+/* FORMULARIO de registro manual */
+.ev .ev-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:10px}
+
+@media (max-width:820px){.ev .ev-who{text-align:left}.ev .ev-detail{grid-template-columns:1fr}.ev .ev-cal-c{min-height:64px}.ev .ev-chip{font-size:11px}}
+
+/* PANEL DE PRUEBAS (solo modo demostración) */
+.ev .ev-demo{margin-top:24px;padding:12px;border:1px dashed var(--e-line);border-radius:4px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;font-size:14px;color:var(--e-mut)}
+.ev .ev-demo label{display:inline-flex;align-items:center;gap:6px;margin:0;color:var(--e-mut);font-size:14px}
+.ev .ev-demo input{display:inline-block;width:auto;margin:0;padding:0}
