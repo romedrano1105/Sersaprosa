@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 import database
 import motor_rutas
+from eventos_router import router as eventos_router
 
 app = FastAPI()
+app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
 
 @app.post("/generar-ruta")
 def endpoint_generar_ruta(req: dict):
