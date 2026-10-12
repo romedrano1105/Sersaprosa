@@ -1,15 +1,81 @@
 name: CI
- 
-# se dispara al subir a main y en cada pull request
+
+# Se dispara al subir a main y en cada pull request
 on:
   push:
     branches: [ main ]
   pull_request:
- 
+
 jobs:
-  build:
+  # ---------- JavaScript: servidor, frontend (HTML/CSS) y lógica de rutas ----------
+  node:
+    name: Node (servidor y frontend)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: npm ci        # instala dependencias desde cero
-      - run: npm test      # corre las pruebas del equipo
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci                      # instala dependencias desde cero
+      - run: npm run lint --if-present   # linter, solo si existe el script
+      - run: npm test                    # pruebas (ej. generación de rutas aleatorias)
+      - run: npm run build --if-present  # build, solo si existe el script
+
+  # ---------- Python: análisis de IA de reportes y noticias ----------
+  python:
+    name: Python (análisis de IA)
+    runs-on: ubuntu-latest
+    # Solo corre si el repo tiene un requirements.txt en la raíz
+    if: ${{ hashFiles('requirements.txt') != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+      - run: pip install pytest
+
+      # pytest sale con código 5 si no encuentra pruebas; lo tratamos como OK por ahora
+      - run: pytest || [ $? -eq 5 ]
+
+  # ---------- n8n: flujos de reportes de IA ----------
+  n8n:
+    name: Validar flujos de n8n
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Comprueba que los workflows exportados de n8n sean JSON válido
+      - name: Validar JSON de workflows
+        run: |
+          if [ -d n8n ]; then
+            find n8n -name "*.json" -print0 | while IFS= read -r -d '' f; do
+              echo "Validando $f"
+              python3 -m json.tool "$f" > /dev/null
+            done
+          else
+            echo "No hay carpeta n8n/, se omite."
+          fi
+
+  # ---------- Seguridad: que no se cuelen llaves en el repo ----------
+  secretos:
+    name: Buscar llaves expuestas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Los tokens de Supabase (anon/service_role) son JWT y empiezan con "eyJ"
+      - name: Buscar JWT y llaves en el código
+        run: |
+          if grep -rIn --exclude-dir=node_modules --exclude-dir=.git --exclude=package-lock.json \
+               -E "eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\." . ; then
+            echo "::error::Se encontró un posible token JWT (Supabase) en el código. Muévelo a GitHub Secrets."
+            exit 1
+          fi
+          echo "Sin llaves expuestas."
