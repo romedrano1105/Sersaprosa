@@ -107,7 +107,12 @@ ol.stops small{display:block;color:var(--mut)}
       para que no se repita ningún patrón. La validación real de la
       contraseña y del token SIEMPRE debe hacerse en N8N.
    ===================================================================== */
-const N8N = { AUTH:"", INCIDENTS:"", ROUTE:"", REFRESH_MS:60000 };
+const N8N = { 
+  AUTH: "http://127.0.0.1:8000/login", 
+  INCIDENTS: "", 
+  ROUTE: "", 
+  REFRESH_MS: 60000 
+};
 const CENTER = [13.6929,-89.2182]; // San Salvador
 
 const $ = id => document.getElementById(id);
