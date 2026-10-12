@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Entregas del día - SERSAPROSA</title>
+  <title>Pedidos y entregas del día - SERSAPROSA</title>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="entregasDiaCSS.css">
 </head>
 <body>
-  <!-- FCJ1-54: Pantalla de pedidos y entregas -->
+  <!-- FCJ1-54: Pantalla de pedidos y entregas del día -->
   <header class="topbar">
     <div>
       <h1>Pedidos y entregas del día</h1>
@@ -18,7 +18,21 @@
   </header>
 
   <main class="contenedor">
-    <!-- FCJ1-57: Filtros por estado -->
+    <!-- FCJ1-55: consultar por fecha -->
+    <section class="barra">
+      <label>Fecha
+        <input type="date" id="f-fecha">
+      </label>
+      <!-- FCJ1-57: filtros por zona y ruta -->
+      <label>Zona
+        <select id="f-zona"><option value="todos">Todas las zonas</option></select>
+      </label>
+      <label>Ruta
+        <select id="f-ruta"><option value="todos">Todas las rutas</option></select>
+      </label>
+    </section>
+
+    <!-- FCJ1-57: filtros por estado -->
     <section class="filtros" id="filtros">
       <button class="filtro activo" data-estado="todos">Todos <span id="c-todos">0</span></button>
       <button class="filtro" data-estado="pendiente">Pendientes <span id="c-pendiente">0</span></button>
@@ -26,17 +40,20 @@
       <button class="filtro" data-estado="completada">Completadas <span id="c-completada">0</span></button>
     </section>
 
+    <!-- FCJ1-58: aviso de pedidos sin ruta -->
+    <p id="aviso-sin-ruta" class="aviso" hidden></p>
+
     <p id="cargando" class="mensaje">Cargando pedidos...</p>
     <p id="error" class="mensaje error" hidden>No se pudieron cargar los pedidos. Intenta de nuevo.</p>
 
-    <!-- FCJ1-56: Lista de pedidos -->
+    <!-- FCJ1-56: Lista con cliente, dirección y estado -->
     <section id="lista" class="lista" aria-live="polite"></section>
 
     <!-- FCJ1-60: Mensaje sin pedidos -->
-    <p id="vacio" class="mensaje" hidden>No hay pedidos o entregas para mostrar.</p>
+    <p id="vacio" class="mensaje" hidden>No hay pedidos para mostrar.</p>
   </main>
 
-  <!-- FCJ1-59: Detalle de la entrega -->
+  <!-- FCJ1-59: Detalle del pedido seleccionado -->
   <div id="modal" class="modal" hidden>
     <div class="modal-caja" role="dialog" aria-modal="true">
       <button class="cerrar" id="cerrar" aria-label="Cerrar">&times;</button>
