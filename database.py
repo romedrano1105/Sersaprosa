@@ -24,30 +24,4 @@ def validar_credenciales(codigo: str, password: str):
     
     if res.data and len(res.data) > 0:
         return res.data[0]
-    return Nonefrom supabase import create_client
-
-# 1. Pega aquí tu URL y anon key de Supabase (Project Settings > API)
-SUPABASE_URL = "https://TU-PROYECTO.supabase.co"
-SUPABASE_KEY = "TU_ANON_KEY"
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-# Funciones existentes
-def obtener_riesgos():
-    return supabase.table('riesgos').select("*").execute().data
-
-def guardar_ruta(datos):
-    return supabase.table('historial_rutas').insert(datos).execute()
-
-# --- NUEVA FUNCIÓN DE AUTENTICACIÓN ---
-def validar_credenciales(codigo: str, password: str):
-    res = supabase.table('empleados') \
-        .select("codigo, nombre") \
-        .eq("codigo", codigo) \
-        .eq("password", password) \
-        .eq("activo", True) \
-        .execute()
-    
-    if res.data and len(res.data) > 0:
-        return res.data[0]
     return None
