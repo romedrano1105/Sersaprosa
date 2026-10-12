@@ -1,0 +1,15 @@
+name: CI
+ 
+# se dispara al subir a main y en cada pull request
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci        # instala dependencias desde cero
+      - run: npm test      # corre las pruebas del equipo
