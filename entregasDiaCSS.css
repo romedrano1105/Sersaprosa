@@ -1,0 +1,84 @@
+:root{
+  --bg:#14202b; --panel:#1d2c3a; --line:#2e4153; --tx:#e8eef2; --mut:#93a6b5;
+  --route:#3cc8b4;   /* completada / acento */
+  --mid:#f2b544;     /* pendiente */
+  --low:#7fb2e5;     /* en proceso */
+  --high:#e5533d;    /* sin ruta / error */
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+.topbar h1{font-size:30px;line-height:1.1}
+.topbar p{margin:4px 0 0;color:var(--mut);text-transform:capitalize}
+.volver{color:var(--tx);text-decoration:none;border:1px solid var(--line);border-radius:4px;
+  padding:7px 12px;font-weight:500;white-space:nowrap}
+.volver:hover{border-color:var(--route);color:var(--route)}
+.contenedor{max-width:900px;margin:0 auto;padding:24px 20px}
+
+/* Fecha, zona y ruta */
+.barra{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.barra label{display:grid;gap:4px;color:var(--mut);font-size:.85rem;flex:1;min-width:150px}
+.barra input,.barra select{font-family:inherit;font-size:.95rem;color:var(--tx);background:var(--bg);
+  border:1px solid var(--line);border-radius:4px;padding:9px 10px;color-scheme:dark}
+.barra input:focus,.barra select:focus{outline:none;border-color:var(--route)}
+
+/* Filtros por estado */
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.filtro{font-family:inherit;font-size:.95rem;font-weight:500;color:var(--tx);background:transparent;
+  border:1px solid var(--line);border-radius:4px;padding:9px 14px;cursor:pointer}
+.filtro:hover{border-color:var(--route)}
+.filtro span{background:var(--bg);color:var(--mut);border-radius:999px;padding:1px 8px;margin-left:6px;font-size:.8rem}
+.filtro.activo{background:var(--route);color:#06241f;border-color:var(--route)}
+.filtro.activo span{background:#06241f33;color:#06241f}
+
+/* FCJ1-58: aviso de pedidos sin ruta */
+.aviso{margin:0 0 16px;padding:10px 14px;border:1px solid var(--high);border-radius:4px;
+  background:#e5533d1a;color:#ffb4a8;font-size:.92rem}
+.aviso[hidden]{display:none}
+
+.lista{display:grid;gap:12px}
+.tarjeta{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--mut);
+  border-radius:6px;padding:16px 18px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;
+  cursor:pointer;transition:border-color .15s, transform .15s}
+.tarjeta:hover{border-color:var(--route);transform:translateY(-1px)}
+.tarjeta h3{font-size:1.3rem;line-height:1.1}
+.tarjeta p{margin:0;color:var(--mut);font-size:.92rem}
+.hora{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:1.3rem;text-align:right}
+.badge{justify-self:end;align-self:center;padding:3px 10px;border-radius:999px;
+  font-size:.8rem;font-weight:500;border:1px solid currentColor}
+
+.pendiente{border-left-color:var(--mid)}
+.pendiente .badge{color:var(--mid);background:#f2b54418}
+.proceso{border-left-color:var(--low)}
+.proceso .badge{color:var(--low);background:#7fb2e518}
+.completada{border-left-color:var(--route)}
+.completada .badge{color:var(--route);background:#3cc8b418}
+
+/* FCJ1-58: pedido sin ruta asignada (se ve distinto a simple vista) */
+.tarjeta.sin-ruta{border-color:var(--high);border-left-color:var(--high);background:#2a2430}
+.tag-sin-ruta{grid-column:1 / -1;justify-self:start;color:var(--high);font-size:.82rem;font-weight:500}
+.tag-sin-ruta::before{content:"⚠ "}
+
+.mensaje{text-align:center;color:var(--mut);padding:48px 0;font-size:1.05rem;margin:0}
+.mensaje[hidden]{display:none}
+.error{color:var(--high)}
+
+.modal{position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal[hidden]{display:none}
+.modal-caja{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  padding:32px;max-width:460px;width:100%;position:relative}
+.modal-caja h2{font-size:1.7rem;line-height:1.1;margin-bottom:20px;padding-right:24px}
+.cerrar{position:absolute;top:10px;right:14px;border:0;background:none;color:var(--mut);font-size:1.8rem;cursor:pointer}
+.cerrar:hover{color:var(--tx)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;margin:0}
+dt{color:var(--mut)}
+dd{margin:0}
+
+@media(prefers-reduced-motion:no-preference){
+  .modal-caja{animation:in .25s ease-out}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}}
+}
+@media(max-width:520px){ .topbar{flex-direction:column;align-items:flex-start} }
