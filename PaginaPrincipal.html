@@ -68,6 +68,7 @@ ol.stops small{display:block;color:var(--mut)}
 <div id="app" class="hidden">
   <header>
     <div><h1>Ruta del día</h1><span id="who"></span></div>
+    <a class="btn ghost hidden" id="securityAlertsLink" href="alertasSeguridad.html">Alertas de seguridad</a>
     <button class="btn ghost" id="logout">Salir</button>
   </header>
   <main>
@@ -95,7 +96,9 @@ ol.stops small{display:block;color:var(--mut)}
    Si una URL está vacía, esa parte funciona en modo demostración.
 
    1) AUTH  (POST)  { code, password }
-        → { token, name }                      (401 si son inválidas)
+        → { token, name, role }                 (401 si son inválidas)
+      Para Alertas de seguridad, token debe ser JWT de Supabase y app_metadata.role
+      debe ser "coordinador_rutas".
    2) INCIDENTS (POST, Authorization: Bearer <token>)  { bounds:{n,s,e,w} }
         → [{ id, type, severity:"alta"|"media"|"baja", title, source,
              time, lat, lng, radius_m }]       (noticias, policía, tráfico)
@@ -138,7 +141,7 @@ $('loginForm').addEventListener('submit', async e=>{
     const code=$('code').value.trim(), password=$('pass').value;
     const res = N8N.AUTH ? await api(N8N.AUTH,{code,password}) : {token:'demo',name:'Trabajador '+code};
     if(!res.token) throw new Error('credenciales');
-    session={token:res.token,name:res.name||code,code}; store('session',JSON.stringify(session));
+    session={token:res.token,name:res.name||code,code,role:res.role||'',apiBase:N8N.AUTH?new URL(N8N.AUTH,location.href).origin:location.origin}; store('session',JSON.stringify(session));
     $('pass').value=''; start();
   }catch(err){ $('err').textContent='Código o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.'; }
   $('loginBtn').disabled=false;
@@ -149,6 +152,7 @@ $('logout').onclick=logout;
 /* ---------- App ---------- */
 function start(){
   $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('securityAlertsLink').classList.toggle('hidden',session.role!=='coordinador_rutas');
   $('who').textContent = session.name+' · '+new Date().toLocaleDateString('es-SV',{weekday:'long',day:'numeric',month:'long'});
   if(!map){
     map=L.map('map').setView(CENTER,12);

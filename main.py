@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import database
 import motor_rutas
 from eventos_router import router as eventos_router
+from alertas_seguridad_router import router as alertas_seguridad_router
 
 app = FastAPI()
 
@@ -16,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
+app.include_router(alertas_seguridad_router)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 @app.post("/login")

@@ -1,0 +1,48 @@
+body.as-page{--as-bg:#14202b;--as-panel:#1d2c3a;--as-line:#2e4153;--as-text:#e8eef2;--as-muted:#93a6b5;--as-brand:#3cc8b4;--as-high:#e5533d;--as-mid:#f2b544;--as-low:#7fb2e5;margin:0;background:var(--as-bg);color:var(--as-text);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.as-shell{max-width:1440px;margin:0 auto;padding:20px 16px 48px}
+.as,.as *{box-sizing:border-box}
+.as{color:var(--as-text);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+.as h1,.as h2,.as h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0 0 8px}
+.as h1{font-size:30px}
+.as h2{font-size:21px}
+.as p{margin:4px 0 10px}
+.as-head,.as-toolbar,.as-pager,.as-detail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.as-head{border-bottom:2px solid var(--as-brand);padding-bottom:12px;margin-bottom:16px}
+.as-head p,.as-muted,.as-meta{color:var(--as-muted)}
+.as-panel,.as-counter,.as-message,.as-state{background:var(--as-panel);border:1px solid var(--as-line);border-radius:5px;padding:14px;margin-bottom:14px}
+.as-counter{border-left:5px solid var(--as-brand);min-width:220px}
+.as-counter strong{display:block;font:700 36px/1 'Barlow Semi Condensed',sans-serif}
+.as-toolbar{margin-bottom:10px}
+.as-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px}
+.as label{display:block;color:var(--as-muted);font-size:13px}
+.as input,.as select,.as textarea{display:block;width:100%;margin-top:4px;padding:8px 10px;background:var(--as-bg);color:var(--as-text);border:1px solid var(--as-line);border-radius:4px;font:inherit}
+.as textarea{resize:vertical;min-height:76px}
+.as button,.as a.as-button{font:inherit;text-decoration:none;cursor:pointer;display:inline-block;width:auto;padding:8px 12px;border:1px solid var(--as-line);border-radius:4px;background:transparent;color:var(--as-text)}
+.as button.as-primary{background:var(--as-brand);border-color:var(--as-brand);color:#06241f}
+.as button:disabled{opacity:.55;cursor:not-allowed}
+.as :focus-visible{outline:2px solid var(--as-brand);outline-offset:2px}
+.as-scroll{overflow:auto}
+.as-table{width:100%;min-width:1020px;border-collapse:collapse;font-size:14px}
+.as-table th,.as-table td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid var(--as-line)}
+.as-table th{color:var(--as-muted);font-weight:500}
+.as-table tr.as-selected{background:rgba(60,200,180,.08)}
+.as-pill{display:inline-block;border-radius:99px;padding:1px 8px;white-space:nowrap;background:rgba(255,255,255,.08)}
+.as-pill-alta{color:#f4a496;background:rgba(229,83,61,.17)}
+.as-pill-media{color:var(--as-mid);background:rgba(242,181,68,.16)}
+.as-pill-baja{color:var(--as-low);background:rgba(127,178,229,.16)}
+.as-pill-revisada{color:#5fd0a0;background:rgba(95,208,160,.15)}
+.as-actions{display:flex;gap:7px;flex-wrap:wrap}
+.as-error{border-color:var(--as-high);color:#f4a496}
+.as-warning{border-color:var(--as-mid);color:var(--as-mid)}
+.as-pager{margin-top:12px}
+.as-detail{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(300px,1.2fr);gap:16px}
+.as-map{height:350px;border-radius:4px;background:#0e1822}
+.as-audit{width:100%;border-collapse:collapse}
+.as-audit th,.as-audit td{text-align:left;padding:7px;border-bottom:1px solid var(--as-line);vertical-align:top}
+.as-audit th{color:var(--as-muted);font-weight:500}
+.as-comment{max-width:620px}
+.as-check{width:auto!important;display:inline-block!important}
+.as-footer{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
+.as-footer .as-comment{flex:1;min-width:250px}
+@media(max-width:760px){.as-detail{grid-template-columns:1fr}.as-head{align-items:flex-start}.as-head>div:last-child{width:100%}}
+@media print{body.as-page{background:#fff;color:#111}.as-shell{max-width:none;padding:0}.as-head,.as-counters,.as-filters,.as-toolbar,.as-pager,.as-detail,.as-warning,.as-error,.as-no-print{display:none!important}.as-panel{border:0;padding:0;background:#fff}.as-table{min-width:0;font-size:10pt}.as-table th,.as-table td{color:#111;border-color:#bbb}.as .as-pill{color:#111;background:#eee}}
