@@ -3,13 +3,12 @@
   --route:#3cc8b4;   /* completada / acento */
   --mid:#f2b544;     /* pendiente */
   --low:#7fb2e5;     /* en proceso */
-  --high:#e5533d;    /* error */
+  --high:#e5533d;    /* sin ruta / error */
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:'IBM Plex Sans',system-ui,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
 h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700}
 
-/* Encabezado */
 .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;
   padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
 .topbar h1{font-size:30px;line-height:1.1}
@@ -17,11 +16,17 @@ h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700
 .volver{color:var(--tx);text-decoration:none;border:1px solid var(--line);border-radius:4px;
   padding:7px 12px;font-weight:500;white-space:nowrap}
 .volver:hover{border-color:var(--route);color:var(--route)}
-
 .contenedor{max-width:900px;margin:0 auto;padding:24px 20px}
 
-/* FCJ1-57: filtros */
-.filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+/* Fecha, zona y ruta */
+.barra{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.barra label{display:grid;gap:4px;color:var(--mut);font-size:.85rem;flex:1;min-width:150px}
+.barra input,.barra select{font-family:inherit;font-size:.95rem;color:var(--tx);background:var(--bg);
+  border:1px solid var(--line);border-radius:4px;padding:9px 10px;color-scheme:dark}
+.barra input:focus,.barra select:focus{outline:none;border-color:var(--route)}
+
+/* Filtros por estado */
+.filtros{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .filtro{font-family:inherit;font-size:.95rem;font-weight:500;color:var(--tx);background:transparent;
   border:1px solid var(--line);border-radius:4px;padding:9px 14px;cursor:pointer}
 .filtro:hover{border-color:var(--route)}
@@ -29,7 +34,11 @@ h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700
 .filtro.activo{background:var(--route);color:#06241f;border-color:var(--route)}
 .filtro.activo span{background:#06241f33;color:#06241f}
 
-/* FCJ1-56: lista */
+/* FCJ1-58: aviso de pedidos sin ruta */
+.aviso{margin:0 0 16px;padding:10px 14px;border:1px solid var(--high);border-radius:4px;
+  background:#e5533d1a;color:#ffb4a8;font-size:.92rem}
+.aviso[hidden]{display:none}
+
 .lista{display:grid;gap:12px}
 .tarjeta{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--mut);
   border-radius:6px;padding:16px 18px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;
@@ -41,7 +50,6 @@ h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700
 .badge{justify-self:end;align-self:center;padding:3px 10px;border-radius:999px;
   font-size:.8rem;font-weight:500;border:1px solid currentColor}
 
-/* FCJ1-58: resaltado por estado */
 .pendiente{border-left-color:var(--mid)}
 .pendiente .badge{color:var(--mid);background:#f2b54418}
 .proceso{border-left-color:var(--low)}
@@ -49,12 +57,15 @@ h1,h2,h3{font-family:'Barlow Semi Condensed',sans-serif;margin:0;font-weight:700
 .completada{border-left-color:var(--route)}
 .completada .badge{color:var(--route);background:#3cc8b418}
 
-/* Mensajes: cargando, vacío (FCJ1-60) y error */
+/* FCJ1-58: pedido sin ruta asignada (se ve distinto a simple vista) */
+.tarjeta.sin-ruta{border-color:var(--high);border-left-color:var(--high);background:#2a2430}
+.tag-sin-ruta{grid-column:1 / -1;justify-self:start;color:var(--high);font-size:.82rem;font-weight:500}
+.tag-sin-ruta::before{content:"⚠ "}
+
 .mensaje{text-align:center;color:var(--mut);padding:48px 0;font-size:1.05rem;margin:0}
 .mensaje[hidden]{display:none}
 .error{color:var(--high)}
 
-/* FCJ1-59: detalle (modal) */
 .modal{position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px}
 .modal[hidden]{display:none}
 .modal-caja{background:var(--panel);border:1px solid var(--line);border-radius:6px;
@@ -70,6 +81,4 @@ dd{margin:0}
   .modal-caja{animation:in .25s ease-out}
   @keyframes in{from{opacity:0;transform:translateY(8px)}}
 }
-@media(max-width:520px){
-  .topbar{flex-direction:column;align-items:flex-start}
-}
+@media(max-width:520px){ .topbar{flex-direction:column;align-items:flex-start} }
