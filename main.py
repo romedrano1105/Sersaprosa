@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import database
 import motor_rutas
 from eventos_router import router as eventos_router
+from entregas_router import router as entregas_router      
+
 
 app = FastAPI()
 
@@ -16,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
+app.include_router(entregas_router)  # /entregas/listar (FCJ1-54)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 @app.post("/login")
