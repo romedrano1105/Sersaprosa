@@ -8,8 +8,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator, model_validator
 from supabase import create_client
 
-import database
-import alertas_seguridad_logica as logica
+from . import database, alertas_seguridad_logica as logica
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/alertas", tags=["alertas de seguridad"])

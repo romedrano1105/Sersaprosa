@@ -13,14 +13,13 @@ from datetime import date
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
-import database
-import entregas_logica as logica
+from . import database, entregas_logica as logica
 
 router = APIRouter(prefix="/entregas", tags=["pedidos y entregas del dia"])
 
 
-def usuario_autorizado(authorization: str | None) -> str:
-    """Valida el token y exige rol de ejecutivo comercial (o coordinador). Devuelve el nombre."""
+def usuario_autorizado(authorization: str | None):
+    """Valida el token y devuelve un cliente Supabase autenticado."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
     try:
@@ -32,7 +31,7 @@ def usuario_autorizado(authorization: str | None) -> str:
     meta = user.app_metadata or {}
     if meta.get("role") not in logica.ROLES_PERMITIDOS:
         raise HTTPException(403, "No tiene permiso para ver los pedidos.")
-    return (user.user_metadata or {}).get("name") or user.email or "Usuario"
+    return database.cliente_autenticado(authorization.split(" ", 1)[1].strip())
 
 
 class Consulta(BaseModel):
@@ -44,7 +43,7 @@ class Consulta(BaseModel):
 
 @router.post("/listar")
 def listar(req: Consulta | None = None, authorization: str | None = Header(default=None)):
-    usuario_autorizado(authorization)
+    cliente = usuario_autorizado(authorization)
     req = req or Consulta()
     try:
         fecha = date.fromisoformat(req.fecha) if req.fecha else None
@@ -52,5 +51,5 @@ def listar(req: Consulta | None = None, authorization: str | None = Header(defau
         raise HTTPException(422, "Fecha no válida. Use el formato AAAA-MM-DD.")
     if req.estado and req.estado != "todos" and req.estado not in logica.ESTADOS:
         raise HTTPException(422, "Estado no válido.")
-    filas = database.supabase.table("entregas").select("*").execute().data or []
+    filas = cliente.table("entregas").select("*").execute().data or []
     return logica.construir_respuesta(filas, fecha, req.estado, req.zona, req.ruta)

@@ -1,0 +1,49 @@
+import os
+
+from supabase import create_client
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://kdaoiepfwtaonvhmhipa.supabase.co").rstrip("/")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+if not SUPABASE_KEY:
+    raise RuntimeError("Falta configurar la variable de entorno SUPABASE_ANON_KEY.")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def cliente_autenticado(token: str):
+    cliente = create_client(SUPABASE_URL, SUPABASE_KEY)
+    cliente.postgrest.auth(token)
+    return cliente
+
+
+def obtener_riesgos():
+    return supabase.table("riesgos").select("*").execute().data
+
+
+def guardar_ruta(datos):
+    return supabase.table("historial_rutas").insert(datos).execute()
+
+
+class AuthConfigurationError(RuntimeError):
+    pass
+
+
+def buscar_empleado_por_codigo(codigo: str):
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        raise AuthConfigurationError(
+            "Falta configurar SUPABASE_SERVICE_ROLE_KEY para resolver el código de empleado."
+        )
+
+    cliente_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    resultado = (
+        cliente_admin.table("empleados")
+        .select("codigo, nombre, email")
+        .eq("codigo", codigo)
+        .eq("activo", True)
+        .limit(1)
+        .execute()
+    )
+    empleados = resultado.data or []
+    return empleados[0] if empleados else None
