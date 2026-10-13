@@ -16,18 +16,18 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
-import database
-import eventos_logica as logica
+from . import database, eventos_logica as logica
 
 router = APIRouter(prefix="/eventos", tags=["eventos especiales"])
 
 
-def usuario_coordinador(authorization: str | None) -> str:
-    """Valida el token y exige el rol coordinador_rutas. Devuelve el nombre para la auditoría."""
+def usuario_coordinador(authorization: str | None):
+    """Valida el token y devuelve un cliente Supabase autenticado y el nombre."""
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
     try:
-        user = database.supabase.auth.get_user(authorization.split(" ", 1)[1]).user
+        token = authorization.split(" ", 1)[1].strip()
+        user = database.supabase.auth.get_user(token).user
     except Exception:
         raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
     if not user:
@@ -35,7 +35,8 @@ def usuario_coordinador(authorization: str | None) -> str:
     meta = user.app_metadata or {}
     if meta.get("role") != logica.ROL_PERMITIDO:
         raise HTTPException(403, "Esta sección es solo para el coordinador de rutas.")
-    return (user.user_metadata or {}).get("name") or user.email or "Usuario"
+    nombre = (user.user_metadata or {}).get("name") or user.email or "Usuario"
+    return database.cliente_autenticado(token), nombre
 
 
 class Revision(BaseModel):
@@ -55,20 +56,24 @@ class EventoNuevo(BaseModel):
     radius_m: int | None = 400
 
 
-def _tabla(nombre: str) -> list[dict]:
-    return database.supabase.table(nombre).select("*").execute().data or []
+def _tabla(cliente, nombre: str) -> list[dict]:
+    return cliente.table(nombre).select("*").execute().data or []
 
 
 @router.post("/listar")
 def listar(authorization: str | None = Header(default=None)):
-    usuario_coordinador(authorization)
-    return logica.construir_respuesta(_tabla("eventos_especiales"), _tabla("rutas_planificadas"), _tabla("eventos_auditoria"))
+    cliente, _ = usuario_coordinador(authorization)
+    return logica.construir_respuesta(
+        _tabla(cliente, "eventos_especiales"),
+        _tabla(cliente, "rutas_planificadas"),
+        _tabla(cliente, "eventos_auditoria"),
+    )
 
 
 @router.post("/revisar")
 def revisar(req: Revision, authorization: str | None = Header(default=None)):
-    usuario = usuario_coordinador(authorization)
-    t = database.supabase.table("eventos_especiales")
+    cliente, usuario = usuario_coordinador(authorization)
+    t = cliente.table("eventos_especiales")
     filas = t.select("*").eq("id", req.id).execute().data
     if not filas:
         raise HTTPException(404, "El evento ya no existe.")
@@ -76,16 +81,16 @@ def revisar(req: Revision, authorization: str | None = Header(default=None)):
         raise HTTPException(409, f"El evento ya fue revisado por {filas[0].get('revisado_por')}.")
     ahora = datetime.now(timezone.utc).isoformat()
     t.update({"estado": "revisado", "nota": req.nota.strip(), "revisado_por": usuario, "revisado_en": ahora}).eq("id", req.id).execute()
-    database.supabase.table("eventos_auditoria").insert(
+    cliente.table("eventos_auditoria").insert(
         {"evento": req.id, "accion": "revision", "usuario": usuario, "fecha": ahora, "nota": req.nota.strip()}).execute()
     return {"id": req.id, "estado": "revisado", "revisado_por": usuario, "revisado_en": ahora}
 
 
 @router.post("/registrar")
 def registrar(req: EventoNuevo, authorization: str | None = Header(default=None)):
-    usuario = usuario_coordinador(authorization)
+    cliente, usuario = usuario_coordinador(authorization)
     datos = req.model_dump()
-    errores = logica.validar_evento(datos, _tabla("eventos_especiales"))
+    errores = logica.validar_evento(datos, _tabla(cliente, "eventos_especiales"))
     if errores:
         # 409 si es duplicado, 422 si falta o sobra algo en los campos.
         raise HTTPException(409 if errores[0].startswith("Ya existe") else 422, errores[0])
@@ -97,7 +102,7 @@ def registrar(req: EventoNuevo, authorization: str | None = Header(default=None)
         "fuente": (datos["fuente"] or "").strip() or "Registro manual",
         "lat": datos["lat"], "lng": datos["lng"], "radius_m": datos["radius_m"],
     }
-    database.supabase.table("eventos_especiales").insert(fila).execute()
-    database.supabase.table("eventos_auditoria").insert(
+    cliente.table("eventos_especiales").insert(fila).execute()
+    cliente.table("eventos_auditoria").insert(
         {"evento": fila["id"], "accion": "registro", "usuario": usuario, "fecha": ahora}).execute()
     return fila

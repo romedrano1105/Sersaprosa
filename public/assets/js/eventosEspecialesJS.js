@@ -11,9 +11,9 @@
    PaginaPrincipal.html.
 
    CÓMO INCRUSTARLO EN PaginaPrincipal.html:
-     <link rel="stylesheet" href="eventosEspecialesCSS.css">
+     <link rel="stylesheet" href="/assets/css/eventosEspecialesCSS.css">
      <div id="panelEventos"></div>
-     <script src="eventosEspecialesJS.js"></script>
+     <script src="/assets/js/eventosEspecialesJS.js"></script>
      <script>
        EventosEspeciales.mount(document.getElementById('panelEventos'), {
          LOAD:   N8N.EVT_LOAD,      // o la URL del endpoint
