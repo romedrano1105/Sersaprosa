@@ -1,8 +1,8 @@
-"""Pruebas de la lógica de eventos especiales. Ejecutar: python -m unittest tests_eventos.py -v"""
+"""Pruebas de la lógica de eventos especiales."""
 import unittest
 from datetime import date, timedelta
 
-import eventos_logica as L
+from backend.app import eventos_logica as L
 
 HOY = date(2026, 10, 11)
 

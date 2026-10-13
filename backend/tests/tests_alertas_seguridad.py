@@ -2,7 +2,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 
-import alertas_seguridad_logica as logica
+from backend.app import alertas_seguridad_logica as logica
 
 AHORA = datetime(2026, 10, 11, 18, tzinfo=timezone.utc)
 

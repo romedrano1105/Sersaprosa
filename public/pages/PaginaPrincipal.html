@@ -128,9 +128,18 @@ function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className
 
 async function api(url, body){
   const r = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...(session?{Authorization:'Bearer '+session.token}:{})},body:JSON.stringify(body)});
-  if(r.status===401){logout();throw new Error('Sesión vencida');}
-  if(!r.ok) throw new Error('Error '+r.status);
-  return r.json();
+  let data;
+  try { data = await r.json(); } catch (err) { data = {}; }
+  if(r.status===401 && session){logout();}
+  if(!r.ok){
+    const detail = data.detail;
+    const message = detail && typeof detail === 'object' ? detail.message : detail;
+    const error = new Error(message || data.message || 'Error HTTP '+r.status);
+    error.status = r.status;
+    error.code = detail && typeof detail === 'object' ? detail.code : data.code;
+    throw error;
+  }
+  return data;
 }
 
 /* ---------- Login ---------- */
@@ -140,11 +149,15 @@ $('loginForm').addEventListener('submit', async e=>{
   try{
     const code=$('code').value.trim(), password=$('pass').value;
     const res = N8N.AUTH ? await api(N8N.AUTH,{code,password}) : {token:'demo',name:'Trabajador '+code};
-    if(!res.token) throw new Error('credenciales');
+    if(!res.token) throw new Error('El servidor de autenticación no devolvió un token de sesión.');
     session={token:res.token,name:res.name||code,code,role:res.role||'',apiBase:N8N.AUTH?new URL(N8N.AUTH,location.href).origin:location.origin}; store('session',JSON.stringify(session));
     $('pass').value=''; start();
-  }catch(err){ $('err').textContent='Código o contraseña incorrectos. Revisa los datos e inténtalo de nuevo.'; }
-  $('loginBtn').disabled=false;
+  }catch(err){
+    console.error('[Login] Falló la autenticación', {status:err.status||null,code:err.code||null,message:err.message});
+    $('err').textContent=err.message||'No fue posible iniciar sesión.';
+  }finally{
+    $('loginBtn').disabled=false;
+  }
 });
 function logout(){session=null;store('session');clearInterval(timer);$('app').classList.add('hidden');$('login').classList.remove('hidden')}
 $('logout').onclick=logout;

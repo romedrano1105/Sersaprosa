@@ -6,9 +6,9 @@
    (disponibilidad.html) o incrustar después dentro de PaginaPrincipal.html.
 
    CÓMO INCRUSTARLO EN PaginaPrincipal.html (cuando llegue el momento):
-     <link rel="stylesheet" href="disponibilidad.css">
+     <link rel="stylesheet" href="/assets/css/verificarConduCSS.css">
      <div id="panelDisponibilidad"></div>
-     <script src="disponibilidad.js"></script>
+     <script src="/assets/js/VerificarConduJS.js"></script>
      <script>
        Disponibilidad.mount(document.getElementById('panelDisponibilidad'), {
          LOAD:   N8N.DISP_LOAD,     // o la URL del endpoint
