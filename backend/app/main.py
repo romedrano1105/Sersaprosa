@@ -1,8 +1,11 @@
 import logging
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 from supabase import create_client
@@ -121,3 +124,29 @@ def endpoint_generar_ruta(req: dict):
     
     # 4. Responder a la web
     return {"status": "success", "ruta": ruta_final}
+
+
+
+# --- PÁGINAS WEB (frontend servido por esta misma API) ---
+PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
+PAGINAS = {
+    "PaginaPrincipal.html",
+    "alertasSeguridad.html",
+    "entregasDia.html",
+    "eventosEspeciales.html",
+    "Verificar conductores.html",
+}
+
+app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
+
+
+@app.get("/", include_in_schema=False)
+def pagina_inicio():
+    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html")
+
+
+@app.get("/{pagina}", include_in_schema=False)
+def pagina_html(pagina: str):
+    if pagina not in PAGINAS:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(PUBLIC_DIR / "pages" / pagina)
