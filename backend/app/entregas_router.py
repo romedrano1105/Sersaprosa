@@ -4,7 +4,8 @@ Tabla de Supabase que espera (crear antes de usar):
   entregas(id text pk, cliente text, direccion text, hora_programada timestamptz,
            estado text default 'pendiente',   -- pendiente | en_proceso | completada
            zona text null, ruta text null,    -- ruta vacía/null = pedido sin ruta asignada
-           contacto text null, productos text null, notas text null)
+           contacto text null, productos text null, notas text null,
+           lat float8 null, lng float8 null)  -- coordenadas verificadas para el mapa
 
 Seguridad: el rol se valida AQUÍ con el token de Supabase (app_metadata.role), nunca solo en la página.
 """
