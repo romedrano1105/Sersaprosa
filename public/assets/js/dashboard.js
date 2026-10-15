@@ -8,12 +8,17 @@
   const sessionKey = "session";
   let session = null;
   let map = null;
+  let origin = CENTER.slice();
   let routeLayers = null;
   let eventLayers = null;
   let deliveries = [];
   let mapEvents = [];
   let routeChoices = [];
   let selectedRoute = 0;
+  let refreshing = false;
+  let lastRefreshAt = 0;
+  let lastRouteInput = null;
+  let lastRiskInput = null;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -83,9 +88,10 @@
 
   function initMap() {
     map = L.map("map").setView(CENTER, 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-      maxZoom: 19
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: "abcd",
+      maxZoom: 20
     }).addTo(map);
     routeLayers = L.layerGroup().addTo(map);
     eventLayers = L.layerGroup().addTo(map);
@@ -151,6 +157,7 @@
     $("eventsMessage").textContent = messages.join(" ");
     $("eventsMessage").classList.toggle("hidden", messages.length === 0);
     drawEvents();
+    return messages.length === 0;
   }
 
   function eventColor(item) {
@@ -253,16 +260,18 @@
       route.geometry.coordinates.every(point => Array.isArray(point) && validCoordinates(point[1], point[0])) &&
       Number.isFinite(route.distance) && Number.isFinite(route.duration));
     if (!candidates.length) throw new Error("El servicio de rutas devolvió geometría incompleta.");
-    return candidates.map((route, index) => ({
+    return candidates.map(route => ({
       raw: route,
-      name: index === 0 ? "Ruta principal" : "Alternativa " + index,
       distanceKm: route.distance / 1000,
       durationMin: route.duration / 60,
       riskScore: riskForRoute(route),
       geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
     })).sort((first, second) =>
       (first.riskScore * 250 + first.durationMin + first.distanceKm) -
-      (second.riskScore * 250 + second.durationMin + second.distanceKm));
+      (second.riskScore * 250 + second.durationMin + second.distanceKm))
+      .map((route, index) => Object.assign(route, {
+        name: index === 0 ? "Ruta recomendada" : "Alternativa " + index
+      }));
   }
 
   function dailyStops() {
@@ -275,16 +284,18 @@
     }));
   }
 
-  function randomStops() {
-    const randomOffset = (range, scale) => (Math.random() - 0.5) * range * scale;
-    return [
-      { name: "Salida", lat: CENTER[0] + randomOffset(0.04, 1), lng: CENTER[1] + randomOffset(0.05, 1) },
-      { name: "Destino aleatorio", lat: CENTER[0] + randomOffset(0.08, 1), lng: CENTER[1] + randomOffset(0.1, 1) }
-    ];
+  function routeInputSignature() {
+    return JSON.stringify([origin, dailyStops()]);
+  }
+
+  function riskInputSignature() {
+    return JSON.stringify(mapEvents.map(event => [
+      event.id, event.severity, event.date, event.lat, event.lng, event.radius_m
+    ]));
   }
 
   async function requestRoutes(stops) {
-    const coordinates = [CENTER, ...stops.map(stop => [stop.lat, stop.lng])]
+    const coordinates = [origin, ...stops.map(stop => [stop.lat, stop.lng])]
       .map(([lat, lng]) => lng + "," + lat).join(";");
     const query = new URLSearchParams({
       overview: "full",
@@ -326,6 +337,15 @@
       });
       options.append(button);
     });
+    const originMarker = L.marker(origin, {
+      icon: L.divIcon({
+        className: "route-stop-icon",
+        html: element("span", "route-stop-marker route-origin-marker", "A"),
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      })
+    }).addTo(routeLayers);
+    originMarker.bindPopup(element("div", "", "Inicio de la ruta"));
     stops.forEach((stop, index) => {
       const marker = L.marker([stop.lat, stop.lng], {
         icon: L.divIcon({
@@ -350,45 +370,39 @@
     if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
   }
 
-  async function calculateRoute(random) {
-    $("gen").disabled = true;
+  async function calculateRoute() {
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
     $("stops").replaceChildren();
     $("routeOptions").replaceChildren();
     try {
-      let stops;
-      if (random) {
-        stops = randomStops();
-        $("routeTitle").textContent = "Rutas aleatorias por calles";
-      } else {
-        const missing = deliveries.filter(delivery => !hasLocation(delivery));
-        stops = dailyStops();
-        if (!stops.length) {
-          throw new Error(deliveries.length ?
-            "Los destinos de hoy no tienen coordenadas guardadas. Añádelas en Supabase para calcular la ruta diaria." :
-            "No hay destinos programados para hoy.");
-        }
-        $("routeTitle").textContent = "Ruta del día";
-        if (missing.length) {
-          $("routeMessage").textContent = missing.length + " destino(s) no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
-          $("routeMessage").classList.remove("hidden");
-        }
+      const missing = deliveries.filter(delivery => !hasLocation(delivery));
+      const stops = dailyStops();
+      if (!stops.length) {
+        throw new Error(deliveries.length ?
+          "Los destinos de hoy no tienen coordenadas guardadas. Añádelas en Supabase para calcular la ruta diaria." :
+          "No hay destinos programados para hoy.");
+      }
+      $("routeTitle").textContent = "Ruta del día";
+      if (missing.length) {
+        $("routeMessage").textContent = missing.length + " destino(s) no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
+        $("routeMessage").classList.remove("hidden");
       }
       routeChoices = await requestRoutes(stops);
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
       if (location.hash === "#rutas") setPanel("routes");
+      return true;
     } catch (error) {
       routeChoices = [];
+      routeLayers.clearLayers();
       $("mDist").textContent = "–";
       $("mEta").textContent = "–";
       $("mRisk").textContent = "–";
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
-    } finally {
-      $("gen").disabled = false;
+      return false;
     }
   }
 
@@ -399,30 +413,95 @@
     document.querySelectorAll(".panel-tabs button").forEach(button => {
       button.setAttribute("aria-selected", String(button.dataset.panel === name));
     });
-    if (routes && map) setTimeout(() => map.invalidateSize(), 50);
+    if (map) setTimeout(() => map.invalidateSize(), 50);
+  }
+
+  function setConnectionStatus(message, hasError) {
+    const status = $("connectionStatus");
+    status.querySelector("span").textContent = message;
+    status.classList.toggle("is-error", Boolean(hasError));
+  }
+
+  async function refreshDashboard() {
+    if (refreshing) return;
+    refreshing = true;
+    $("refresh").disabled = true;
+    setConnectionStatus("Actualizando", false);
+    const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
+    const deliveriesResult = results[0];
+    const eventsResult = results[1];
+    let routeOk = false;
+    if (deliveriesResult.status === "fulfilled") {
+      const routeInput = routeInputSignature();
+      const riskInput = riskInputSignature();
+      const routeNeedsUpdate = !routeChoices.length ||
+        routeInput !== lastRouteInput || riskInput !== lastRiskInput;
+      routeOk = routeNeedsUpdate ? await calculateRoute() : true;
+      if (routeOk) {
+        lastRouteInput = routeInput;
+        lastRiskInput = riskInput;
+      }
+    } else {
+      $("routeMessage").textContent = "No se pudieron actualizar los destinos: " +
+        deliveriesResult.reason.message + (routeChoices.length ? " Se conserva la ruta anterior." : "");
+      $("routeMessage").classList.remove("hidden");
+    }
+    lastRefreshAt = Date.now();
+    $("lastUpdated").textContent = "Actualizado " +
+      new Date(lastRefreshAt).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" });
+    const eventsOk = eventsResult.status === "fulfilled" && eventsResult.value;
+    const synced = routeOk && eventsOk;
+    setConnectionStatus(synced ? "Sistema en línea" : "Revisar sincronización", !synced);
+    refreshing = false;
+    $("refresh").disabled = false;
   }
 
   async function start() {
     $("login").classList.add("hidden");
     $("app").classList.remove("hidden");
-    $("who").textContent = session.name + " · " +
-      new Date().toLocaleDateString("es-SV", { weekday: "long", day: "numeric", month: "long" });
     window.AppNavigation.mount();
+    if (!window.L) {
+      $("noRoute").textContent = "No se pudo cargar el mapa. Revisa tu conexión e inténtalo de nuevo.";
+      $("noRoute").classList.remove("hidden");
+      setConnectionStatus("Mapa no disponible", true);
+      return;
+    }
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
     document.querySelectorAll(".panel-tabs button").forEach(button => {
       button.addEventListener("click", () => setPanel(button.dataset.panel));
     });
     ["eventSeverity", "eventFrom", "eventTo"].forEach(id => $(id).addEventListener("change", drawEvents));
-    $("gen").addEventListener("click", () => calculateRoute(true));
+    $("refresh").addEventListener("click", refreshDashboard);
+    $("locate").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        $("routeMessage").textContent = "Este navegador no permite obtener la ubicación actual.";
+        $("routeMessage").classList.remove("hidden");
+        return;
+      }
+      $("locate").disabled = true;
+      navigator.geolocation.getCurrentPosition(async position => {
+        origin = [position.coords.latitude, position.coords.longitude];
+        $("originLabel").textContent = "Ubicación actual";
+        await refreshDashboard();
+        $("locate").disabled = false;
+      }, error => {
+        const message = error.code === error.PERMISSION_DENIED ?
+          "No se concedió permiso para usar la ubicación. Puedes continuar desde el centro de San Salvador." :
+          "No se pudo obtener la ubicación. Revisa los permisos y vuelve a intentarlo.";
+        $("routeMessage").textContent = message;
+        $("routeMessage").classList.remove("hidden");
+        $("locate").disabled = false;
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+    });
     if (location.hash === "#rutas") setPanel("routes");
-    const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    const deliveryResult = results[0];
-    if (deliveryResult.status === "rejected") {
-      $("routeMessage").textContent = "No se pudieron cargar los destinos: " + deliveryResult.reason.message;
-      $("routeMessage").classList.remove("hidden");
-    }
-    await calculateRoute(false);
+    await refreshDashboard();
+    window.setInterval(() => {
+      if (!document.hidden) refreshDashboard();
+    }, 120000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && Date.now() - lastRefreshAt >= 120000) refreshDashboard();
+    });
   }
 
   $("loginForm").addEventListener("submit", async event => {

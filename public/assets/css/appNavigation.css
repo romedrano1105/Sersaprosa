@@ -1,19 +1,135 @@
-.app-nav-enabled{padding-left:240px}
-.app-nav{position:fixed;z-index:1200;inset:0 auto 0 0;width:240px;padding:24px 16px;background:#1d2c3a;border-right:1px solid #2e4153;display:flex;flex-direction:column;gap:20px;color:#e8eef2}
-.app-nav-brand{font:700 24px/1.2 'Barlow Semi Condensed',sans-serif;padding:0 10px 14px;border-bottom:1px solid #2e4153}
-.app-nav-links{list-style:none;padding:0;margin:0;display:grid;gap:6px}
-.app-nav-links a,.app-nav-logout{display:block;width:100%;padding:10px;border:1px solid transparent;border-radius:4px;background:transparent;color:#e8eef2;text-align:left;text-decoration:none;font:500 15px/1.35 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
-.app-nav-links a:hover,.app-nav-links a.active{border-color:#3cc8b4;color:#3cc8b4;background:#3cc8b414}
-.app-nav-links a:focus-visible,.app-nav-logout:focus-visible,.app-nav-toggle:focus-visible{outline:2px solid #3cc8b4;outline-offset:2px}
-.app-nav-logout{margin-top:auto;border-color:#2e4153}
-.app-nav-logout:hover{border-color:#e5533d;color:#ffb4a8}
-.app-nav-toggle,.app-nav-backdrop{display:none}
-@media(max-width:820px){
-  .app-nav-enabled{padding-left:0;padding-top:48px}
-  .app-nav{width:min(280px,85vw);transform:translateX(-101%);transition:transform .2s ease;box-shadow:8px 0 24px #0005}
-  .app-nav-open .app-nav{transform:translateX(0)}
-  .app-nav-toggle{display:block;position:fixed;z-index:1202;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;padding:8px 12px;border:1px solid #2e4153;border-radius:4px;background:#1d2c3a;color:#e8eef2;font:500 14px 'IBM Plex Sans',system-ui,sans-serif;cursor:pointer}
-  .app-nav-backdrop{display:none;position:fixed;inset:0;z-index:1199;border:0;background:#0008}
-  .app-nav-open .app-nav-backdrop{display:block}
+.app-nav-enabled { padding-left: 252px; }
+.app-nav {
+  position: fixed;
+  z-index: 1200;
+  inset: 0 auto 0 0;
+  width: 252px;
+  padding: 24px 16px 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  background: #101c29;
+  border-right: 1px solid #26384a;
+  color: #edf2f7;
 }
-@media(prefers-reduced-motion:reduce){.app-nav{transition:none}}
+.app-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 7px 21px;
+  border-bottom: 1px solid #26384a;
+}
+.app-nav-logo {
+  width: 41px;
+  height: 41px;
+  padding: 5px;
+  object-fit: contain;
+  background: #f6f8fb;
+  border-radius: 6px;
+}
+.app-nav-brand-copy strong, .app-nav-brand-copy small { display: block; }
+.app-nav-brand-copy strong { font: 700 16px/1.1 "Barlow Semi Condensed", sans-serif; letter-spacing: .09em; }
+.app-nav-brand-copy small { margin-top: 4px; color: #8fa0b2; font-size: 9px; letter-spacing: .06em; }
+.app-nav-section { margin: 25px 9px 10px; color: #6f8194; font-size: 9px; font-weight: 700; letter-spacing: .15em; }
+.app-nav-links { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; }
+.app-nav-links a {
+  display: block;
+  width: 100%;
+  padding: 9px 10px 9px 13px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #d9e1e9;
+  text-align: left;
+  text-decoration: none;
+}
+.app-nav-links a:hover, .app-nav-links a.active {
+  border-color: #34495e;
+  background: #162535;
+  box-shadow: inset 3px 0 #53c8ad;
+  color: #fff;
+}
+.app-nav-links a:focus-visible, .app-nav-logout:focus-visible, .app-nav-toggle:focus-visible {
+  outline: 2px solid #53c8ad;
+  outline-offset: 2px;
+}
+.app-nav-links a .app-nav-label { display: block; font-size: 12px; font-weight: 600; }
+.app-nav-links a small { display: block; margin-top: 2px; color: #8293a4; font-size: 10px; }
+.app-nav-links a.active small { color: #b3c2d1; }
+.app-nav-status {
+  margin-top: auto;
+  padding: 12px;
+  background: #0b151f;
+  border: 1px solid #26384a;
+  border-radius: 6px;
+}
+.app-nav-status-label, .app-nav-status strong, .app-nav-status small { display: block; }
+.app-nav-status-label { color: #8fa0b2; font-size: 10px; }
+.app-nav-status strong { margin-top: 4px; color: #53c8ad; font-size: 10px; letter-spacing: .08em; }
+.app-nav-status small { margin-top: 3px; color: #6f8194; font-size: 9px; }
+.app-nav-logout {
+  width: 100%;
+  margin-top: 10px;
+  padding: 9px 12px;
+  border: 1px solid #26384a;
+  border-radius: 6px;
+  background: transparent;
+  color: #aab6c3;
+  text-align: left;
+  font: 500 12px "IBM Plex Sans", system-ui, sans-serif;
+  cursor: pointer;
+}
+.app-nav-logout:hover { border-color: #814b4a; color: #f0a49d; }
+.app-nav-operator { display: flex; align-items: center; gap: 10px; padding: 15px 4px 0; }
+.app-nav-operator > b {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: #25394c;
+  color: #c1d0e0;
+  font-size: 10px;
+}
+.app-nav-operator strong, .app-nav-operator small { display: block; max-width: 168px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-nav-operator strong { font-size: 10px; font-weight: 600; }
+.app-nav-operator small { margin-top: 3px; color: #8293a4; font-size: 9px; }
+.app-nav-toggle, .app-nav-backdrop { display: none; }
+@media (max-width: 820px) {
+  .app-nav-enabled { padding-left: 0; padding-top: 48px; }
+  .app-nav {
+    width: min(290px, 86vw);
+    transform: translateX(-101%);
+    transition: transform .2s ease;
+    box-shadow: 8px 0 24px #0005;
+  }
+  .app-nav-open .app-nav { transform: translateX(0); }
+  .app-nav-toggle {
+    position: fixed;
+    z-index: 1202;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: 10px;
+    display: block;
+    padding: 8px 12px;
+    border: 1px solid #34495e;
+    border-radius: 5px;
+    background: #162535;
+    color: #edf2f7;
+    font: 500 12px "IBM Plex Sans", system-ui, sans-serif;
+    cursor: pointer;
+  }
+  .app-nav-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1199;
+    display: none;
+    border: 0;
+    background: #0009;
+  }
+  .app-nav-open .app-nav-backdrop { display: block; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-nav { transition: none; }
+}

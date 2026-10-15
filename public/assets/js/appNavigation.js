@@ -4,12 +4,12 @@
   const SESSION_KEY = "session";
   const LOGIN_URL = "/PaginaPrincipal.html";
   const LINKS = [
-    { id: "map", label: "Ruta del día / Mapa", href: LOGIN_URL },
-    { id: "routes", label: "Rutas (alternativas)", href: LOGIN_URL + "#rutas" },
-    { id: "deliveries", label: "Destinos diarios", href: "/entregasDia.html" },
-    { id: "events", label: "Eventos especiales", href: "/eventosEspeciales.html" },
-    { id: "alerts", label: "Alertas de seguridad", href: "/alertasSeguridad.html", role: "coordinador_rutas" },
-    { id: "drivers", label: "Verificar conductores", href: "/Verificar%20conductores.html" }
+    { id: "map", label: "Asignar rutas", detail: "Planificación", href: LOGIN_URL },
+    { id: "routes", label: "Alternativas de ruta", detail: "Recorridos por calles", href: LOGIN_URL + "#rutas" },
+    { id: "events", label: "Monitoreo operativo", detail: "Eventos y seguridad", href: "/eventosEspeciales.html" },
+    { id: "deliveries", label: "Entregas del día", detail: "Pedidos y destinos", href: "/entregasDia.html" },
+    { id: "drivers", label: "Empleados y vehículos", detail: "Disponibilidad", href: "/Verificar%20conductores.html" },
+    { id: "alerts", label: "Alertas de seguridad", detail: "Incidentes", href: "/alertasSeguridad.html", role: "coordinador_rutas" }
   ];
 
   function readSession() {
@@ -73,7 +73,19 @@
       id: "app-nav",
       "aria-label": "Navegación principal"
     });
-    nav.append(createElement("div", { class: "app-nav-brand" }, "Rutas seguras"));
+    const brand = createElement("div", { class: "app-nav-brand" });
+    const logo = createElement("img", {
+      class: "app-nav-logo",
+      src: "/assets/img/sersaprosa-logo.svg",
+      alt: ""
+    });
+    const brandCopy = createElement("span", { class: "app-nav-brand-copy" });
+    brandCopy.append(
+      createElement("strong", {}, "SERSAPROSA"),
+      createElement("small", {}, "Control de operaciones")
+    );
+    brand.append(logo, brandCopy);
+    nav.append(brand, createElement("div", { class: "app-nav-section" }, "MENÚ PRINCIPAL"));
     const list = createElement("ul", { class: "app-nav-links" });
     const active = activeSection();
     LINKS.forEach(item => {
@@ -81,7 +93,11 @@
       const link = createElement("a", {
         href: item.href,
         class: item.id === active ? "active" : ""
-      }, item.label);
+      });
+      link.append(
+        createElement("span", { class: "app-nav-label" }, item.label),
+        createElement("small", {}, item.detail)
+      );
       if (item.id === active) link.setAttribute("aria-current", "page");
       link.addEventListener("click", closeMenu);
       const listItem = createElement("li", {});
@@ -89,6 +105,13 @@
       list.append(listItem);
     });
     nav.append(list);
+    const status = createElement("div", { class: "app-nav-status" });
+    status.append(
+      createElement("span", { class: "app-nav-status-label" }, "Estado de sesión"),
+      createElement("strong", {}, "CONECTADA"),
+      createElement("small", {}, "Acceso autenticado")
+    );
+    nav.append(status);
     const logout = createElement("button", { class: "app-nav-logout", type: "button" }, "Salir");
     logout.addEventListener("click", () => {
       try {
@@ -99,6 +122,16 @@
       global.location.assign(LOGIN_URL);
     });
     nav.append(logout);
+    const operator = createElement("div", { class: "app-nav-operator" });
+    const initials = String(session.name || session.code || "OP")
+      .split(/\s+/).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join("");
+    const operatorCopy = createElement("span", {});
+    operatorCopy.append(
+      createElement("strong", {}, session.name || "Operador"),
+      createElement("small", {}, session.role || "Personal autorizado")
+    );
+    operator.append(createElement("b", {}, initials), operatorCopy);
+    nav.append(operator);
     toggle.addEventListener("click", () => {
       const open = !global.document.body.classList.contains("app-nav-open");
       global.document.body.classList.toggle("app-nav-open", open);

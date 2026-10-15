@@ -1,6 +1,8 @@
 # Sersaprosa
 
-Aplicación web de rutas seguras con frontend estático y API en FastAPI.
+SERSAPROSA es una **aplicación web** de operaciones para planificar recorridos
+seguros, consultar entregas, revisar eventos y gestionar la disponibilidad de
+personal y vehículos. Combina un frontend web con una API FastAPI.
 
 ## Estructura
 
@@ -50,20 +52,30 @@ El menú compartido está en `public/assets/js/appNavigation.js`; en teléfonos
 se abre con el botón **Menú**. Alertas de seguridad solo aparece para el rol
 `coordinador_rutas`.
 
-La página principal obtiene destinos y eventos mediante `/entregas/listar` y
-`/eventos/listar`. Las rutas reales se calculan en el navegador con el servicio
-público OSRM; el backend no descarga mapas. Para mostrar y recorrer las
-entregas del día, ejecuta
+La navegación sigue el flujo operativo de planificación de rutas, monitoreo de
+eventos, entregas del día y disponibilidad de empleados y vehículos. La página
+principal consulta destinos y eventos mediante `/entregas/listar` y
+`/eventos/listar`. El mapa muestra calles de OpenStreetMap y los recorridos se
+calculan con OSRM sobre la red vial; las entregas y eventos se vuelven a
+consultar cada dos minutos y el recorrido se recalcula cuando cambian sus
+coordenadas, el origen o los eventos que afectan al riesgo. **Actualizar ahora**
+permite forzar la consulta. El GPS del navegador es opcional, solo se solicita
+tras pulsar el botón de ubicación y se usa como origen para el cálculo de ruta.
+
+Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
 en Supabase y guarda coordenadas verificadas en `entregas.lat` y
 `entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
-direcciones a un geocodificador externo.
+direcciones a un geocodificador externo. El número y disponibilidad de rutas
+alternativas depende de las opciones devueltas por OSRM.
 
 El acceso a las tablas continúa bajo RLS usando el token del usuario; no se
 expone la clave `service_role` al navegador ni se concede acceso a `anon`.
-OSRM es un servicio público externo y puede limitar solicitudes o dejar de
-responder. La disponibilidad de rutas alternativas depende de las opciones
-que encuentre para cada trayecto.
+Los mapas, las teselas y el cálculo de rutas dependen de servicios públicos
+externos (OpenStreetMap, CARTO y OSRM), que pueden limitar solicitudes o dejar
+de responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
+vehículos; por eso el monitoreo muestra eventos/incidentes reales disponibles
+en la API y no simula cámaras ni posiciones de unidades.
 
 ## Despliegue en Render
 

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 210" role="img" aria-labelledby="title">
+  <title id="title">SERSAPROSA</title>
+  <g fill="#102033">
+    <path d="M4 133 52 34h28l-47 99z"/>
+    <path d="M42 133 89 34h28l-47 99z"/>
+    <path d="M80 133 127 34h27l-47 99z"/>
+    <path d="m56 173 47-99h28l-47 99z"/>
+    <path d="m94 173 47-99h28l-47 99z"/>
+    <path d="m132 173 47-99h27l-47 99z"/>
+  </g>
+  <g fill="#8497b2">
+    <path d="m157 38 46 95h-27l-30-63z"/>
+    <path d="m4 138 46 95 19-32-30-63z" transform="translate(0 -36)"/>
+    <path d="m142 75 29 58h-28l-13-27z"/>
+    <path d="m68 138 28 0-13 26z"/>
+  </g>
+</svg>
