@@ -1,15 +1,5 @@
 const NOMBRES = {pendiente: "Pendiente", proceso: "En proceso", completada: "Completada"};
 
-const API_URL = "http://localhost:8000"; // ajusta al puerto de tu FastAPI
-const MODO_DEMO = false;                 // true = datos de ejemplo sin backend
-
-const PEDIDOS_DEMO = [
-  {id:"P-1001", cliente:"Distribuidora El Sol", direccion:"Col. Escalón, San Salvador", hora:"08:30", estado:"completada", zona:"San Salvador", ruta:"R-100", sin_ruta:false, contacto:"2222-1010", productos:"20 cajas de arroz", notas:"Entregado sin novedades"},
-  {id:"P-1002", cliente:"Supermercado La Esperanza", direccion:"Santa Tecla, La Libertad", hora:"10:00", estado:"proceso", zona:"Santa Tecla", ruta:"R-102", sin_ruta:false, contacto:"2288-3344", productos:"15 sacos de frijol", notas:"Camión en ruta"},
-  {id:"P-1003", cliente:"Tienda Don Pepe", direccion:"Soyapango, San Salvador", hora:"11:30", estado:"pendiente", zona:"Soyapango", ruta:"", sin_ruta:true, contacto:"7788-5566", productos:"10 cajas de aceite", notas:"Confirmar horario con el cliente"},
-  {id:"P-1004", cliente:"Mercado Central", direccion:"Centro, San Salvador", hora:"14:00", estado:"pendiente", zona:"San Salvador", ruta:"R-100", sin_ruta:false, contacto:"2270-9900", productos:"30 bolsas de azúcar", notas:""},
-];
-
 let pedidos = [];
 let fEstado = "todos", fZona = "todos", fRuta = "todos";
 
@@ -63,21 +53,31 @@ async function cargarPedidos() {
   $vacio.hidden = true;
   mostrarFecha();
   try {
-    if (MODO_DEMO) {
-      pedidos = PEDIDOS_DEMO;
-    } else {
-      const s = leerSesion();
-      const res = await fetch(API_URL + "/entregas/listar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(s && s.token ? { Authorization: "Bearer " + s.token } : {})
-        },
-        body: JSON.stringify({ fecha: $fecha.value })
-      });
-      if (!res.ok) throw new Error("Error " + res.status);
-      pedidos = (await res.json()).entregas;
+    const s = leerSesion();
+    if (!s || !s.token) {
+      window.AppNavigation.handleUnauthorized();
+      return;
     }
+    const apiBase = (s.apiBase || window.location.origin).replace(/\/$/, "");
+    const res = await fetch(apiBase + "/entregas/listar", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + s.token
+      },
+      body: JSON.stringify({ fecha: $fecha.value })
+    });
+    const body = await res.json();
+    if (res.status === 401) {
+      window.AppNavigation.handleUnauthorized();
+      return;
+    }
+    if (!res.ok) {
+      const detail = body.detail;
+      throw new Error((detail && typeof detail === "object" ? detail.message : detail) || "Error " + res.status);
+    }
+    if (!body || !Array.isArray(body.entregas)) throw new Error("Respuesta del servidor no válida.");
+    pedidos = body.entregas;
     llenarOpciones($zona, [...new Set(pedidos.map(p => p.zona))].sort(), "Todas las zonas");
     llenarOpciones($ruta, [...new Set(pedidos.map(p => p.ruta).filter(Boolean))].sort(),
                    "Todas las rutas", ["sin_ruta", "Sin ruta asignada"]);

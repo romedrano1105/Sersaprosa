@@ -19,8 +19,9 @@ server.js                 Servidor estático Node.js
 
 ## Configuración de Supabase
 
-Define estas variables de entorno en el proceso del backend. `.env.example`
-documenta sus nombres; el proyecto no carga automáticamente archivos `.env`.
+Define estas variables de entorno en el proceso del backend (por ejemplo, en
+la sección **Environment** de Render). El proyecto no carga automáticamente
+archivos `.env`.
 
 - `SUPABASE_URL`: URL del proyecto.
 - `SUPABASE_ANON_KEY`: clave anon/public del proyecto.
@@ -39,10 +40,45 @@ Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
 al código del navegador ni al repositorio.
 
-La página principal conserva `N8N.AUTH` como URL del endpoint `/login` del
-backend. Si cambias el dominio o el entorno, actualiza esa URL en
-`public/pages/PaginaPrincipal.html`; las peticiones protegidas usan el origen
-de ese endpoint como base de la API.
+El login envía las credenciales a `/login` en el mismo servicio FastAPI que
+sirve las páginas. Las demás peticiones usan ese mismo origen y el token que
+Supabase Auth devuelve al iniciar sesión.
+
+## Navegación y mapa
+
+El menú compartido está en `public/assets/js/appNavigation.js`; en teléfonos
+se abre con el botón **Menú**. Alertas de seguridad solo aparece para el rol
+`coordinador_rutas`.
+
+La página principal obtiene destinos y eventos mediante `/entregas/listar` y
+`/eventos/listar`. Las rutas reales se calculan en el navegador con el servicio
+público OSRM; el backend no descarga mapas. Para mostrar y recorrer las
+entregas del día, ejecuta
+[`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
+en Supabase y guarda coordenadas verificadas en `entregas.lat` y
+`entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
+direcciones a un geocodificador externo.
+
+El acceso a las tablas continúa bajo RLS usando el token del usuario; no se
+expone la clave `service_role` al navegador ni se concede acceso a `anon`.
+OSRM es un servicio público externo y puede limitar solicitudes o dejar de
+responder. La disponibilidad de rutas alternativas depende de las opciones
+que encuentre para cada trayecto.
+
+## Despliegue en Render
+
+1. En Render configura el servicio web con directorio raíz del repositorio.
+2. Usa `pip install -r requirements.txt` como comando de compilación.
+3. Usa `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` como comando
+   de inicio.
+4. Define en la sección **Environment** las variables `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`.
+5. Aplica `backend/database/entregas_coordenadas.sql` en Supabase y completa
+   coordenadas verificadas en las entregas que deban incluirse en el mapa.
+
+No agregues secretos a Git ni al código del navegador. No se requiere
+`service_role` para OSRM ni para el mapa; la usa el backend en el flujo actual
+de login.
 
 ## Ejecutar
 
