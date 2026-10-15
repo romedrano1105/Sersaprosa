@@ -65,6 +65,8 @@ def formatear(entrega: dict) -> dict:
         "contacto": entrega.get("contacto") or "",
         "productos": entrega.get("productos") or "",
         "notas": entrega.get("notas") or "",
+        "lat": entrega.get("lat"),
+        "lng": entrega.get("lng"),
     }
 
 

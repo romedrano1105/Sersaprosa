@@ -49,10 +49,10 @@
 
   // CONFIGURACIÓN por defecto. LOAD/REVIEW/CREATE vacíos = modo demostración.
   const EV = {
-    LOAD: "", REVIEW: "", CREATE: "",
+    LOAD: "/eventos/listar", REVIEW: "/eventos/revisar", CREATE: "/eventos/registrar",
     ROLE_ALLOWED: "coordinador_rutas",
     SESSION_KEY: "session",
-    onUnauthorized: null
+    onUnauthorized: () => global.AppNavigation && global.AppNavigation.handleUnauthorized()
   };
 
   /* ============ Constantes ============ */
