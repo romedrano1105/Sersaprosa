@@ -116,6 +116,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .map-section { min-width: 0; min-height: 500px; padding: 22px; }
 .map-frame { position: relative; min-height: 540px; height: calc(100vh - 152px); overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: #152330; box-shadow: 0 16px 42px #0003; }
 #map { position: absolute; inset: 0; width: 100%; height: 100%; background: #152330; }
+#map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
 .map-caption { position: absolute; z-index: 500; right: 12px; bottom: 12px; left: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid #ffffff20; border-radius: 5px; background: #101c29e8; color: #c2ceda; font-size: 10px; pointer-events: none; }
 .map-legend { display: inline-flex; align-items: center; gap: 7px; }
 .map-legend i { width: 16px; height: 3px; background: var(--route); box-shadow: 0 0 8px #53c8ad99; }
