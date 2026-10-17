@@ -74,6 +74,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .origin-copy strong { overflow: hidden; margin-top: 2px; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .icon-button { width: 34px; height: 34px; flex: none; border-radius: 5px; color: var(--brand); font-size: 19px; }
 .privacy-note { margin: 8px 0 16px; color: var(--faint); font-size: 10px; line-height: 1.4; }
+.tracking-button { width: 100%; }
+.tracking-status { margin: 8px 0 14px; color: var(--muted); font-size: 11px; }
 .notice { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--mid); background: #e7b75b12; color: var(--muted); font-size: 12px; }
 .notice.hidden { display: none; }
 .stops { margin: 18px 0 22px 13px; padding: 0; list-style: none; border-left: 2px solid #344b5c; }
@@ -92,6 +94,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .route-option strong, .route-option small { display: block; }
 .route-option strong { font-size: 12px; }
 .route-option small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.navigation-guidance { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.navigation-guidance h3 { margin: 0 0 8px; font: 600 17px "Barlow Semi Condensed", sans-serif; }
+.navigation-guidance ol { max-height: 300px; overflow: auto; margin: 0; padding: 0; list-style: none; }
+.navigation-guidance li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.navigation-guidance li.direction-active { border-left: 3px solid var(--route); background: #53c8ad12; color: var(--text); }
+.navigation-guidance li small { flex: none; color: var(--faint); }
 .event-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 12px; }
 .event-filters label { display: block; color: var(--muted); font-size: 10px; }
 .event-filters label:first-child { grid-column: 1 / -1; }

@@ -29,6 +29,8 @@ archivos `.env`.
 - `SUPABASE_ANON_KEY`: clave anon/public del proyecto.
 - `SUPABASE_SERVICE_ROLE_KEY`: clave de servicio, solo en el backend; nunca la
   publiques en el navegador ni en el repositorio.
+- `OPENROUTESERVICE_API_KEY`: clave de OpenRouteService, solo en el backend.
+  Si no está configurada o el servicio no responde, la API intenta usar OSRM.
 
 Para conservar el acceso con código de empleado, aplica
 [`backend/database/empleados_auth.sql`](backend/database/empleados_auth.sql).
@@ -55,19 +57,31 @@ se abre con el botón **Menú**. Alertas de seguridad solo aparece para el rol
 La navegación sigue el flujo operativo de planificación de rutas, monitoreo de
 eventos, entregas del día y disponibilidad de empleados y vehículos. La página
 principal consulta destinos y eventos mediante `/entregas/listar` y
-`/eventos/listar`. El mapa muestra calles de OpenStreetMap y los recorridos se
-calculan con OSRM sobre la red vial; las entregas y eventos se vuelven a
-consultar cada dos minutos y el recorrido se recalcula cuando cambian sus
-coordenadas, el origen o los eventos que afectan al riesgo. **Actualizar ahora**
-permite forzar la consulta. El GPS del navegador es opcional, solo se solicita
-tras pulsar el botón de ubicación y se usa como origen para el cálculo de ruta.
+`/eventos/listar`. El endpoint autenticado `/rutas/calcular` solicita rutas a
+OpenRouteService y usa OSRM como respaldo; el navegador nunca recibe la clave.
+Antes de calcular, el backend carga de Supabase los eventos especiales vigentes
+y las alertas altas/medias de los últimos 90 días usando su clave service role.
+Las zonas con coordenadas se envían a OpenRouteService como áreas a evitar. Si
+OSRM no encuentra una alternativa fuera de ellas, la API rechaza la ruta en vez
+de mostrar una ruta insegura. Eventos sin coordenadas se notifican en el panel,
+pero no se pueden excluir espacialmente. La caché del backend conserva por seis
+horas las rutas válidas para las mismas coordenadas y zonas de riesgo; es local
+al proceso de la API.
+
+Las entregas y eventos se vuelven a consultar cada dos minutos y el recorrido
+se recalcula cuando cambian sus coordenadas, el origen o los eventos que
+afectan al riesgo. **Actualizar ahora** permite forzar la consulta. La ubicación
+del navegador es opcional: **Iniciar seguimiento en vivo** solicita permiso
+explícito, muestra la posición e inicia el recálculo si el vehículo se desvía
+más de 60 metros de la ruta. El panel muestra las indicaciones paso a paso del
+proveedor de rutas seleccionado.
 
 Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
 en Supabase y guarda coordenadas verificadas en `entregas.lat` y
 `entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
 direcciones a un geocodificador externo. El número y disponibilidad de rutas
-alternativas depende de las opciones devueltas por OSRM.
+alternativas depende de las opciones devueltas por OpenRouteService o, como respaldo, OSRM.
 
 El acceso a las tablas continúa bajo RLS usando el token del usuario; no se
 expone la clave `service_role` al navegador ni se concede acceso a `anon`.
@@ -88,9 +102,8 @@ en la API y no simula cámaras ni posiciones de unidades.
 5. Aplica `backend/database/entregas_coordenadas.sql` en Supabase y completa
    coordenadas verificadas en las entregas que deban incluirse en el mapa.
 
-No agregues secretos a Git ni al código del navegador. No se requiere
-`service_role` para OSRM ni para el mapa; la usa el backend en el flujo actual
-de login.
+No agregues secretos a Git ni al código del navegador. La clave de
+OpenRouteService debe permanecer en el entorno del backend.
 
 ## Ejecutar
 

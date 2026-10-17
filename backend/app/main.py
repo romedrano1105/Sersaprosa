@@ -11,10 +11,11 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
-from . import database, motor_rutas
+from . import database
 from .alertas_seguridad_router import router as alertas_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
+from .rutas_router import router as rutas_router
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
 app.include_router(entregas_router)
 app.include_router(alertas_router)
+app.include_router(rutas_router)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
@@ -109,23 +111,6 @@ def login(credenciales: CredencialesEmpleado):
         "email": auth.user.email,
         "role": app_metadata.get("role", ""),
     }
-
-# --- GENERADOR DE RUTA EXISTENTE ---
-@app.post("/generar-ruta")
-def endpoint_generar_ruta(req: dict):
-    # 1. Leer Supabase
-    riesgos = database.obtener_riesgos()
-    
-    # 2. Calcular ruta
-    ruta_final = motor_rutas.calcular_ruta_segura(req['origen'], req['destino'], riesgos)
-    
-    # 3. Guardar historial
-    database.guardar_ruta({"ruta": ruta_final})
-    
-    # 4. Responder a la web
-    return {"status": "success", "ruta": ruta_final}
-
-
 
 # --- PÁGINAS WEB (frontend servido por esta misma API) ---
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
