@@ -1,11 +1,11 @@
 /* =====================================================================
    DISPONIBILIDAD DE CONDUCTORES Y VEHÍCULOS — SERSAPROSA
 
-   Módulo independiente: no crea variables globales (solo window.Disponibilidad),
-   no usa ids y todas sus clases CSS empiezan con "dsp-". Así se puede abrir solo
-   (disponibilidad.html) o incrustar después dentro de PaginaPrincipal.html.
+   Módulo integrado en PaginaPrincipal.html: no crea variables globales
+   (solo window.Disponibilidad), no usa ids propios y todas sus clases CSS
+   empiezan con "dsp-".
 
-   CÓMO INCRUSTARLO EN PaginaPrincipal.html (cuando llegue el momento):
+   Integración en PaginaPrincipal.html:
      <link rel="stylesheet" href="/assets/css/verificarConduCSS.css">
      <div id="panelDisponibilidad"></div>
      <script src="/assets/js/VerificarConduJS.js"></script>
@@ -18,11 +18,10 @@
      </script>
 
    SESIÓN: lee sessionStorage["session"] = { token, name, code, role }, que es lo
-   mismo que guarda el login de PaginaPrincipal.html. El webhook AUTH debe devolver
-   además "role" ("admin_rutas" para el administrador de rutas). La validación real
-   del rol y del token SIEMPRE debe repetirse en el backend.
+   mismo que guarda el login de PaginaPrincipal.html. El backend vuelve a validar
+   el token y el rol "coordinador_rutas" en cada petición.
 
-   CONTRATO DE ENDPOINTS (si una URL está vacía, funciona en modo demostración):
+   CONTRATO DE ENDPOINTS:
    1) LOAD (POST, Authorization: Bearer <token>)  {}
         → { drivers:  [{ id, nombre, licencia:"YYYY-MM-DD" }],
             vehicles: [{ id, placa, tipo, seguro:"YYYY-MM-DD", revision:"YYYY-MM-DD" }],
@@ -37,13 +36,12 @@
 (function (global) {
   "use strict";
 
-  // CONFIGURACIÓN por defecto (equivale al bloque N8N de PaginaPrincipal.html).
-  // LOAD y ASSIGN vacíos = modo demostración. ROLE_ALLOWED = rol que puede entrar.
+  // CONFIGURACIÓN por defecto. ROLE_ALLOWED = rol que puede entrar.
   // SESSION_KEY = clave de sessionStorage donde PaginaPrincipal guarda la sesión.
   const DISP = {
-    LOAD: "",
-    ASSIGN: "",
-    ROLE_ALLOWED: "admin_rutas",
+    LOAD: "/disponibilidad/listar",
+    ASSIGN: "/disponibilidad/asignar",
+    ROLE_ALLOWED: "coordinador_rutas",
     SESSION_KEY: "session",
     onUnauthorized: null
   };
@@ -213,7 +211,7 @@
       const s = getSession();
       return s ? (s.name || s.code || s.user || "Usuario") : (demo ? "María Hernández" : "");
     }
-    // Rol actual. En demostración, si no hay rol se asume administrador de rutas.
+    // Rol actual. En demostración, si no hay rol se asume coordinador de rutas.
     // En modo real, si la sesión no trae 'role' el acceso queda bloqueado.
     function currentRole() {
       if (demo && S.demoRole) return S.demoRole;
@@ -290,10 +288,10 @@
     // ---- ESTRUCTURA FIJA ----
     // Encabezado, caja de mensajes y cuerpo. Solo el cuerpo se vuelve a dibujar en cada render().
     const headUser = h("b"), headRole = h("span");
-    const head = h("div", { class: "dsp-head" },
+    const head = cfg.showHeader === false ? null : h("div", { class: "dsp-head" },
       h("div", {},
-        h("h2", { class: "dsp-title" }, "Disponibilidad"),
-        h("p", { class: "dsp-sub" }, "SERSAPROSA · Conductores y vehículos para asignar a rutas")),
+        h("h2", { class: "dsp-title" }, cfg.title || (cfg.view === "assignment" ? "Asignar Ruta" : "Empleados y Vehículos")),
+        h("p", { class: "dsp-sub" }, cfg.subtitle || "SERSAPROSA · Disponibilidad operativa")),
       h("div", { class: "dsp-who" }, "Sesión: ", headUser, h("br"), headRole));
     const msgBox = h("div", { class: "dsp-msgbox", role: "status", "aria-live": "polite" });
     const body = h("div", { class: "dsp-body" });
@@ -373,7 +371,7 @@
     // Dibuja el cuerpo según el estado: sin sesión, sin permiso, cargando, error o datos.
     function render() {
       headUser.textContent = currentUser() || "sin sesión";
-      headRole.textContent = roleOk() ? "Administrador de rutas" : (currentRole() || "");
+      headRole.textContent = roleOk() ? "Coordinador de rutas" : (currentRole() || "");
       body.replaceChildren();
       // Caso 1: no hay sesión iniciada.
       if (!hasSession()) {
@@ -402,39 +400,62 @@
       const dOk = D.drivers.filter(x => x.disp.ok).length, vOk = D.vehicles.filter(x => x.disp.ok).length;
       const cnt = (n, tot, label) => h("div", { class: "dsp-cnt" },
         h("div", { class: "dsp-n" }, String(n), tot != null ? h("small", {}, " de " + tot) : null), h("div", { class: "dsp-l" }, label));
-      body.append(
-        h("div", { class: "dsp-counters" },
-          cnt(dOk, D.drivers.length, "Conductores disponibles para asignar"),
-          cnt(vOk, D.vehicles.length, "Vehículos disponibles para asignar"),
-          cnt(Math.min(dOk, vOk, D.routes.length), null, "Rutas que se pueden cubrir ahora")),
-        h("div", { class: "dsp-cols" },
-          h("div", { class: "dsp-panel" }, h("h3", { class: "dsp-h" }, "Conductores (" + D.drivers.length + ")"), h("ul", { class: "dsp-list" }, D.drivers.map(x => row("driver", x)))),
-          h("div", { class: "dsp-panel" }, h("h3", { class: "dsp-h" }, "Vehículos (" + D.vehicles.length + ")"), h("ul", { class: "dsp-list" }, D.vehicles.map(x => row("vehicle", x))))));
+      if (cfg.view !== "assignment") {
+        body.append(
+          h("div", { class: "dsp-counters" },
+            cnt(dOk, D.drivers.length, "Conductores disponibles para asignar"),
+            cnt(vOk, D.vehicles.length, "Vehículos disponibles para asignar"),
+            cnt(Math.min(dOk, vOk, D.routes.length), null, "Rutas que se pueden cubrir ahora")),
+          h("div", { class: "dsp-cols" },
+            h("div", { class: "dsp-panel" }, h("h3", { class: "dsp-h" }, "Conductores (" + D.drivers.length + ")"), h("ul", { class: "dsp-list" }, D.drivers.map(x => row("driver", x)))),
+            h("div", { class: "dsp-panel" }, h("h3", { class: "dsp-h" }, "Vehículos (" + D.vehicles.length + ")"), h("ul", { class: "dsp-list" }, D.vehicles.map(x => row("vehicle", x))))));
+      }
 
-      // Panel 'Asignar a una ruta': el botón solo se habilita con conductor, vehículo y ruta elegidos.
-      const dSel = D.drivers.find(x => x.id === S.d), vSel = D.vehicles.find(x => x.id === S.v);
-      const routeSel = h("select", { class: "dsp-select", "aria-label": "Ruta" },
-        D.routes.length ? D.routes.map(r => h("option", { value: r.id }, r.id + " · " + r.nombre)) : h("option", { value: "" }, "No hay rutas sin asignar"));
-      const can = !!(dSel && vSel && D.routes.length && !S.saving);
-      body.append(h("div", { class: "dsp-panel dsp-gap" },
-        h("h3", { class: "dsp-h" }, "Asignar a una ruta"),
-        h("div", { class: "dsp-assign" },
-          h("div", {}, h("div", { class: "dsp-lbl" }, "Conductor"), h("div", { class: "dsp-val" }, dSel ? dSel.nombre : "Elija un conductor disponible")),
-          h("div", {}, h("div", { class: "dsp-lbl" }, "Vehículo"), h("div", { class: "dsp-val" }, vSel ? vSel.placa + " · " + (vSel.tipo || "") : "Elija un vehículo disponible")),
-          h("div", {}, h("div", { class: "dsp-lbl" }, "Ruta"), routeSel),
-          h("div", {}, h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Asignar ruta")))));
+      if (cfg.view !== "resources") {
+        const dSel = D.drivers.find(x => x.id === S.d), vSel = D.vehicles.find(x => x.id === S.v);
+        const routeSel = h("select", { class: "dsp-select", "aria-label": "Ruta" },
+          D.routes.length ? D.routes.map((r, index) => h("option", { value: r.id, selected: index === 0 }, r.id + " · " + r.nombre)) : h("option", { value: "" }, "No hay rutas sin asignar"));
+        const can = !!(dSel && vSel && D.routes.length && !S.saving);
+        let fields;
+        if (cfg.view === "assignment") {
+          const choice = (label, items, selected, display, save) => h("label", { class: "dsp-field" },
+            h("span", { class: "dsp-lbl" }, label),
+            h("select", {
+              class: "dsp-select",
+              onchange: event => { save(event.target.value || null); render(); }
+            },
+            h("option", { value: "" }, "Seleccionar " + label.toLowerCase()),
+            items.filter(item => item.disp.ok).map(item =>
+              h("option", { value: item.id, selected: item.id === selected }, display(item)))));
+          fields = h("div", { class: "dsp-assign dsp-assign-form" },
+            choice("Conductor", D.drivers, S.d, item => item.nombre, value => { S.d = value; }),
+            choice("Vehículo", D.vehicles, S.v, item => item.placa + " · " + (item.tipo || ""), value => { S.v = value; }),
+            h("label", { class: "dsp-field" }, h("span", { class: "dsp-lbl" }, "Ruta"), routeSel),
+            h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Confirmar asignación"));
+        } else {
+          fields = h("div", { class: "dsp-assign" },
+            h("div", {}, h("div", { class: "dsp-lbl" }, "Conductor"), h("div", { class: "dsp-val" }, dSel ? dSel.nombre : "Elija un conductor disponible")),
+            h("div", {}, h("div", { class: "dsp-lbl" }, "Vehículo"), h("div", { class: "dsp-val" }, vSel ? vSel.placa + " · " + (vSel.tipo || "") : "Elija un vehículo disponible")),
+            h("div", {}, h("div", { class: "dsp-lbl" }, "Ruta"), routeSel),
+            h("div", {}, h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Asignar ruta")));
+        }
+        body.append(h("div", { class: "dsp-panel dsp-gap" },
+          cfg.view === "assignment" ? null : h("h3", { class: "dsp-h" }, "Asignar a una ruta"),
+          fields));
+      }
 
-      // Tabla de asignaciones guardadas (la más reciente primero).
-      const asg = D.asg.slice().reverse();
-      body.append(h("div", { class: "dsp-panel dsp-gap" },
-        h("h3", { class: "dsp-h" }, "Asignaciones guardadas (" + asg.length + ")"),
-        asg.length ? h("div", { class: "dsp-scroll" }, h("table", { class: "dsp-table" },
-          h("thead", {}, h("tr", {}, ["Fecha", "Hora", "Ruta", "Conductor", "Vehículo", "Usuario"].map(t => h("th", {}, t)))),
-          h("tbody", {}, asg.map(a => {
-            const d = D.drivers.find(x => x.id === a.conductor), v = D.vehicles.find(x => x.id === a.vehiculo);
-            return h("tr", {}, h("td", {}, fmtD(a.fecha)), h("td", {}, fmtT(a.fecha)), h("td", {}, a.ruta),
-              h("td", {}, d ? d.nombre : a.conductor), h("td", {}, v ? v.placa : a.vehiculo), h("td", {}, a.usuario));
-          })))) : h("p", { class: "dsp-meta" }, "Todavía no hay asignaciones guardadas.")));
+      if (cfg.showHistory !== false) {
+        const asg = D.asg.slice().reverse();
+        body.append(h("div", { class: "dsp-panel dsp-gap" },
+          h("h3", { class: "dsp-h" }, "Asignaciones de hoy (" + asg.length + ")"),
+          asg.length ? h("div", { class: "dsp-scroll" }, h("table", { class: "dsp-table" },
+            h("thead", {}, h("tr", {}, ["Hora", "Ruta", "Conductor", "Vehículo", "Usuario"].map(t => h("th", {}, t)))),
+            h("tbody", {}, asg.map(a => {
+              const d = D.drivers.find(x => x.id === a.conductor), v = D.vehicles.find(x => x.id === a.vehiculo);
+              return h("tr", {}, h("td", {}, fmtT(a.fecha)), h("td", {}, a.ruta),
+                h("td", {}, d ? d.nombre : a.conductor), h("td", {}, v ? v.placa : a.vehiculo), h("td", {}, a.usuario));
+            })))) : h("p", { class: "dsp-meta" }, "Todavía no hay asignaciones para hoy.")));
+      }
     }
 
     /* ---- panel de pruebas (solo en modo demostración) ---- */
@@ -443,7 +464,7 @@
     if (demo) {
       const fail = h("input", { type: "checkbox", onchange: e => { S.demoFail = e.target.checked; } });
       const roleSel = h("select", { class: "dsp-select dsp-auto", "aria-label": "Rol de sesión", onchange: e => { S.demoRole = e.target.value; setMsg("", ""); load(); } },
-        h("option", { value: "admin_rutas" }, "Administrador de rutas"),
+        h("option", { value: "coordinador_rutas" }, "Coordinador de rutas"),
         h("option", { value: "operador" }, "Operador (sin permiso)"));
       const testBtn = h("button", { type: "button", class: "dsp-btn", onclick: () => {
         const r = runTests();

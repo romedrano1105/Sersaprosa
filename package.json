@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:api": "uvicorn backend.app.main:app --host 127.0.0.1 --port 8000",
     "test": "echo \"Sin pruebas por ahora\""
   },
   "repository": {

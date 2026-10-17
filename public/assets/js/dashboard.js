@@ -3,7 +3,7 @@
 
   const CENTER = [13.6929, -89.2182];
   const OSRM_URL = "https://router.project-osrm.org/route/v1/driving/";
-  const COLORS = { alta: "#e5533d", media: "#f2b544", baja: "#7fb2e5" };
+  const COLORS = { alta: "#ff4d55", media: "#ff9e45", baja: "#2494ff" };
   const $ = id => document.getElementById(id);
   const sessionKey = "session";
   let session = null;
@@ -16,6 +16,12 @@
   let routeChoices = [];
   let selectedRoute = 0;
   let refreshing = false;
+  let currentScreen = "routes";
+  let monitorTab = "events";
+  let eventModule = null;
+  let alertModule = null;
+  let availabilityModule = null;
+  let assignmentModule = null;
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
@@ -88,10 +94,9 @@
 
   function initMap() {
     map = L.map("map").setView(CENTER, 12);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19
     }).addTo(map);
     routeLayers = L.layerGroup().addTo(map);
     eventLayers = L.layerGroup().addTo(map);
@@ -154,8 +159,6 @@
       }
     }
     mapEvents = records.filter(record => record.date);
-    $("eventsMessage").textContent = messages.join(" ");
-    $("eventsMessage").classList.toggle("hidden", messages.length === 0);
     drawEvents();
     return messages.length === 0;
   }
@@ -167,24 +170,10 @@
   function drawEvents() {
     if (!eventLayers) return;
     eventLayers.clearLayers();
-    const list = $("eventsList");
-    list.replaceChildren();
-    const severity = $("eventSeverity").value;
-    const from = $("eventFrom").value;
-    const to = $("eventTo").value;
-    const shown = mapEvents.filter(item => {
-      const day = String(item.date).slice(0, 10);
-      return (!severity || item.severity === severity) && (!from || day >= from) && (!to || day <= to);
-    });
-    if (!shown.length) {
-      list.append(element("p", "empty", "No hay eventos que coincidan con estos filtros."));
-      return;
-    }
-    shown.forEach(item => {
+    mapEvents.forEach(item => {
       const color = eventColor(item);
-      let marker = null;
       if (hasLocation(item)) {
-        marker = L.circle([Number(item.lat), Number(item.lng)], {
+        const marker = L.circle([Number(item.lat), Number(item.lng)], {
           radius: Math.max(50, Number(item.radius_m) || 300),
           color,
           fillColor: color,
@@ -195,19 +184,6 @@
         popup.append(element("small", "", item.type + " · " + formatDate(item.date)));
         marker.bindPopup(popup);
       }
-      const row = element("article", "event-item");
-      const dot = element("span", "dot");
-      dot.style.backgroundColor = color;
-      row.append(dot, element("strong", "", item.name),
-        element("small", "", item.type + " · " + item.severity + " · " + formatDate(item.date)));
-      if (item.source) row.append(element("small", "", item.source));
-      row.addEventListener("click", () => {
-        if (marker) {
-          map.setView([Number(item.lat), Number(item.lng)], 15);
-          marker.openPopup();
-        }
-      });
-      list.append(row);
     });
   }
 
@@ -392,7 +368,6 @@
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
-      if (location.hash === "#rutas") setPanel("routes");
       return true;
     } catch (error) {
       routeChoices = [];
@@ -406,14 +381,81 @@
     }
   }
 
-  function setPanel(name) {
-    const routes = name === "routes";
-    $("routesPanel").classList.toggle("hidden", !routes);
-    $("eventsPanel").classList.toggle("hidden", routes);
-    document.querySelectorAll(".panel-tabs button").forEach(button => {
-      button.setAttribute("aria-selected", String(button.dataset.panel === name));
+  function mountEventPanel() {
+    if (eventModule) return;
+    eventModule = window.EventosEspeciales.mount($("panelEventos"), {
+      LOAD: "/eventos/listar",
+      REVIEW: "/eventos/revisar",
+      CREATE: "/eventos/registrar",
+      onUnauthorized: () => window.AppNavigation.handleUnauthorized()
     });
-    if (map) setTimeout(() => map.invalidateSize(), 50);
+  }
+
+  function mountAlertPanel() {
+    if (alertModule) return;
+    alertModule = window.AlertasSeguridad.mount($("panelAlertas"));
+  }
+
+  function mountAvailabilityPanel() {
+    if (availabilityModule) return;
+    availabilityModule = window.Disponibilidad.mount($("panelDisponibilidad"), {
+      view: "resources",
+      showHeader: false,
+      LOAD: "/disponibilidad/listar",
+      ASSIGN: "/disponibilidad/asignar",
+      ROLE_ALLOWED: "coordinador_rutas",
+      onUnauthorized: () => window.AppNavigation.handleUnauthorized()
+    });
+  }
+
+  function mountAssignmentPanel() {
+    if (assignmentModule) return;
+    assignmentModule = window.Disponibilidad.mount($("routeAssignment"), {
+      view: "assignment",
+      showHeader: false,
+      showHistory: false,
+      LOAD: "/disponibilidad/listar",
+      ASSIGN: "/disponibilidad/asignar",
+      ROLE_ALLOWED: "coordinador_rutas",
+      onUnauthorized: () => window.AppNavigation.handleUnauthorized()
+    });
+  }
+
+  function setMonitorTab(name) {
+    monitorTab = name === "alerts" ? "alerts" : "events";
+    $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
+    $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
+    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+      button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
+    });
+    if (monitorTab === "events") mountEventPanel();
+    else mountAlertPanel();
+  }
+
+  function setScreen(name) {
+    const screen = ["routes", "monitor", "daily"].includes(name) ? name : "routes";
+    currentScreen = screen;
+    $("routesScreen").classList.toggle("hidden", screen !== "routes");
+    $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
+    $("dailyScreen").classList.toggle("hidden", screen !== "daily");
+    const headings = {
+      routes: ["PLANIFICACIÓN OPERATIVA", "Asignar Rutas", "Configure y despache unidades de forma segura."],
+      monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
+      daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
+    };
+    const [eyebrow, title, description] = headings[screen];
+    $("pageEyebrow").textContent = eyebrow;
+    $("pageTitle").textContent = title;
+    $("pageDescription").textContent = description;
+    window.AppNavigation.setActive(screen);
+    if (screen === "routes") {
+      mountAssignmentPanel();
+      if (map) setTimeout(() => map.invalidateSize(), 50);
+    } else if (screen === "monitor") {
+      setMonitorTab(monitorTab);
+    } else {
+      mountAvailabilityPanel();
+    }
   }
 
   function setConnectionStatus(message, hasError) {
@@ -428,6 +470,9 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
+    [eventModule, alertModule, availabilityModule, assignmentModule].forEach(module => {
+      if (module && typeof module.reload === "function") module.reload();
+    });
     const deliveriesResult = results[0];
     const eventsResult = results[1];
     let routeOk = false;
@@ -459,7 +504,7 @@
   async function start() {
     $("login").classList.add("hidden");
     $("app").classList.remove("hidden");
-    window.AppNavigation.mount();
+    if (!window.AppNavigation.mount()) return;
     if (!window.L) {
       $("noRoute").textContent = "No se pudo cargar el mapa. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
@@ -468,10 +513,11 @@
     }
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
-    document.querySelectorAll(".panel-tabs button").forEach(button => {
-      button.addEventListener("click", () => setPanel(button.dataset.panel));
+    mountAssignmentPanel();
+    window.addEventListener("app:navigate", event => setScreen(event.detail));
+    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+      button.addEventListener("click", () => setMonitorTab(button.dataset.monitorPanel));
     });
-    ["eventSeverity", "eventFrom", "eventTo"].forEach(id => $(id).addEventListener("change", drawEvents));
     $("refresh").addEventListener("click", refreshDashboard);
     $("locate").addEventListener("click", () => {
       if (!navigator.geolocation) {
@@ -494,7 +540,7 @@
         $("locate").disabled = false;
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
-    if (location.hash === "#rutas") setPanel("routes");
+    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();
