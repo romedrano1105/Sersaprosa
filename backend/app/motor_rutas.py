@@ -233,7 +233,11 @@ def _solicitar_ors(coordenadas, zonas, api_key):
         headers={"Authorization": api_key, "Content-Type": "application/json"},
         timeout=15,
     )
-    respuesta.raise_for_status()
+    try:
+        respuesta.raise_for_status()
+    except httpx.HTTPStatusError:
+        logger.error("OpenRouteService respondió %s: %s", respuesta.status_code, respuesta.text[:500])
+        raise
     return _normalizar_ors(respuesta.json())
 
 

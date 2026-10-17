@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import httpx
@@ -111,6 +112,18 @@ def login(credenciales: CredencialesEmpleado):
         "email": auth.user.email,
         "role": app_metadata.get("role", ""),
     }
+
+@app.get("/diagnostico", include_in_schema=False)
+def diagnostico():
+    """Indica solo si cada variable de entorno está definida; nunca devuelve su valor."""
+    nombres = (
+        "OPENROUTESERVICE_API_KEY",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+    )
+    return {nombre: bool(os.getenv(nombre, "").strip()) for nombre in nombres}
+
 
 # --- PÁGINAS WEB (frontend servido por esta misma API) ---
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
