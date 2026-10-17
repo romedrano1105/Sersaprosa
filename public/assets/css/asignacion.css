@@ -1,0 +1,86 @@
+/* =====================================================================
+   ASIGNACIÓN DE CONDUCTOR Y VEHÍCULO — estilos aislados
+   - Todas las clases empiezan con "asn-" y cuelgan de .asn, para no chocar con los
+     estilos globales de PaginaPrincipal.html (header, input, label, .meta, .demo...).
+   - Usa las variables de PaginaPrincipal (--bg, --panel, --line, --tx, --mut,
+     --route, --high, --mid) y, si no existen, sus mismos valores por defecto.
+   ===================================================================== */
+
+/* PÁGINA INDEPENDIENTE: define aquí los colores de PaginaPrincipal para que se vea igual.
+   Al incrustarlo en PaginaPrincipal.html estas variables ya existen y esta regla no aplica. */
+body.asn-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a6b5;--route:#3cc8b4;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+.asn-shell{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+
+/* MÓDULO: variables propias (--a-*) que toman los colores de PaginaPrincipal */
+.asn{--a-bg:var(--bg,#14202b);--a-panel:var(--panel,#1d2c3a);--a-line:var(--line,#2e4153);--a-tx:var(--tx,#e8eef2);--a-mut:var(--mut,#93a6b5);--a-brand:var(--route,#3cc8b4);--a-no:var(--high,#e5533d);--a-warn:var(--mid,#f2b544);--a-ok:#5fd0a0;--a-asg:var(--low,#7fb2e5);color:var(--a-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+.asn,.asn *{box-sizing:border-box}
+
+/* ENCABEZADO */
+.asn .asn-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--a-brand);padding-bottom:12px;margin-bottom:18px}
+.asn .asn-title{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
+.asn .asn-h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
+.asn .asn-sub{margin:2px 0 0;color:var(--a-mut)}
+.asn .asn-who{text-align:right;font-size:14px;color:var(--a-mut)}
+.asn .asn-who b{color:var(--a-tx);font-weight:500}
+
+/* MENSAJES: verde = confirmación, rojo = error o rechazo */
+.asn .asn-msgbox{margin:0 0 14px}
+.asn .asn-msg{padding:10px 14px;border-left:5px solid;font-weight:500}
+.asn .asn-msg-ok{background:rgba(95,208,160,.14);color:var(--a-ok);border-color:var(--a-ok)}
+.asn .asn-msg-err{background:rgba(229,83,61,.14);color:#f4a496;border-color:var(--a-no)}
+
+/* PANELES y FILTROS (fecha y ruta) */
+.asn .asn-panel{background:var(--a-panel);border:1px solid var(--a-line);border-radius:4px;padding:14px;min-width:0;margin-bottom:16px}
+.asn .asn-panel-err{border-color:var(--a-no)}
+.asn .asn-filters{display:flex;flex-wrap:wrap;gap:14px}
+.asn .asn-field{display:block;margin:0;color:var(--a-mut);font-size:14px}
+.asn .asn-grow{flex:1 1 320px}
+.asn .asn-lbl{display:block;font-size:14px;color:var(--a-mut);margin-bottom:4px}
+.asn .asn-input,.asn .asn-select{display:block;width:100%;margin:0;padding:9px 10px;font:inherit;background:var(--a-bg);color:var(--a-tx);border:1px solid var(--a-line);border-radius:4px;color-scheme:dark}
+.asn .asn-select.asn-auto{display:inline-block;width:auto;margin-left:4px;padding:5px 8px}
+
+/* RESUMEN DE LA RUTA ELEGIDA */
+.asn .asn-route{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;background:var(--a-panel);border:1px solid var(--a-line);border-left:5px solid var(--a-brand);border-radius:4px;padding:12px 14px;margin-bottom:16px}
+
+/* LISTAS: dos columnas (conductores y vehículos); una sola en pantallas angostas */
+.asn .asn-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.asn .asn-cols .asn-panel{margin-bottom:16px}
+@media (max-width:760px){.asn .asn-cols{grid-template-columns:1fr}.asn .asn-who{text-align:left}}
+.asn .asn-list{list-style:none;margin:0;padding:0}
+.asn .asn-row{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px;border:1px solid var(--a-line);border-radius:4px;margin-bottom:8px;background:var(--a-bg)}
+.asn .asn-row.asn-sel{border-color:var(--a-warn);background:rgba(242,181,68,.12)}
+.asn .asn-row.asn-blocked{opacity:.8}
+.asn .asn-nm{font-weight:500}
+.asn .asn-meta{color:var(--a-mut);font-size:14px;margin:0}
+.asn .asn-why{grid-column:1/-1;color:#f4a496;font-size:14px}
+
+/* ETIQUETAS DE ESTADO: verde = Disponible, rojo = No disponible, azul = Asignado */
+.asn .asn-pill{display:inline-block;font-size:13px;font-weight:500;padding:1px 9px;border-radius:99px;margin-left:8px}
+.asn .asn-pill.asn-ok{background:rgba(95,208,160,.16);color:var(--a-ok)}
+.asn .asn-pill.asn-no{background:rgba(229,83,61,.18);color:#f4a496}
+.asn .asn-pill.asn-asg{background:rgba(127,178,229,.2);color:var(--a-asg)}
+.asn .asn-pill.asn-no-asig{background:rgba(242,181,68,.16);color:var(--a-warn)}
+
+/* BOTONES (deshabilitado = bloqueado) */
+.asn .asn-btn{font:inherit;font-weight:500;cursor:pointer;background:transparent;color:var(--a-tx);border:1px solid var(--a-line);border-radius:4px;padding:7px 12px;width:auto;margin:0}
+.asn .asn-btn.asn-primary{background:var(--a-brand);color:#06241f;border-color:var(--a-brand)}
+.asn .asn-btn:disabled{opacity:.45;cursor:not-allowed}
+.asn :focus-visible{outline:2px solid var(--a-brand);outline-offset:2px}
+
+/* CONFIRMACIÓN: conductor, vehículo y ruta elegidos */
+.asn .asn-assign{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;align-items:end}
+.asn .asn-val{padding:9px 10px;border:1px dashed var(--a-line);border-radius:4px;min-height:40px}
+.asn .asn-warn{margin:12px 0 0;color:var(--a-warn)}
+.asn .asn-retry{margin-top:12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;color:#f4a496}
+.asn .asn-done{border-color:var(--a-asg);border-left:5px solid var(--a-asg)}
+.asn .asn-done p{margin:4px 0}
+
+/* ESTADOS: cargando, error con Reintentar y acceso restringido */
+.asn .asn-state{background:var(--a-panel);border:1px solid var(--a-line);border-radius:4px;padding:28px;text-align:center;margin-bottom:16px}
+.asn .asn-state-err{border-color:var(--a-no)}
+
+/* PANEL DE PRUEBAS (solo modo demostración). Se anulan los estilos globales de
+   'input' y 'label' de PaginaPrincipal para que los checkbox se vean normales. */
+.asn .asn-demo{margin-top:24px;padding:12px;border:1px dashed var(--a-line);border-radius:4px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:14px;color:var(--a-mut)}
+.asn .asn-demo label{display:inline-flex;align-items:center;gap:6px;margin:0;color:var(--a-mut);font-size:14px}
+.asn .asn-demo input{display:inline-block;width:auto;margin:0;padding:0}
