@@ -13,6 +13,7 @@ from supabase_auth.errors import AuthApiError
 
 from . import database, motor_rutas
 from .alertas_seguridad_router import router as alertas_router
+from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
 
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
 app.include_router(entregas_router)
 app.include_router(alertas_router)
+app.include_router(disponibilidad_router)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
@@ -131,10 +133,6 @@ def endpoint_generar_ruta(req: dict):
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 PAGINAS = {
     "PaginaPrincipal.html",
-    "alertasSeguridad.html",
-    "entregasDia.html",
-    "eventosEspeciales.html",
-    "Verificar conductores.html",
 }
 
 app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
