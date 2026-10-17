@@ -2,8 +2,9 @@
   "use strict";
 
   const CENTER = [13.6929, -89.2182];
-  const OSRM_URL = "https://router.project-osrm.org/route/v1/driving/";
   const COLORS = { alta: "#e5533d", media: "#f2b544", baja: "#7fb2e5" };
+  const REROUTE_DISTANCE_METERS = 60;
+  const REROUTE_COOLDOWN_MS = 30000;
   const $ = id => document.getElementById(id);
   const sessionKey = "session";
   let session = null;
@@ -11,14 +12,19 @@
   let origin = CENTER.slice();
   let routeLayers = null;
   let eventLayers = null;
+  let liveLayers = null;
   let deliveries = [];
   let mapEvents = [];
   let routeChoices = [];
   let selectedRoute = 0;
   let refreshing = false;
   let lastRefreshAt = 0;
-  let lastRouteInput = null;
-  let lastRiskInput = null;
+  let liveWatchId = null;
+  let liveMarker = null;
+  let livePosition = null;
+  let lastRerouteAt = 0;
+  let rerouting = false;
+  let firstLivePosition = false;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -95,6 +101,7 @@
     }).addTo(map);
     routeLayers = L.layerGroup().addTo(map);
     eventLayers = L.layerGroup().addTo(map);
+    liveLayers = L.layerGroup().addTo(map);
   }
 
   async function loadDeliveries() {
@@ -253,7 +260,7 @@
 
   function normalizeRoutes(rawRoutes) {
     if (!Array.isArray(rawRoutes) || rawRoutes.length === 0) {
-      throw new Error("OSRM no encontró una ruta por calles entre las paradas.");
+      throw new Error("No se encontró una ruta por calles entre las paradas.");
     }
     const candidates = rawRoutes.filter(route =>
       route.geometry && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 1 &&
@@ -265,7 +272,8 @@
       distanceKm: route.distance / 1000,
       durationMin: route.duration / 60,
       riskScore: riskForRoute(route),
-      geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+      geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
+      steps: Array.isArray(route.steps) ? route.steps : []
     })).sort((first, second) =>
       (first.riskScore * 250 + first.durationMin + first.distanceKm) -
       (second.riskScore * 250 + second.durationMin + second.distanceKm))
@@ -284,33 +292,58 @@
     }));
   }
 
-  function routeInputSignature() {
-    return JSON.stringify([origin, dailyStops()]);
-  }
-
-  function riskInputSignature() {
-    return JSON.stringify(mapEvents.map(event => [
-      event.id, event.severity, event.date, event.lat, event.lng, event.radius_m
-    ]));
-  }
-
   async function requestRoutes(stops) {
-    const coordinates = [origin, ...stops.map(stop => [stop.lat, stop.lng])]
-      .map(([lat, lng]) => lng + "," + lat).join(";");
-    const query = new URLSearchParams({
-      overview: "full",
-      geometries: "geojson",
-      alternatives: "true",
-      steps: "true"
+    const data = await post("/rutas/calcular", {
+      coordinates: [origin, ...stops.map(stop => [stop.lat, stop.lng])]
     });
-    const response = await fetch(OSRM_URL + coordinates + "?" + query.toString());
-    if (!response.ok) throw new Error("El servicio público de rutas respondió con HTTP " + response.status + ".");
-    const data = await response.json();
-    if (data.code !== "Ok") throw new Error(data.message || "OSRM no pudo calcular la ruta (" + data.code + ").");
-    return normalizeRoutes(data.routes);
+    if (!data || !Array.isArray(data.routes)) {
+      throw new Error("El servicio de rutas devolvió una respuesta no válida.");
+    }
+    $("providerLabel").textContent = data.provider + (data.cached ? " · caché" : "");
+    const routeMessage = [];
+    if (data.hazards_missing_location) {
+      routeMessage.push(data.hazards_missing_location +
+        " evento(s) de severidad alta o media no tienen coordenadas y no pueden excluirse.");
+    }
+    $("routeMessage").textContent = routeMessage.join(" ");
+    $("routeMessage").classList.toggle("hidden", routeMessage.length === 0);
+    return { routes: normalizeRoutes(data.routes), cached: Boolean(data.cached) };
   }
 
-  function drawRoutes(stops) {
+  function drawDirections(route) {
+    const list = $("directions");
+    list.replaceChildren();
+    if (!route || !route.steps.length) {
+      list.append(element("li", "empty", "El proveedor no devolvió indicaciones paso a paso."));
+      return;
+    }
+    let activeIndex = 0;
+    if (livePosition) {
+      let closest = Infinity;
+      route.steps.forEach((step, index) => {
+        if (!Array.isArray(step.location) || !validCoordinates(step.location[1], step.location[0])) return;
+        const distance = pointSegmentDistanceMeters(
+          [livePosition[1], livePosition[0]], step.location, step.location
+        );
+        if (distance < closest) {
+          closest = distance;
+          activeIndex = index;
+        }
+      });
+    }
+    route.steps.forEach((step, index) => {
+      const instruction = element("li", index === activeIndex && liveWatchId !== null ? "direction-active" : "");
+      instruction.append(element("span", "", step.instruction || "Continúa por la ruta"));
+      const distance = Number(step.distance);
+      if (Number.isFinite(distance) && distance > 0) {
+        instruction.append(element("small", "", distance >= 1000 ?
+          (distance / 1000).toFixed(1) + " km" : Math.round(distance) + " m"));
+      }
+      list.append(instruction);
+    });
+  }
+
+  function drawRoutes(stops, fitMap = true) {
     routeLayers.clearLayers();
     $("stops").replaceChildren();
     const options = $("routeOptions");
@@ -333,7 +366,7 @@
       button.addEventListener("click", () => {
         selectedRoute = index;
         updateRouteMetrics(choice);
-        drawRoutes(stops);
+        drawRoutes(stops, false);
       });
       options.append(button);
     });
@@ -366,11 +399,14 @@
       });
       $("stops").append(item);
     });
-    const combined = bounds.reduce((result, bound) => result.extend(bound), L.latLngBounds([]));
-    if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
+    drawDirections(routeChoices[selectedRoute]);
+    if (fitMap) {
+      const combined = bounds.reduce((result, bound) => result.extend(bound), L.latLngBounds([]));
+      if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
+    }
   }
 
-  async function calculateRoute() {
+  async function calculateRoute(options = {}) {
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
     $("stops").replaceChildren();
@@ -384,25 +420,126 @@
           "No hay destinos programados para hoy.");
       }
       $("routeTitle").textContent = "Ruta del día";
+      const previousSelection = selectedRoute;
+      const result = await requestRoutes(stops);
+      routeChoices = result.routes;
       if (missing.length) {
-        $("routeMessage").textContent = missing.length + " destino(s) no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
+        const warning = missing.length +
+          " destino(s) no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
+        const previous = $("routeMessage").classList.contains("hidden") ? "" : $("routeMessage").textContent;
+        $("routeMessage").textContent = [previous, warning].filter(Boolean).join(" ");
         $("routeMessage").classList.remove("hidden");
       }
-      routeChoices = await requestRoutes(stops);
-      selectedRoute = 0;
+      selectedRoute = result.cached ? Math.min(previousSelection, routeChoices.length - 1) : 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
-      drawRoutes(stops);
+      drawRoutes(stops, options.fitMap !== false);
       if (location.hash === "#rutas") setPanel("routes");
       return true;
     } catch (error) {
       routeChoices = [];
       routeLayers.clearLayers();
+      $("directions").replaceChildren();
       $("mDist").textContent = "–";
       $("mEta").textContent = "–";
       $("mRisk").textContent = "–";
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
       return false;
+    }
+  }
+
+  function distanceToCurrentRoute(position, route) {
+    if (!route || route.geometry.length < 2) return Infinity;
+    const point = [position[1], position[0]];
+    let closest = Infinity;
+    for (let index = 1; index < route.geometry.length; index += 1) {
+      const start = [route.geometry[index - 1][1], route.geometry[index - 1][0]];
+      const end = [route.geometry[index][1], route.geometry[index][0]];
+      closest = Math.min(closest, pointSegmentDistanceMeters(point, start, end));
+    }
+    return closest;
+  }
+
+  async function onLivePosition(position) {
+    livePosition = [position.coords.latitude, position.coords.longitude];
+    if (!liveMarker) {
+      liveMarker = L.circleMarker(livePosition, {
+        radius: 8, color: "#ffffff", weight: 2, fillColor: "#2688ff", fillOpacity: 1
+      }).addTo(liveLayers);
+    } else {
+      liveMarker.setLatLng(livePosition);
+    }
+    if (routeChoices.length) drawDirections(routeChoices[selectedRoute]);
+    if (position.coords.accuracy > 150) {
+      $("trackingStatus").textContent = "GPS impreciso (" +
+        Math.round(position.coords.accuracy) + " m); esperando una ubicación más precisa.";
+      return;
+    }
+    if (!firstLivePosition) {
+      firstLivePosition = true;
+      origin = livePosition;
+      $("originLabel").textContent = "Ubicación en vivo";
+      lastRerouteAt = Date.now();
+      rerouting = true;
+      $("trackingStatus").textContent = "Ubicación recibida. Calculando ruta desde tu posición…";
+      const ok = await calculateRoute({ fitMap: false });
+      rerouting = false;
+      $("trackingStatus").textContent = ok ?
+        "Seguimiento activo. La ruta se recalculará si te desvías." :
+        "Seguimiento activo, pero no se pudo calcular la ruta.";
+      return;
+    }
+    const distance = distanceToCurrentRoute(livePosition, routeChoices[selectedRoute]);
+    if (distance > REROUTE_DISTANCE_METERS &&
+        Date.now() - lastRerouteAt >= REROUTE_COOLDOWN_MS && !rerouting) {
+      origin = livePosition;
+      $("originLabel").textContent = "Ubicación en vivo";
+      lastRerouteAt = Date.now();
+      rerouting = true;
+      $("trackingStatus").textContent = "Desvío de " + Math.round(distance) +
+        " m detectado. Recalculando la ruta…";
+      const ok = await calculateRoute({ fitMap: false });
+      rerouting = false;
+      $("trackingStatus").textContent = ok ?
+        "Ruta actualizada. Seguimiento activo." :
+        "Se detectó un desvío, pero no se pudo calcular una ruta segura.";
+    }
+  }
+
+  function stopLiveTracking(status = "Seguimiento detenido.") {
+    if (liveWatchId !== null) navigator.geolocation.clearWatch(liveWatchId);
+    liveWatchId = null;
+    firstLivePosition = false;
+    $("trackRoute").textContent = "Iniciar seguimiento en vivo";
+    $("trackingStatus").textContent = status;
+  }
+
+  function startLiveTracking() {
+    if (!navigator.geolocation) {
+      $("trackingStatus").textContent = "Este navegador no permite obtener la ubicación actual.";
+      return;
+    }
+    $("trackRoute").disabled = true;
+    try {
+      liveWatchId = navigator.geolocation.watchPosition(position => {
+        $("trackRoute").disabled = false;
+        onLivePosition(position).catch(error => {
+          console.error(error);
+          $("trackingStatus").textContent = "No se pudo actualizar la ruta: " + error.message;
+        });
+      }, error => {
+        $("trackRoute").disabled = false;
+        const message = error.code === error.PERMISSION_DENIED ?
+          "No se concedió permiso para usar la ubicación." :
+          "No se pudo obtener la ubicación. Revisa los permisos y vuelve a intentarlo.";
+        if (error.code === error.PERMISSION_DENIED) stopLiveTracking(message);
+        else $("trackingStatus").textContent = message;
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+      $("trackRoute").textContent = "Detener seguimiento";
+      $("trackingStatus").textContent = "Esperando ubicación GPS…";
+    } catch (error) {
+      $("trackRoute").disabled = false;
+      $("trackingStatus").textContent = "No se pudo iniciar el GPS: " + error.message;
     }
   }
 
@@ -432,15 +569,7 @@
     const eventsResult = results[1];
     let routeOk = false;
     if (deliveriesResult.status === "fulfilled") {
-      const routeInput = routeInputSignature();
-      const riskInput = riskInputSignature();
-      const routeNeedsUpdate = !routeChoices.length ||
-        routeInput !== lastRouteInput || riskInput !== lastRiskInput;
-      routeOk = routeNeedsUpdate ? await calculateRoute() : true;
-      if (routeOk) {
-        lastRouteInput = routeInput;
-        lastRiskInput = riskInput;
-      }
+      routeOk = await calculateRoute({ fitMap: !routeChoices.length });
     } else {
       $("routeMessage").textContent = "No se pudieron actualizar los destinos: " +
         deliveriesResult.reason.message + (routeChoices.length ? " Se conserva la ruta anterior." : "");
@@ -473,6 +602,10 @@
     });
     ["eventSeverity", "eventFrom", "eventTo"].forEach(id => $(id).addEventListener("change", drawEvents));
     $("refresh").addEventListener("click", refreshDashboard);
+    $("trackRoute").addEventListener("click", () => {
+      if (liveWatchId !== null) stopLiveTracking();
+      else startLiveTracking();
+    });
     $("locate").addEventListener("click", () => {
       if (!navigator.geolocation) {
         $("routeMessage").textContent = "Este navegador no permite obtener la ubicación actual.";
