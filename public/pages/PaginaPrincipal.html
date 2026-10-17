@@ -70,14 +70,20 @@
             <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
             <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual">⌖</button>
           </section>
-          <p class="privacy-note">El GPS solo se solicita al pulsar el botón y se comparte con OSRM para calcular el recorrido.</p>
+          <p class="privacy-note">El GPS solo se activa si inicias el seguimiento y se usa para actualizar tu posición y recalcular la ruta.</p>
+          <button class="secondary-button tracking-button" id="trackRoute" type="button">Iniciar seguimiento en vivo</button>
+          <p id="trackingStatus" class="tracking-status" role="status">Seguimiento detenido.</p>
 
           <p id="routeMessage" class="notice hidden" role="status"></p>
           <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
           <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
 
-          <div class="route-options-heading"><h3>Opciones de ruta</h3><span>OSRM · calles</span></div>
+          <div class="route-options-heading"><h3>Opciones de ruta</h3><span id="providerLabel">OpenRouteService · respaldo OSRM</span></div>
           <div id="routeOptions" aria-live="polite"></div>
+          <section class="navigation-guidance" aria-label="Indicaciones paso a paso">
+            <h3>Indicaciones del recorrido</h3>
+            <ol id="directions" aria-live="polite"></ol>
+          </section>
         </section>
 
         <section id="eventsPanel" class="panel-content hidden">
@@ -97,7 +103,7 @@
 
       <section class="map-section" aria-label="Mapa y recorrido">
         <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
-          <div class="map-caption"><span class="map-legend"><i></i> Recorrido por calles</span><span>© OpenStreetMap · Enrutamiento OSRM</span></div>
+          <div class="map-caption"><span class="map-legend"><i></i> Recorrido por calles</span><span>© OpenStreetMap · Enrutamiento seguro</span></div>
         </div>
       </section>
     </main>
