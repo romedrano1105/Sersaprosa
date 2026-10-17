@@ -3,14 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101c29">
+  <meta name="theme-color" content="#070c12">
   <meta name="description" content="Aplicación web de planificación y seguimiento de rutas seguras de SERSAPROSA.">
   <title>Planificación de rutas · SERSAPROSA</title>
   <link rel="icon" href="/assets/img/sersaprosa-logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/appNavigation.css">
   <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <link rel="stylesheet" href="/assets/css/eventosEspecialesCSS.css">
+  <link rel="stylesheet" href="/assets/css/alertasSeguridad.css">
+  <link rel="stylesheet" href="/assets/css/verificarConduCSS.css">
 </head>
 <body>
   <section id="login" class="login-screen">
@@ -34,9 +37,9 @@
   <div id="app" class="dashboard hidden">
     <header class="topbar">
       <div class="page-heading">
-        <span class="eyebrow">PLANIFICACIÓN OPERATIVA</span>
-        <h1>Asignar rutas</h1>
-        <p>Planifica entregas y consulta recorridos por las calles.</p>
+        <span class="eyebrow" id="pageEyebrow">PLANIFICACIÓN OPERATIVA</span>
+        <h1 id="pageTitle">Asignar Rutas</h1>
+        <p id="pageDescription">Configure y despache unidades de forma segura.</p>
       </div>
       <div class="top-actions">
         <div class="connection-status" id="connectionStatus" role="status"><i></i><span>Conectando</span></div>
@@ -47,64 +50,70 @@
       </div>
     </header>
 
-    <main class="workspace">
-      <aside class="route-panel">
-        <nav class="panel-tabs" aria-label="Panel de planificación">
-          <button type="button" data-panel="routes" aria-selected="true">Ruta del día</button>
-          <button type="button" data-panel="events" aria-selected="false">Eventos</button>
-        </nav>
-
-        <section id="routesPanel" class="panel-content">
-          <div class="section-heading">
-            <div><span class="section-kicker">RECORRIDO PROGRAMADO</span><h2 id="routeTitle">Ruta del día</h2></div>
-            <span class="secure-badge">SEGURA</span>
-          </div>
-          <div class="route-metrics" aria-label="Métricas de la ruta">
-            <div><span>Distancia</span><strong id="mDist">–</strong></div>
-            <div><span>Tiempo estimado</span><strong id="mEta">–</strong></div>
-            <div><span>Riesgo</span><strong id="mRisk">–</strong></div>
-          </div>
-
-          <section class="origin-card" aria-label="Punto de inicio de la ruta">
-            <div class="origin-mark" aria-hidden="true">A</div>
-            <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
-            <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual">⌖</button>
+    <main class="dashboard-main">
+      <section id="routesScreen" class="screen" aria-labelledby="pageTitle">
+        <div class="routes-layout">
+          <aside class="route-panel">
+            <div id="routeAssignment"></div>
+            <section class="route-details">
+              <div class="section-heading">
+                <div><span class="section-kicker">RECORRIDO PROGRAMADO</span><h2 id="routeTitle">Ruta del día</h2></div>
+                <span class="secure-badge">SEGURA</span>
+              </div>
+              <div class="route-metrics" aria-label="Métricas de la ruta">
+                <div><span>Distancia</span><strong id="mDist">–</strong></div>
+                <div><span>Tiempo estimado</span><strong id="mEta">–</strong></div>
+                <div><span>Riesgo</span><strong id="mRisk">–</strong></div>
+              </div>
+              <section class="origin-card" aria-label="Punto de inicio de la ruta">
+                <div class="origin-mark" aria-hidden="true">A</div>
+                <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
+                <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual">⌖</button>
+              </section>
+              <p class="privacy-note">El GPS solo se solicita al pulsar el botón y se comparte con OSRM para calcular el recorrido.</p>
+              <p id="routeMessage" class="notice hidden" role="status"></p>
+              <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
+              <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
+              <div class="route-options-heading"><h3>Opciones de ruta</h3><span>OSRM · calles</span></div>
+              <div id="routeOptions" aria-live="polite"></div>
+            </section>
+          </aside>
+          <section class="map-section" aria-label="Mapa y recorrido">
+            <div class="map-card-head">
+              <div><span>VISTA PREVIA OPERATIVA</span><h2>Ruta del día</h2></div>
+              <span class="map-source">OpenStreetMap · OSRM</span>
+            </div>
+            <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
+              <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap</span></div>
+            </div>
           </section>
-          <p class="privacy-note">El GPS solo se solicita al pulsar el botón y se comparte con OSRM para calcular el recorrido.</p>
-
-          <p id="routeMessage" class="notice hidden" role="status"></p>
-          <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
-          <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
-
-          <div class="route-options-heading"><h3>Opciones de ruta</h3><span>OSRM · calles</span></div>
-          <div id="routeOptions" aria-live="polite"></div>
-        </section>
-
-        <section id="eventsPanel" class="panel-content hidden">
-          <div class="section-heading">
-            <div><span class="section-kicker">SEGURIDAD OPERATIVA</span><h2>Eventos cercanos</h2></div>
-          </div>
-          <div class="event-filters">
-            <label for="eventSeverity">Severidad<select id="eventSeverity"><option value="">Todas</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></label>
-            <label for="eventFrom">Desde<input id="eventFrom" type="date"></label>
-            <label for="eventTo">Hasta<input id="eventTo" type="date"></label>
-          </div>
-          <p id="eventsMessage" class="notice hidden" role="status"></p>
-          <div id="eventsList" class="events-list" aria-live="polite"></div>
-          <a class="text-link" href="/eventosEspeciales.html">Abrir monitoreo de eventos <span aria-hidden="true">→</span></a>
-        </section>
-      </aside>
-
-      <section class="map-section" aria-label="Mapa y recorrido">
-        <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
-          <div class="map-caption"><span class="map-legend"><i></i> Recorrido por calles</span><span>© OpenStreetMap · Enrutamiento OSRM</span></div>
         </div>
+      </section>
+
+      <section id="monitorScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div class="monitor-tabs" role="tablist" aria-label="Paneles de monitoreo">
+          <button type="button" role="tab" aria-selected="true" data-monitor-panel="events">Eventos especiales</button>
+          <button type="button" role="tab" aria-selected="false" data-monitor-panel="alerts">Alertas de seguridad</button>
+        </div>
+        <section id="monitorEvents" class="monitor-content" role="tabpanel">
+          <div id="panelEventos" class="ev-shell"></div>
+        </section>
+        <section id="monitorAlerts" class="monitor-content hidden" role="tabpanel">
+          <div id="panelAlertas" class="as-shell"></div>
+        </section>
+      </section>
+
+      <section id="dailyScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div id="panelDisponibilidad" class="dsp-shell"></div>
       </section>
     </main>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="/assets/js/appNavigation.js"></script>
+  <script src="/assets/js/eventosEspecialesJS.js"></script>
+  <script src="/assets/js/alertasSeguridad.js"></script>
+  <script src="/assets/js/VerificarConduJS.js"></script>
   <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>

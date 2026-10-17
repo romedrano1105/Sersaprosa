@@ -24,6 +24,8 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/entregas/listar", {}),
             ("/eventos/listar", {}),
             ("/alertas/listar", {}),
+            ("/disponibilidad/listar", {}),
+            ("/disponibilidad/asignar", {"conductor": "E-1", "vehiculo": "V-1", "ruta": "R-1"}),
         )
         for path, payload in protected_requests:
             with self.subTest(path=path):

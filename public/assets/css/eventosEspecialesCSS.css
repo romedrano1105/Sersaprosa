@@ -6,7 +6,7 @@
      --route, --high, --mid, --low) y, si no existen, sus mismos valores por defecto.
    ===================================================================== */
 
-/* Solo para la página independiente (eventosEspeciales.html). */
+/* Tema alternativo para el módulo fuera del dashboard. */
 body.ev-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a6b5;--route:#3cc8b4;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
 .ev-shell{max-width:1200px;margin:0 auto;padding:20px 16px 48px}
 
