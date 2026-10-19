@@ -139,7 +139,7 @@ def endpoint_generar_ruta(req: dict):
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 PAGINAS = {
     "PaginaPrincipal.html",
-    "riesgo-rutas.html",
+    "riesgo_rutas.html",
 }
 
 app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
