@@ -127,3 +127,19 @@ def calcular(req: SolicitudRuta, authorization: str | None = Header(default=None
         raise HTTPException(422, str(error)) from error
     except motor_rutas.ErrorProveedorRutas as error:
         raise HTTPException(502, str(error)) from error
+
+
+class SolicitudGeocodificar(BaseModel):
+    query: str = Field(min_length=3, max_length=200)
+
+
+@router.post("/rutas/geocodificar")
+def geocodificar(req: SolicitudGeocodificar, authorization: str | None = Header(default=None)):
+    """Devuelve {lat, lng, label} para una dirección escrita en el planificador multi-paradas."""
+    _usuario_autorizado(authorization)
+    try:
+        return motor_rutas.geocodificar(req.query)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    except motor_rutas.ErrorProveedorRutas as error:
+        raise HTTPException(502, str(error)) from error

@@ -14,6 +14,7 @@
   let eventLayers = null;
   let liveLayers = null;
   let deliveries = [];
+  let manualStops = null; // paradas del planificador multi-paradas; null = ruta del día
   let mapEvents = [];
   let routeChoices = [];
   let selectedRoute = 0;
@@ -291,6 +292,46 @@
     }));
   }
 
+  async function geocodePoint(point) {
+    if (point.place) return point.place;
+    const data = await post("/rutas/geocodificar", { query: point.text.trim() });
+    if (!data || !validCoordinates(data.lat, data.lng)) {
+      throw new Error("El servicio de direcciones devolvió una respuesta no válida.");
+    }
+    point.place = { lat: Number(data.lat), lng: Number(data.lng), label: data.label || point.text.trim() };
+    return point.place;
+  }
+
+  // Recibe el arreglo [origen, ...paradas, destino] de routePlanner.js, resuelve coordenadas
+  // y reutiliza el mismo cálculo y dibujo que la ruta del día.
+  async function calculateCustomRoute(points) {
+    const places = [];
+    for (const point of points) {
+      try {
+        places.push(await geocodePoint(point));
+      } catch (error) {
+        throw new Error("«" + point.text.trim() + "»: " + error.message);
+      }
+    }
+    origin = [places[0].lat, places[0].lng];
+    $("originLabel").textContent = points[0].text.trim();
+    manualStops = places.slice(1).map((place, index) => ({
+      name: points[index + 1].text.trim(),
+      detail: place.label,
+      time: index === places.length - 2 ? "Destino final" : "",
+      lat: place.lat,
+      lng: place.lng
+    }));
+    if (!await calculateRoute({ fitMap: true })) throw new Error($("noRoute").textContent);
+  }
+
+  function resetCustomRoute() {
+    manualStops = null;
+    origin = CENTER.slice();
+    $("originLabel").textContent = "Centro de San Salvador";
+    refreshDashboard();
+  }
+
   async function requestRoutes(stops) {
     const data = await post("/rutas/calcular", {
       coordinates: [origin, ...stops.map(stop => [stop.lat, stop.lng])]
@@ -411,14 +452,14 @@
     $("stops").replaceChildren();
     $("routeOptions").replaceChildren();
     try {
-      const missing = deliveries.filter(delivery => !hasLocation(delivery));
-      const stops = dailyStops();
+      const missing = manualStops ? [] : deliveries.filter(delivery => !hasLocation(delivery));
+      const stops = manualStops || dailyStops();
       if (!stops.length) {
         throw new Error(deliveries.length ?
           "Los destinos de hoy no tienen coordenadas guardadas. Añádelas en Supabase para calcular la ruta diaria." :
           "No hay destinos programados para hoy.");
       }
-      $("routeTitle").textContent = "Ruta del día";
+      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : "Ruta del día";
       const previousSelection = selectedRoute;
       const result = await requestRoutes(stops);
       routeChoices = result.routes;
@@ -596,6 +637,7 @@
     }
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
+    window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     document.querySelectorAll(".panel-tabs button").forEach(button => {
       button.addEventListener("click", () => setPanel(button.dataset.panel));
     });

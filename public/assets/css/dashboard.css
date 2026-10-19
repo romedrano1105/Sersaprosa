@@ -126,6 +126,46 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .leaflet-popup-content small { display: block; color: var(--muted); }
 .route-stop-icon { background: transparent; border: 0; }
 
+/* Planificador de ruta multi-paradas (routePlanner.js) */
+.mr-card { margin: 0 0 20px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
+.mr-heading h3 { margin: 2px 0 14px; font: 600 19px "Barlow Semi Condensed", sans-serif; }
+.mr-list { position: relative; margin: 0; padding: 0; list-style: none; }
+.mr-stops:empty { display: none; }
+.mr-row { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 0; border-radius: 8px; }
+.mr-row::before { position: absolute; top: 100%; left: 14px; width: 2px; height: 8px; content: ""; background: #344b5c; }
+.mr-row--stop::before { left: 56px; } /* alinea con el marcador, tras el asa de arrastre */
+.mr-row--destination::before { display: none; }
+.mr-row.is-dragging { background: var(--panel-raised); box-shadow: 0 6px 18px #0006; outline: 1px solid var(--route); }
+.mr-marker { position: relative; display: grid; flex: none; place-items: center; width: 30px; height: 30px; color: var(--brand); }
+.mr-marker--stop { color: var(--route); }
+.mr-marker--destination { color: var(--high); }
+.mr-marker .mr-icon { width: 22px; height: 22px; }
+.mr-field { flex: 1; min-width: 0; }
+.mr-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mr-input { display: block; width: 100%; min-height: 44px; padding: 10px 12px; color: var(--text); background: #0c1722; border: 1px solid var(--line); border-radius: 7px; font-size: 14px; }
+.mr-input::placeholder { color: var(--faint); }
+.mr-input:hover { border-color: #3a5166; }
+.mr-handle, .mr-remove { display: grid; flex: none; place-items: center; width: 34px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--faint); cursor: pointer; }
+.mr-handle { cursor: grab; touch-action: none; }
+.mr-handle:active { cursor: grabbing; }
+.mr-handle:hover, .mr-handle:focus-visible { color: var(--text); }
+.mr-remove { width: 40px; border-radius: 7px; }
+.mr-remove:hover, .mr-remove:focus-visible { color: var(--high); background: #e66b6118; }
+.mr-handle .mr-icon, .mr-remove .mr-icon { width: 20px; height: 20px; }
+.mr-add, .mr-calculate { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 14px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.mr-add { margin-top: 4px; border: 1px dashed #3a5166; background: transparent; color: var(--route); }
+.mr-add:hover:not(:disabled) { border-style: solid; border-color: var(--route); background: #53c8ad12; }
+.mr-add:disabled { opacity: .5; cursor: not-allowed; }
+.mr-calculate { border: 0; background: var(--route); color: #07201a; }
+.mr-calculate:hover:not(:disabled) { filter: brightness(1.08); }
+.mr-calculate:disabled { opacity: .7; cursor: wait; }
+.mr-add .mr-icon, .mr-calculate .mr-icon { width: 18px; height: 18px; }
+.mr-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.mr-reset { padding: 6px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.mr-reset:hover:not(:disabled) { color: var(--text); }
+.mr-message { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--high); background: #e66b6112; color: #f0a49d; font-size: 12px; }
+.mr-card.is-busy .mr-input { opacity: .7; }
+
 @media (max-width: 1100px) {
   .topbar { align-items: flex-start; }
   .top-actions { flex-wrap: wrap; }
@@ -145,6 +185,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .top-actions { gap: 10px; }
   .last-updated { flex: 1; }
   .refresh-button { width: 100%; }
+  .mr-card { padding: 12px; }
+  .mr-input { font-size: 16px; } /* evita el zoom automático de iOS al enfocar */
   .map-frame { min-height: 42vh; height: 42vh; }
   .map-caption { right: 7px; bottom: 7px; left: 7px; align-items: flex-start; flex-direction: column; font-size: 9px; }
   .login-card { padding: 28px 22px; }

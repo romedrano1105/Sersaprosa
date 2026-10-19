@@ -74,6 +74,8 @@
           <button class="secondary-button tracking-button" id="trackRoute" type="button">Iniciar seguimiento en vivo</button>
           <p id="trackingStatus" class="tracking-status" role="status">Seguimiento detenido.</p>
 
+          <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
+
           <p id="routeMessage" class="notice hidden" role="status"></p>
           <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
           <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
@@ -111,6 +113,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <script src="/assets/js/appNavigation.js"></script>
+  <script src="/assets/js/routePlanner.js"></script>
   <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>
