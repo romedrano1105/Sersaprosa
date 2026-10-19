@@ -6,7 +6,9 @@
   const LINKS = [
     { id: "routes", label: "Asignar Rutas", detail: "Planificación", icon: "↗" },
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
-    { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" }
+        { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
+    { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠",
+      href: "/riesgo-rutas.html", rol: "coordinador_rutas" }
   ];
 
   function readSession() {
@@ -30,11 +32,12 @@
     });
     return node;
   }
-
-  function activeSection() {
+function activeSection() {
+    if (global.location.pathname.endsWith("/riesgo-rutas.html")) return "risk";
     return global.location.hash === "#monitoreo" ? "monitor" :
       global.location.hash === "#personal" ? "daily" : "routes";
   }
+
 
   function setActive(section) {
     global.document.querySelectorAll(".app-nav-links button").forEach(button => {
@@ -93,7 +96,7 @@
     nav.append(brand, createElement("div", { class: "app-nav-section" }, "MENÚ PRINCIPAL"));
     const list = createElement("ul", { class: "app-nav-links" });
     const active = activeSection();
-    LINKS.forEach(item => {
+    LINKS.filter(item => !item.rol || item.rol === session.role).forEach(item => {
       const link = createElement("button", {
         type: "button",
         class: item.id === active ? "active" : "",
@@ -110,6 +113,17 @@
         link.append(createElement("span", { class: "app-nav-arrow", "aria-hidden": "true" }, "›"));
       }
       link.addEventListener("click", () => {
+        // Enlace a otra página (ej. Riesgo de rutas)
+        if (item.href) {
+          global.location.assign(item.href);
+          return;
+        }
+        // Estamos fuera de la página principal: volver a ella
+        if (global.location.pathname.endsWith("/riesgo-rutas.html")) {
+          const hashes = { routes: "", monitor: "#monitoreo", daily: "#personal" };
+          global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
+          return;
+        }
         setActive(item.id);
         global.dispatchEvent(new CustomEvent("app:navigate", { detail: item.id }));
         closeMenu();

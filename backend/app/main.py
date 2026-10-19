@@ -17,6 +17,7 @@ from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
 from .notificaciones_router import router as notificaciones_router
+from .rutas_riesgo import router as rutas_riesgo_router
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ app.include_router(entregas_router)
 app.include_router(alertas_router)
 app.include_router(disponibilidad_router)
 app.include_router(notificaciones_router)
+app.include_router(rutas_riesgo_router)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
@@ -135,6 +137,7 @@ def endpoint_generar_ruta(req: dict):
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 PAGINAS = {
     "PaginaPrincipal.html",
+    "riesgo_rutas.html",
 }
 
 app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
