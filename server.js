@@ -38,7 +38,7 @@ function resolvePublicFile(pathname) {
   }
 
   // Página de riesgo de rutas
-  if (pathname === '/riesgo_rutas.html') {
+  if (pathname === '/riesgo_rutas.html' || pathname === '/riesgo_rutas.html') {
     return path.join(PUBLIC_ROOT, 'pages', 'riesgo_rutas.html');
   }
 

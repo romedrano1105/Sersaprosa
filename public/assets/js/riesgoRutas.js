@@ -198,8 +198,10 @@
     } else {
       const monto = Number(crudo);
 
-      if (!Number.isFinite(monto)) {
+      if (!/^\d+(\.\d+)?$/.test(crudo)) {
         errores.monto = "El monto debe ser numérico.";
+      } else if (!/^\d+(\.\d{1,2})?$/.test(crudo)) {
+        errores.monto = "El monto admite máximo 2 decimales.";
       } else if (monto <= 0) {
         errores.monto = "El monto debe ser mayor a cero.";
       } else if (monto >= MONTO_MAXIMO) {
@@ -367,6 +369,7 @@
   }
 
   el.ruta.addEventListener("change", () => {
+    clearTimeout(temporizador);
     limpiarErrores();
     estado("");
 
@@ -396,6 +399,7 @@
   el.form.addEventListener("submit", async (evento) => {
     evento.preventDefault();
 
+    clearTimeout(temporizador);
     limpiarErrores();
     estado("");
 
