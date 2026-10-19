@@ -16,6 +16,7 @@ from .alertas_seguridad_router import router as alertas_router
 from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
+from .geocodificacion_router import router as geocodificacion_router
 from .notificaciones_router import router as notificaciones_router
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ app.include_router(entregas_router)
 app.include_router(alertas_router)
 app.include_router(disponibilidad_router)
 app.include_router(notificaciones_router)
+app.include_router(geocodificacion_router)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
