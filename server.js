@@ -7,7 +7,7 @@ const ROOT = __dirname;
 const PUBLIC_ROOT = path.join(ROOT, 'public');
 const API_ORIGIN = new URL(process.env.API_ORIGIN || 'http://127.0.0.1:8000');
 const API_TRANSPORT = API_ORIGIN.protocol === 'https:' ? require('https') : http;
-const API_PATHS = ['/login', '/generar-ruta', '/entregas/', '/eventos/', '/alertas/', '/disponibilidad/', '/notificaciones/'];
+const API_PATHS = ['/login', '/generar-ruta', '/entregas/', '/eventos/', '/alertas/', '/disponibilidad/', '/notificaciones/', '/rutas-riesgo/'];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -23,7 +23,9 @@ function resolvePublicFile(pathname) {
   if (pathname === '/' || pathname === '/PaginaPrincipal.html') {
     return path.join(PUBLIC_ROOT, 'pages', 'PaginaPrincipal.html');
   }
-
+  if (pathname === '/riesgo-rutas.html') {
+    return path.join(PUBLIC_ROOT, 'pages', 'riesgo-rutas.html');
+  }
   if (pathname.startsWith('/assets/')) {
     const file = path.resolve(PUBLIC_ROOT, `.${pathname}`);
     const relative = path.relative(PUBLIC_ROOT, file);
