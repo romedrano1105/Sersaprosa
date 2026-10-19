@@ -8,7 +8,7 @@
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
         { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
     { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠",
-      href: "/riesgo-rutas.html", rol: "coordinador_rutas" }
+      href: "/riesgo_rutas.html", rol: "coordinador_rutas" }
   ];
 
   function readSession() {
@@ -119,7 +119,7 @@ function activeSection() {
           return;
         }
         // Estamos fuera de la página principal: volver a ella
-        if (global.location.pathname.endsWith("/riesgo-rutas.html")) {
+        if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
           const hashes = { routes: "", monitor: "#monitoreo", daily: "#personal" };
           global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
           return;
