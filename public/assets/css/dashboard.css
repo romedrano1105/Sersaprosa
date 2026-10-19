@@ -125,6 +125,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .monitor-tabs { display: flex; gap: 7px; padding: 5px; margin-bottom: 18px; background: #0a121a; border: 1px solid var(--line); border-radius: 7px; width: fit-content; }
 .monitor-tabs button { padding: 10px 15px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 600; }
 .monitor-tabs button[aria-selected="true"] { border-color: #284154; background: #13232f; box-shadow: inset 0 -2px var(--route); color: var(--text); }
+.tab-count { display: inline-grid; place-items: center; min-width: 17px; height: 17px; margin-left: 6px; padding: 0 5px; border-radius: 9px; background: var(--high); color: #fff; font-size: 9px; font-weight: 700; }
 .monitor-content, .dsp-shell { padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .ev-shell, .as-shell, .dsp-shell { max-width: none; padding: 0; }
 .as { --as-bg: var(--bg); --as-panel: var(--panel); --as-line: var(--line); --as-text: var(--text); --as-muted: var(--muted); --as-brand: var(--route); --as-high: var(--high); --as-mid: var(--mid); --as-low: var(--low); }

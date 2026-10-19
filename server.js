@@ -7,7 +7,7 @@ const ROOT = __dirname;
 const PUBLIC_ROOT = path.join(ROOT, 'public');
 const API_ORIGIN = new URL(process.env.API_ORIGIN || 'http://127.0.0.1:8000');
 const API_TRANSPORT = API_ORIGIN.protocol === 'https:' ? require('https') : http;
-const API_PATHS = ['/login', '/generar-ruta', '/entregas/', '/eventos/', '/alertas/', '/disponibilidad/'];
+const API_PATHS = ['/login', '/generar-ruta', '/entregas/', '/eventos/', '/alertas/', '/disponibilidad/', '/notificaciones/'];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

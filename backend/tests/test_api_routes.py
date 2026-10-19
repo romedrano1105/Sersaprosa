@@ -25,6 +25,9 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/eventos/listar", {}),
             ("/alertas/listar", {}),
             ("/disponibilidad/listar", {}),
+            ("/notificaciones/sincronizar", {}),
+            ("/notificaciones/listar", {}),
+            ("/notificaciones/leer", {"id": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}),
             ("/disponibilidad/asignar", {"conductor": "E-1", "vehiculo": "V-1", "ruta": "R-1"}),
         )
         for path, payload in protected_requests:
