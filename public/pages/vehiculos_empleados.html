@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SERSAPROSA - Empleados y Vehículos</title>
+  <!-- Estilos base de tu proyecto -->
+  <link rel="stylesheet" href="../assets/css/variables.css">
+  <link rel="stylesheet" href="../assets/css/appNavigation.css">
+  <!-- Estilos dedicados de la pantalla -->
+  <link rel="stylesheet" href="../assets/css/vehiculosEmpleados.css">
+</head>
+<body>
+  <div class="app-shell">
+    
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" />
+          </svg>
+        </div>
+        <div>
+          <strong>SERSAPROSA</strong>
+          <span>Control de Operaciones</span>
+        </div>
+      </div>
+
+      <div class="sidebar-label">MENÚ PRINCIPAL</div>
+
+      <nav class="nav-list" aria-label="Navegación principal">
+        <a href="PaginaPrincipal.html" class="nav-item">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" /><path d="M8 19h3a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3" />
+            </svg>
+          </span>
+          <span><strong>Asignar Rutas</strong><small>Planificación</small></span>
+        </a>
+
+        <a href="riesgo_rutas.html" class="nav-item">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3" />
+            </svg>
+          </span>
+          <span><strong>Monitoreo en Vivo</strong><small>CCTV & Alertas</small></span>
+        </a>
+
+        <a href="vehiculos_empleados.html" class="nav-item active">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span><strong>Empleados y Vehículos</strong><small>Gestión diaria</small></span>
+          <span class="nav-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+          </span>
+        </a>
+      </nav>
+
+      <div class="sidebar-status">
+        <div class="status-head"><span>Estado del sistema</span><b>ÓPTIMO</b></div>
+        <div class="status-line"><i></i><span>12 unidades conectadas</span></div>
+        <div class="status-line"><i></i><span>Todos los servicios activos</span></div>
+      </div>
+
+      <button class="logout">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-6" />
+        </svg>
+        <span>Salir</span>
+      </button>
+
+      <div class="operator">
+        <span>OP</span>
+        <div><strong>Operador Central</strong><small>Turno A · 06:00—14:00</small></div>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CONTENIDO -->
+    <div class="workspace">
+      <!-- HEADER -->
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">GESTIÓN DE RECURSOS</span>
+          <h1>Empleados y Vehículos</h1>
+          <p>Disponibilidad, asignaciones y control diario de la operación.</p>
+        </div>
+        <div class="top-actions">
+          <div class="live-pill"><i></i> SISTEMA EN LÍNEA</div>
+          <button class="icon-button" aria-label="Notificaciones">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+            <span>2</span>
+          </button>
+          <div class="date-block">
+            <small>JUEVES</small>
+            <strong id="current-date-label">24 OCT, 2024</strong>
+          </div>
+        </div>
+      </header>
+
+      <!-- VISTA DAILY -->
+      <main class="page daily-page">
+        <!-- BARRA SUPERIOR DE BÚSQUEDA Y TOTALES -->
+        <div class="daily-toolbar">
+          <label class="search-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Buscar empleado, vehículo o placa..." />
+          </label>
+          <div class="availability">
+            <span><i class="dot"></i> <span id="countEmployeesAvail">3</span> empleados disponibles</span>
+            <span><i class="dot"></i> <span id="countVehiclesAvail">3</span> vehículos disponibles</span>
+          </div>
+          <button class="primary-button compact" id="btnQuickAssignOpen">+ Asignación rápida</button>
+        </div>
+
+        <!-- GRILLA DE RECURSOS -->
+        <div class="resource-grid">
+          <!-- SECCIÓN EMPLEADOS -->
+          <section class="resource-section employees">
+            <div class="resource-heading">
+              <div>
+                <span>PERSONAL OPERATIVO</span>
+                <h2>Empleados Disponibles</h2>
+              </div>
+              <b id="badgeEmployeesCount">03</b>
+            </div>
+            <div class="employee-list" id="employeeListContainer">
+              <!-- Renderizado dinámicamente con JS -->
+            </div>
+          </section>
+
+          <!-- SECCIÓN VEHÍCULOS -->
+          <section class="resource-section vehicles">
+            <div class="resource-heading">
+              <div>
+                <span>FLOTA BLINDADA</span>
+                <h2>Vehículos Disponibles</h2>
+              </div>
+              <b id="badgeVehiclesCount">03</b>
+            </div>
+            <div class="vehicle-list" id="vehicleListContainer">
+              <!-- Renderizado dinámicamente con JS -->
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODAL DE ASIGNACIÓN RÁPIDA -->
+  <div class="modal-backdrop" id="assignModal" role="presentation" style="display: none;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-accent"></div>
+      <button class="modal-close" id="modalCloseBtn" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      </button>
+
+      <span class="eyebrow">ASIGNACIÓN EXPRESS</span>
+      <h2 id="modal-title">Asignación rápida diaria</h2>
+      <p class="modal-desc">Vincule personal y unidad para despachar una ruta de inmediato.</p>
+
+      <div class="link-visual">
+        <div class="link-person">
+          <img id="modalEmpImage" src="" alt="Conductor seleccionado" />
+          <span>
+            <small>CONDUCTOR</small>
+            <strong id="modalEmpName">Carlos Mendoza</strong>
+          </span>
+        </div>
+        <div class="link-chain">
+          <span></span>
+          <i>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+          </i>
+          <span></span>
+        </div>
+        <div class="link-truck">
+          <b>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h11v11H3zM14 10h4l3 3v4h-7z" /><circle cx="7" cy="19" r="2" /><circle cx="18" cy="19" r="2" />
+            </svg>
+          </b>
+          <span>
+            <small>UNIDAD</small>
+            <strong id="modalVehName">Camión Blindado #08</strong>
+          </span>
+        </div>
+      </div>
+
+      <label class="field">
+        <span>Ruta a asignar</span>
+        <div class="select-wrap">
+          <select id="modalRouteSelect">
+            <option>Ruta 07 — San Salvador Centro</option>
+            <option>Ruta 11 — Antiguo Cuscatlán</option>
+            <option>Ruta 09 — Aeropuerto Internacional</option>
+          </select>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </div>
+      </label>
+
+      <div class="modal-summary">
+        <div>
+          <small>SALIDA PROGRAMADA</small>
+          <strong>Hoy · 09:15</strong>
+        </div>
+        <div>
+          <small>DURACIÓN ESTIMADA</small>
+          <strong>42 minutos</strong>
+        </div>
+      </div>
+
+      <div class="success-note" id="modalSuccessNote" style="display: none;">
+        Asignación vinculada y enviada al equipo.
+      </div>
+
+      <button class="primary-button" id="btnConfirmAssign">
+        <svg id="btnAssignIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="19" r="2" /><circle cx="18" cy="5" r="2" /><path d="M8 19h3a3 3 0 0 0 3-3V8a3 3 0 0 1 3-3" />
+        </svg>
+        <span id="btnAssignText">Vincular y Asignar</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="../assets/js/vehiculosEmpleados.js"></script>
+</body>
+</html>
