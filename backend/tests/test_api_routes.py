@@ -25,6 +25,7 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/eventos/listar", {}),
             ("/alertas/listar", {}),
             ("/rutas/calcular", {"coordinates": [[13.7, -89.2], [13.71, -89.19]]}),
+            ("/rutas/geocodificar", {"query": "San Salvador"}),
         )
         for path, payload in protected_requests:
             with self.subTest(path=path):
