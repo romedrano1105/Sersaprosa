@@ -33,6 +33,7 @@ class Asignacion(BaseModel):
     conductor: str = Field(min_length=1, max_length=100)
     vehiculo: str = Field(min_length=1, max_length=100)
     ruta: str = Field(min_length=1, max_length=100)
+    guardias: list[str] = Field(default_factory=list, max_length=10)
 
 
 @router.post("/listar")
@@ -52,8 +53,12 @@ def listar(authorization: str | None = Header(default=None)):
     ):
         logger.error("La función de disponibilidad devolvió una respuesta no válida.")
         raise HTTPException(502, "El servidor devolvió datos de disponibilidad no válidos.")
+    # 'guards' llega solo con asignaciones_guardias.sql aplicado; sin él, no hay guardias.
+    if not isinstance(result.get("guards"), list):
+        result["guards"] = []
     result["totals"] = {
         "drivers": len(result["drivers"]),
+        "guards": len(result["guards"]),
         "vehicles": len(result["vehicles"]),
     }
     return result
@@ -62,18 +67,21 @@ def listar(authorization: str | None = Header(default=None)):
 @router.post("/asignar")
 def asignar(req: Asignacion, authorization: str | None = Header(default=None)):
     cliente, usuario = _coordinador(authorization)
+    params = {
+        "p_conductor": req.conductor,
+        "p_vehiculo": req.vehiculo,
+        "p_ruta": req.ruta,
+        "p_usuario": usuario,
+    }
+    if req.guardias:
+        params["p_guardias"] = req.guardias
     try:
-        result = cliente.rpc("asignar_ruta_operativa", {
-            "p_conductor": req.conductor,
-            "p_vehiculo": req.vehiculo,
-            "p_ruta": req.ruta,
-            "p_usuario": usuario,
-        }).execute().data
+        result = cliente.rpc("asignar_ruta_operativa", params).execute().data
     except APIError as error:
         logger.exception("No se pudo guardar la asignación operativa.")
         code = getattr(error, "code", "")
         if code == "23505":
-            raise HTTPException(409, "La ruta, el conductor o el vehículo ya tienen una asignación para hoy.") from error
+            raise HTTPException(409, "La ruta, el conductor, un guardia o el vehículo ya tienen una asignación para hoy.") from error
         if code in {"22023", "P0001"}:
             raise HTTPException(409, str(getattr(error, "message", "La asignación ya no está disponible."))) from error
         if code == "42501":
@@ -89,6 +97,7 @@ def asignar(req: Asignacion, authorization: str | None = Header(default=None)):
         "ruta": result["ruta"],
         "conductor": result["conductor"],
         "vehiculo": result["vehiculo"],
+        "guardias": result.get("guardias") or [],
         "fecha": result["fecha"],
         "usuario": result["usuario"],
     }
