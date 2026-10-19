@@ -38,9 +38,15 @@ body.dsp-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93
 .dsp .dsp-n small{font-size:16px;color:var(--d-mut);font-weight:500}
 .dsp .dsp-l{color:var(--d-mut);font-size:14px;margin-top:4px}
 
-/* LISTAS: dos columnas (conductores y vehículos); una sola en pantallas angostas. */
-.dsp .dsp-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:760px){.dsp .dsp-cols{grid-template-columns:1fr}.dsp .dsp-who{text-align:left}}
+/* BARRA DE ACCIONES: el botón de asignación rápida siempre está visible arriba. */
+.dsp .dsp-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 16px;padding:12px 14px;background:var(--d-panel);border:1px solid var(--d-line);border-radius:4px}
+.dsp .dsp-toolbar:empty{display:none}
+.dsp .dsp-quick{font-size:16px;font-weight:700;padding:11px 20px;min-height:44px}
+.dsp .dsp-hint{flex:1;min-width:220px;color:var(--d-mut);font-size:14px}
+
+/* LISTAS por categoría (conductores, guardias y vehículos): se ajustan al ancho; una sola en pantallas angostas. */
+.dsp .dsp-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+@media (max-width:760px){.dsp .dsp-who{text-align:left}.dsp .dsp-quick{width:100%}}
 /* Panel genérico; dsp-gap separa los paneles de abajo. */
 .dsp .dsp-panel{background:var(--d-panel);border:1px solid var(--d-line);border-radius:4px;padding:14px;min-width:0}
 .dsp .dsp-gap{margin-top:16px}
@@ -48,6 +54,8 @@ body.dsp-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93
 /* FILAS: cada conductor o vehículo; dsp-sel marca el elegido (borde amarillo). */
 .dsp .dsp-row{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px;border:1px solid var(--d-line);border-radius:4px;margin-bottom:8px;background:var(--d-bg)}
 .dsp .dsp-row.dsp-sel{border-color:var(--d-warn);background:rgba(242,181,68,.12)}
+/* No disponible (ya asignado o con documentos vencidos): se atenúa para distinguirlo de un vistazo. */
+.dsp .dsp-row.dsp-busy{opacity:.78;border-style:dashed}
 .dsp .dsp-nm{font-weight:500}
 .dsp .dsp-meta{color:var(--d-mut);font-size:14px;margin:0}
 .dsp .dsp-why{grid-column:1/-1;color:#f4a496;font-size:14px}
@@ -68,6 +76,14 @@ body.dsp-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93
 .dsp .dsp-assign{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;align-items:end}
 .dsp .dsp-lbl{font-size:14px;color:var(--d-mut);margin-bottom:4px}
 .dsp .dsp-val{padding:9px 10px;border:1px dashed var(--d-line);border-radius:4px;min-height:40px}
+/* Guardias elegidos (fichas con ×) y casillas en la vista compacta. */
+.dsp .dsp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.dsp .dsp-chip{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border-radius:99px;background:rgba(242,181,68,.16);border:1px solid var(--d-warn)}
+.dsp .dsp-chip-x{font:inherit;line-height:1;cursor:pointer;background:transparent;color:var(--d-tx);border:0;border-radius:99px;width:22px;height:22px;padding:0}
+.dsp .dsp-chip-x:hover{background:rgba(229,83,61,.3)}
+.dsp .dsp-checks{display:flex;flex-direction:column;gap:6px;max-height:140px;overflow:auto;padding:6px 8px;border:1px solid var(--d-line);border-radius:4px;background:var(--d-bg)}
+.dsp .dsp-check{display:flex;align-items:center;gap:6px;margin:0;font-size:14px}
+.dsp .dsp-check input{display:inline-block;width:auto;margin:0;padding:0}
 
 /* ESTADOS: cargando, error con Reintentar y acceso restringido. */
 .dsp .dsp-state{background:var(--d-panel);border:1px solid var(--d-line);border-radius:4px;padding:28px;text-align:center}
