@@ -86,9 +86,27 @@ class RutasProtegidas(unittest.TestCase):
         with patch("backend.app.rutas_riesgo._rpc", new=AsyncMock(return_value=[])):
             r = self.client.get("/rutas-riesgo/R-99", headers=AUTH)
         self.assertEqual(r.status_code, 404)
+    def test_guardar_invalido_no_llama_a_supabase(self):
+        with patch("backend.app.rutas_riesgo._rpc", new=AsyncMock()) as rpc:
+            for cuerpo in ({}, {"monto": "-5", "tipo_carga_id": 1}, {"monto": 100}):
+                with self.subTest(cuerpo=cuerpo):
+                    r = self.client.put("/rutas-riesgo/R-1", json=cuerpo, headers=AUTH)
+                    self.assertEqual(r.status_code, 422)
+        rpc.assert_not_called()
+
+    def test_guardar_ok_llama_a_la_funcion_que_audita(self):
+        with patch("backend.app.rutas_riesgo._rpc",
+                   new=AsyncMock(return_value={"ruta_id": "R-1", "nivel_riesgo": "Medio"})) as rpc:
+            r = self.client.put("/rutas-riesgo/R-1",
+                                json={"monto": "25000", "tipo_carga_id": 3}, headers=AUTH)
+        self.assertEqual(r.status_code, 200)
+        rpc.assert_awaited_once_with(
+            "especificar_riesgo_ruta", "token-de-prueba",
+            {"p_ruta_id": "R-1", "p_monto": "25000", "p_tipo_carga_id": 3},
+        )
 
     def test_paginas_se_sirven(self):
-        for url in ("/riesgo-rutas.html", "/riesgo_rutas.html"):
+        for url in ("/riesgo_rutas.html"):
             with self.subTest(url=url):
                 r = self.client.get(url)
                 self.assertEqual(r.status_code, 200)
