@@ -106,7 +106,7 @@ class RutasProtegidas(unittest.TestCase):
         )
 
     def test_paginas_se_sirven(self):
-        for url in ("/riesgo_rutas.html"):
+        for url in ("/riesgo_rutas.html",):
             with self.subTest(url=url):
                 r = self.client.get(url)
                 self.assertEqual(r.status_code, 200)
