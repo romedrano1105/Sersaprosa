@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Riesgo de rutas · SERSAPROSA</title>
+  <link rel="icon" href="/public/assets/img/sersaprosa-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/public/assets/css/variables.css">
+  <link rel="stylesheet" href="/public/assets/css/appNavigation.css">
+  <link rel="stylesheet" href="/public/assets/css/riesgoRutas.css">
+</head>
+<body>
+  <main class="rr-contenedor">
+    <h1>Monto, tipo de carga y riesgo</h1>
+
+    <form id="rr-form" class="rr-tarjeta" novalidate>
+      <div class="rr-campo">
+        <label for="rr-ruta">Ruta</label>
+        <select id="rr-ruta" aria-describedby="rr-err-ruta">
+          <option value="">Selecciona una ruta…</option>
+        </select>
+        <p class="rr-error" id="rr-err-ruta" role="alert"></p>
+      </div>
+
+      <div class="rr-campo">
+        <label for="rr-monto">Monto (USD)</label>
+        <input id="rr-monto" type="text" inputmode="decimal" autocomplete="off"
+               placeholder="Ej. 25000.00" aria-describedby="rr-err-monto">
+        <p class="rr-error" id="rr-err-monto" role="alert"></p>
+      </div>
+
+      <div class="rr-campo">
+        <label for="rr-tipo">Tipo de carga</label>
+        <select id="rr-tipo" aria-describedby="rr-err-tipo">
+          <option value="">Selecciona un tipo…</option>
+        </select>
+        <p class="rr-error" id="rr-err-tipo" role="alert"></p>
+      </div>
+
+      <div class="rr-campo">
+        <span class="rr-etiqueta">Nivel de riesgo (automático)</span>
+        <div id="rr-nivel" aria-live="polite">
+          <span class="rr-badge rr-badge--vacio">Se calculará al ingresar monto y tipo</span>
+        </div>
+      </div>
+
+      <button type="submit" class="rr-boton">Guardar</button>
+      <p id="rr-estado" class="rr-estado" role="status"></p>
+    </form>
+
+    <section class="rr-tarjeta">
+      <h2>Rutas</h2>
+      <div class="rr-tabla-scroll">
+        <table class="rr-tabla">
+          <thead>
+            <tr>
+              <th>Ruta</th><th>Monto</th><th>Tipo de carga</th><th>Riesgo</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rr-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rr-tarjeta" id="rr-detalle" hidden aria-live="polite"></section>
+  </main>
+
+  <script src="/public/assets/js/appNavigation.js"></script>
+  <script src="/public/assets/js/riesgoRutas.js"></script>
+</body>
+</html>
