@@ -19,13 +19,21 @@ const TYPES = {
   '.ico': 'image/x-icon'
 };
  
+
 function resolvePublicFile(pathname) {
-  if (pathname === '/' || pathname === '/PaginaPrincipal.html') {
+  // Página principal
+  if (
+    pathname === '/' ||
+    pathname.toLowerCase() === '/paginaprincipal.html'
+  ) {
     return path.join(PUBLIC_ROOT, 'pages', 'PaginaPrincipal.html');
   }
+
+  // Página de riesgo de rutas
   if (pathname === '/riesgo-rutas.html') {
     return path.join(PUBLIC_ROOT, 'pages', 'riesgo-rutas.html');
   }
+
   if (pathname.startsWith('/assets/')) {
     const file = path.resolve(PUBLIC_ROOT, `.${pathname}`);
     const relative = path.relative(PUBLIC_ROOT, file);
