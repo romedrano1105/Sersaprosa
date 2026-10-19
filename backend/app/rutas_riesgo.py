@@ -8,6 +8,8 @@ from fastapi import APIRouter, Header, HTTPException
 router = APIRouter(prefix="/rutas-riesgo", tags=["riesgo de rutas"])
 
 MONTO_MAXIMO = Decimal("1000000000000")
+TIPO_MAXIMO = 32767  # la columna tipo_carga_id es smallint
+RUTA_ID_MAXIMO = 100
 
 
 def _error(
@@ -55,6 +57,11 @@ def validar_entrada(datos) -> tuple[Decimal | None, int | None, dict]:
             if monto <= 0:
                 monto = None
                 errores["monto"] = "El monto debe ser mayor a cero."
+            elif monto.normalize().as_tuple().exponent < -2:
+                # La columna es numeric(14,2): evita redondeos silenciosos
+                # (p. ej. 0.001 pasaría la validación y fallaría en la BD).
+                monto = None
+                errores["monto"] = "El monto admite máximo 2 decimales."
             elif monto >= MONTO_MAXIMO:
                 monto = None
                 errores["monto"] = "El monto es demasiado grande."
@@ -72,7 +79,7 @@ def validar_entrada(datos) -> tuple[Decimal | None, int | None, dict]:
 
             tipo = int(str(bruto_tipo).strip())
 
-            if tipo <= 0:
+            if tipo <= 0 or tipo > TIPO_MAXIMO:
                 raise ValueError
 
         except (ValueError, TypeError):
@@ -80,6 +87,18 @@ def validar_entrada(datos) -> tuple[Decimal | None, int | None, dict]:
             errores["tipo_carga_id"] = "El tipo de carga no es válido."
 
     return monto, tipo, errores
+
+
+def _validar_ruta_id(ruta_id: str) -> str:
+    ruta_id = ruta_id.strip()
+
+    if not ruta_id or len(ruta_id) > RUTA_ID_MAXIMO:
+        raise _error(
+            422,
+            "El identificador de la ruta no es válido.",
+        )
+
+    return ruta_id
 
 
 def _token(authorization: str | None) -> str:
@@ -224,12 +243,7 @@ async def especificar(
     authorization: str | None = Header(None),
 ):
     token = _token(authorization)
-
-    if not ruta_id.strip():
-        raise _error(
-            422,
-            "El identificador de la ruta es obligatorio.",
-        )
+    ruta_id = _validar_ruta_id(ruta_id)
 
     monto, tipo, errores = validar_entrada(datos)
 
@@ -271,17 +285,20 @@ async def detalle(
     ruta_id: str,
     authorization: str | None = Header(None),
 ):
-    if not ruta_id.strip():
-        raise _error(
-            422,
-            "El identificador de la ruta es obligatorio.",
-        )
+    token = _token(authorization)
+    ruta_id = _validar_ruta_id(ruta_id)
 
     filas = await _rpc(
         "listar_rutas_riesgo",
-        _token(authorization),
+        token,
         {"p_ruta_id": ruta_id},
     )
+
+    if not isinstance(filas, list):
+        raise _error(
+            502,
+            "Supabase devolvió una respuesta no válida.",
+        )
 
     if not filas:
         raise _error(404, "La ruta no existe.")
