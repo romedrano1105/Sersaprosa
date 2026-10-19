@@ -7,7 +7,16 @@ const ROOT = __dirname;
 const PUBLIC_ROOT = path.join(ROOT, 'public');
 const API_ORIGIN = new URL(process.env.API_ORIGIN || 'http://127.0.0.1:8000');
 const API_TRANSPORT = API_ORIGIN.protocol === 'https:' ? require('https') : http;
-const API_PATHS = ['/login', '/generar-ruta', '/entregas/', '/eventos/', '/alertas/', '/disponibilidad/', '/notificaciones/', '/rutas-riesgo/'];
+const API_PATHS = [
+  '/login',
+  '/generar-ruta',
+  '/entregas/',
+  '/eventos/',
+  '/alertas/',
+  '/disponibilidad/',
+  '/notificaciones/',
+  '/rutas-riesgo'
+];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -19,7 +28,6 @@ const TYPES = {
   '.ico': 'image/x-icon'
 };
  
-
 function resolvePublicFile(pathname) {
   // Página principal
   if (
@@ -30,8 +38,8 @@ function resolvePublicFile(pathname) {
   }
 
   // Página de riesgo de rutas
-  if (pathname === '/riesgo-rutas.html') {
-    return path.join(PUBLIC_ROOT, 'pages', 'riesgo-rutas.html');
+  if (pathname === '/riesgo_rutas.html') {
+    return path.join(PUBLIC_ROOT, 'pages', 'riesgo_rutas.html');
   }
 
   if (pathname.startsWith('/assets/')) {
@@ -45,8 +53,13 @@ function resolvePublicFile(pathname) {
 }
 
 function isApiPath(pathname) {
-  return API_PATHS.some(prefix => prefix.endsWith('/') ?
-    pathname.startsWith(prefix) : pathname === prefix);
+  return API_PATHS.some(prefix =>
+    prefix === '/rutas-riesgo'
+      ? pathname === prefix || pathname.startsWith(prefix + '/')
+      : prefix.endsWith('/')
+        ? pathname.startsWith(prefix)
+        : pathname === prefix
+  );
 }
 
 function proxyApiRequest(req, res, pathname, search) {
@@ -83,13 +96,19 @@ http.createServer((req, res) => {
     return res.end('Solicitud no válida');
   }
 
-  if (req.method === 'POST' && isApiPath(requestUrl.pathname)) {
+  if (
+    ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) &&
+    isApiPath(requestUrl.pathname)
+  ) {
     proxyApiRequest(req, res, requestUrl.pathname, requestUrl.search);
     return;
   }
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.writeHead(405, { 'Content-Type': 'text/plain; charset=utf-8', Allow: 'GET, HEAD' });
+    res.writeHead(405, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      Allow: 'GET, HEAD'
+    });
     return res.end('Método no permitido');
   }
 
@@ -109,10 +128,19 @@ http.createServer((req, res) => {
 
   fs.readFile(file, (err, data) => {
     if (err) {
-      res.writeHead(err.code === 'ENOENT' ? 404 : 500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      return res.end(err.code === 'ENOENT' ? 'No encontrado' : 'Error interno del servidor');
+      res.writeHead(
+        err.code === 'ENOENT' ? 404 : 500,
+        { 'Content-Type': 'text/plain; charset=utf-8' }
+      );
+      return res.end(
+        err.code === 'ENOENT'
+          ? 'No encontrado'
+          : 'Error interno del servidor'
+      );
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream'
+    });
     res.end(req.method === 'HEAD' ? undefined : data);
   });
 }).listen(PORT, () => console.log('Servidor activo en el puerto ' + PORT));
