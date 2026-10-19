@@ -17,9 +17,10 @@
   let selectedRoute = 0;
   let refreshing = false;
   let currentScreen = "routes";
-  let monitorTab = "events";
+  let monitorTab = "notifications";
   let eventModule = null;
   let alertModule = null;
+  let notificationsModule = null;
   let availabilityModule = null;
   let assignmentModule = null;
   let lastRefreshAt = 0;
@@ -396,6 +397,22 @@
     alertModule = window.AlertasSeguridad.mount($("panelAlertas"));
   }
 
+     function mountNotificationsPanel() {
+     if (notificationsModule) return;
+     notificationsModule = window.Notificaciones.mount($("panelNotificaciones"), {
+       SYNC: "/notificaciones/sincronizar",
+       LOAD: "/notificaciones/listar",
+       READ: "/notificaciones/leer",
+       ROLE_ALLOWED: "coordinador_rutas",
+       onUnauthorized: () => window.AppNavigation.handleUnauthorized(),
+       onCount: count => {
+         const badge = $("notifCount");
+         badge.textContent = count > 99 ? "99+" : String(count);
+         badge.classList.toggle("hidden", count === 0);
+       }
+     });
+   }
+
   function mountAvailabilityPanel() {
     if (availabilityModule) return;
     availabilityModule = window.Disponibilidad.mount($("panelDisponibilidad"), {
@@ -422,13 +439,15 @@
   }
 
   function setMonitorTab(name) {
-    monitorTab = name === "alerts" ? "alerts" : "events";
+    monitorTab = ["alerts", "notifications"].includes(name) ? name : "events";
+    $("monitorNotifs").classList.toggle("hidden", monitorTab !== "notifications");
     $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
     $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {
       button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
     });
-    if (monitorTab === "events") mountEventPanel();
+    if (monitorTab === "notifications") mountNotificationsPanel();
+    else if (monitorTab === "events") mountEventPanel();
     else mountAlertPanel();
   }
 
@@ -514,6 +533,7 @@
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
     mountAssignmentPanel();
+    mountNotificationsPanel();
     window.addEventListener("app:navigate", event => setScreen(event.detail));
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {
       button.addEventListener("click", () => setMonitorTab(button.dataset.monitorPanel));
