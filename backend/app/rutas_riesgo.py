@@ -69,9 +69,12 @@ def validar_entrada(datos) -> tuple[Decimal | None, int | None, dict]:
         try:
             if isinstance(bruto_tipo, bool):
                 raise ValueError
+
             tipo = int(str(bruto_tipo).strip())
+
             if tipo <= 0:
                 raise ValueError
+
         except (ValueError, TypeError):
             tipo = None
             errores["tipo_carga_id"] = "El tipo de carga no es válido."
@@ -116,6 +119,7 @@ async def _rpc(nombre: str, token: str, payload: dict):
                 json=payload,
                 headers=headers,
             )
+
     except httpx.HTTPError as error:
         raise _error(
             502,
@@ -142,7 +146,10 @@ async def _rpc(nombre: str, token: str, payload: dict):
         mensaje = ""
 
     if respuesta.status_code == 401:
-        raise _error(401, "La sesión venció. Inicia sesión de nuevo.")
+        raise _error(
+            401,
+            "La sesión venció. Inicia sesión de nuevo.",
+        )
 
     if (
         respuesta.status_code == 403
@@ -219,7 +226,10 @@ async def especificar(
     token = _token(authorization)
 
     if not ruta_id.strip():
-        raise _error(422, "El identificador de la ruta es obligatorio.")
+        raise _error(
+            422,
+            "El identificador de la ruta es obligatorio.",
+        )
 
     monto, tipo, errores = validar_entrada(datos)
 
@@ -262,7 +272,10 @@ async def detalle(
     authorization: str | None = Header(None),
 ):
     if not ruta_id.strip():
-        raise _error(422, "El identificador de la ruta es obligatorio.")
+        raise _error(
+            422,
+            "El identificador de la ruta es obligatorio.",
+        )
 
     filas = await _rpc(
         "listar_rutas_riesgo",
