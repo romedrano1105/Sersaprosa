@@ -456,6 +456,13 @@
      });
    }
 
+  // Tras asignar en un panel, el otro se recarga para que vea lo mismo (el que asignó ya se recargó solo).
+  function refreshAvailabilityPanels(source) {
+    [availabilityModule, assignmentModule].forEach(module => {
+      if (module && module !== source) module.reload();
+    });
+  }
+
   function mountAvailabilityPanel() {
     if (availabilityModule) return;
     availabilityModule = window.Disponibilidad.mount($("panelDisponibilidad"), {
@@ -464,6 +471,7 @@
       LOAD: "/disponibilidad/listar",
       ASSIGN: "/disponibilidad/asignar",
       ROLE_ALLOWED: "coordinador_rutas",
+      onAssigned: refreshAvailabilityPanels,
       onUnauthorized: () => window.AppNavigation.handleUnauthorized()
     });
   }
@@ -474,9 +482,11 @@
       view: "assignment",
       showHeader: false,
       showHistory: false,
+      showQuick: false,
       LOAD: "/disponibilidad/listar",
       ASSIGN: "/disponibilidad/asignar",
       ROLE_ALLOWED: "coordinador_rutas",
+      onAssigned: refreshAvailabilityPanels,
       onUnauthorized: () => window.AppNavigation.handleUnauthorized()
     });
   }
