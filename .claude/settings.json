@@ -2,7 +2,7 @@
   "blueCollarGovernance": {
     "hookRuntime": {
       "profileId": "balanced",
-      "matchedTools": ["Bash", "Write", "Edit"],
+      "matchedTools": [ "Write", "Edit"],
       "stateDirectory": ".claude/runtime",
       "blockingSeverities": ["CRITICAL", "HIGH"]
     }
