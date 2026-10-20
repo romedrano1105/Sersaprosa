@@ -329,7 +329,7 @@
     const headUser = h("b"), headRole = h("span");
     const head = cfg.showHeader === false ? null : h("div", { class: "dsp-head" },
       h("div", {},
-        h("h2", { class: "dsp-title" }, cfg.title || (cfg.view === "assignment" ? "Asignar Ruta" : "Empleados y Vehículos")),
+        h("h2", { class: "dsp-title" }, cfg.title || "Empleados y Vehículos"),
         h("p", { class: "dsp-sub" }, cfg.subtitle || "SERSAPROSA · Disponibilidad operativa")),
       h("div", { class: "dsp-who" }, "Sesión: ", headUser, h("br"), headRole));
     const toolbar = h("div", { class: "dsp-toolbar" });
@@ -498,18 +498,16 @@
       const panel = (title, kind, list) => h("div", { class: "dsp-panel" },
         h("h3", { class: "dsp-h" }, title + " (" + list.length + ")"),
         list.length ? h("ul", { class: "dsp-list" }, list.map(x => row(kind, x))) : h("p", { class: "dsp-meta" }, "Sin registros."));
-      if (cfg.view !== "assignment") {
-        body.append(
-          h("div", { class: "dsp-counters" },
-            cnt(dOk, D.drivers.length, "Conductores disponibles"),
-            cnt(gOk, D.guards.length, "Guardias disponibles"),
-            cnt(vOk, D.vehicles.length, "Vehículos disponibles"),
-            cnt(Math.min(dOk, vOk, D.routes.length), null, "Rutas que se pueden cubrir ahora")),
-          h("div", { class: "dsp-cols" },
-            panel("Conductores", "driver", D.drivers),
-            panel("Guardias", "guard", D.guards),
-            panel("Vehículos", "vehicle", D.vehicles)));
-      }
+      body.append(
+        h("div", { class: "dsp-counters" },
+          cnt(dOk, D.drivers.length, "Conductores disponibles"),
+          cnt(gOk, D.guards.length, "Guardias disponibles"),
+          cnt(vOk, D.vehicles.length, "Vehículos disponibles"),
+          cnt(Math.min(dOk, vOk, D.routes.length), null, "Rutas que se pueden cubrir ahora")),
+        h("div", { class: "dsp-cols" },
+          panel("Conductores", "driver", D.drivers),
+          panel("Guardias", "guard", D.guards),
+          panel("Vehículos", "vehicle", D.vehicles)));
 
       // Panel de asignación manual: lo elegido se ve aquí, debajo de las listas.
       const dSel = D.drivers.find(x => x.id === S.d), vSel = D.vehicles.find(x => x.id === S.v);
@@ -517,45 +515,18 @@
       const routeSel = h("select", { class: "dsp-select", "aria-label": "Ruta" },
         D.routes.length ? D.routes.map((r, index) => h("option", { value: r.id, selected: index === 0 }, r.id + " · " + r.nombre)) : h("option", { value: "" }, "No hay rutas sin asignar"));
       const can = !!(dSel && vSel && D.routes.length && !S.saving);
-      let fields;
-      if (cfg.view === "assignment") {
-        // Vista compacta (panel de Asignar Rutas): listas desplegables y casillas de guardias.
-        const choice = (text, items, selected, display, save) => h("label", { class: "dsp-field" },
-          h("span", { class: "dsp-lbl" }, text),
-          h("select", {
-            class: "dsp-select",
-            onchange: event => { save(event.target.value || null); render(); }
-          },
-          h("option", { value: "" }, "Seleccionar " + text.toLowerCase()),
-          items.filter(item => item.disp.ok).map(item =>
-            h("option", { value: item.id, selected: item.id === selected }, display(item)))));
-        const guardChecks = D.guards.filter(x => x.disp.ok).map(g => h("label", { class: "dsp-check" },
-          h("input", {
-            type: "checkbox", checked: S.g.includes(g.id),
-            onchange: event => { S.g = event.target.checked ? S.g.concat(g.id) : S.g.filter(x => x !== g.id); render(); }
-          }), " " + g.nombre));
-        fields = h("div", { class: "dsp-assign dsp-assign-form" },
-          choice("Conductor", D.drivers, S.d, item => item.nombre, value => { S.d = value; }),
-          choice("Vehículo", D.vehicles, S.v, item => item.placa + " · " + (item.tipo || ""), value => { S.v = value; }),
-          h("div", { class: "dsp-field" }, h("span", { class: "dsp-lbl" }, "Guardias (opcional)"),
-            guardChecks.length ? h("div", { class: "dsp-checks" }, guardChecks) : h("div", { class: "dsp-meta" }, "No hay guardias disponibles")),
-          h("label", { class: "dsp-field" }, h("span", { class: "dsp-lbl" }, "Ruta"), routeSel),
-          h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Confirmar asignación"));
-      } else {
-        const chips = gSel.length
-          ? h("div", { class: "dsp-chips" }, gSel.map(g => h("span", { class: "dsp-chip" }, g.nombre,
-              h("button", { type: "button", class: "dsp-chip-x", "aria-label": "Quitar " + g.nombre, onclick: () => pick("guard", g) }, "×"))))
-          : "Elija guardias disponibles (opcional)";
-        fields = h("div", { class: "dsp-assign" },
+      const chips = gSel.length
+        ? h("div", { class: "dsp-chips" }, gSel.map(g => h("span", { class: "dsp-chip" }, g.nombre,
+            h("button", { type: "button", class: "dsp-chip-x", "aria-label": "Quitar " + g.nombre, onclick: () => pick("guard", g) }, "×"))))
+        : "Elija guardias disponibles (opcional)";
+      body.append(h("div", { class: "dsp-panel dsp-gap" },
+        h("h3", { class: "dsp-h" }, "Asignar a una ruta"),
+        h("div", { class: "dsp-assign" },
           h("div", {}, h("div", { class: "dsp-lbl" }, "Conductor"), h("div", { class: "dsp-val" }, dSel ? dSel.nombre : "Elija un conductor disponible")),
           h("div", {}, h("div", { class: "dsp-lbl" }, "Guardias (" + gSel.length + ")"), h("div", { class: "dsp-val" }, chips)),
           h("div", {}, h("div", { class: "dsp-lbl" }, "Vehículo"), h("div", { class: "dsp-val" }, vSel ? vSel.placa + " · " + (vSel.tipo || "") : "Elija un vehículo disponible")),
           h("div", {}, h("div", { class: "dsp-lbl" }, "Ruta"), routeSel),
-          h("div", {}, h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Asignar ruta")));
-      }
-      body.append(h("div", { class: "dsp-panel dsp-gap" },
-        cfg.view === "assignment" ? null : h("h3", { class: "dsp-h" }, "Asignar a una ruta"),
-        fields));
+          h("div", {}, h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Asignar ruta")))));
 
       // Historial de hoy: aquí quedan establecidos conductor, guardias y vehículo en su ruta.
       if (cfg.showHistory !== false) {
