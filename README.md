@@ -49,12 +49,21 @@ en local, Node sirve los archivos y proxifica las llamadas API a FastAPI.
 
 ## Navegación y mapa
 
-El menú compartido está en `public/assets/js/appNavigation.js` y contiene tres
-secciones en este orden: **Asignar Rutas**, **Monitoreo en Vivo** y
-**Empleados y Vehículos**. Los eventos especiales y las alertas de seguridad
-están agrupados dentro de Monitoreo en Vivo. La pantalla de entregas
-independiente se retiró; las entregas siguen siendo destinos internos de la
-planificación de rutas.
+El menú compartido está en `public/assets/js/appNavigation.js` y sigue el
+flujo de trabajo del día:
+
+1. **Pedidos en curso**: pedidos que faltan por entregar; se eligen los que van en la ruta
+   (`pedidosEnCurso.js`).
+2. **Planificar rutas**: traza el recorrido de los pedidos elegidos y lo **guarda**
+   (`POST /rutas/guardar`), lo que crea la ruta en `rutas_planificadas`.
+3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
+4. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones.
+
+Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
+`window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,
+`VerificarConduJS.js`, …) y `dashboard.js` como arranque que cambia de pantalla.
+`POST /rutas/guardar` usa la función SQL `guardar_ruta_operativa`. Las pruebas de
+lógica del front corren con `npm test` (`tests/js`) y las del backend con `pytest`.
 
 La página principal consulta destinos y eventos mediante `/entregas/listar` y
 `/eventos/listar`. El mapa usa teselas de OpenStreetMap y los recorridos se

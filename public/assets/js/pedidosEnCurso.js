@@ -3,12 +3,12 @@
 
    Muestra los pedidos del día que todavía faltan por entregar (estado
    "pendiente" o "proceso") y permite ELEGIR cuáles entran en la ruta de
-   "Asignar Rutas". Los datos los entrega dashboard.js (POST /entregas/listar),
+   "Planificar rutas". Los datos los entrega dashboard.js (POST /entregas/listar),
    así que este módulo no hace peticiones propias.
 
    Expone una sola variable global: window.Pedidos
      Pedidos.store            selección compartida entre la pantalla de pedidos
-                              y el selector de "Asignar Rutas" (sessionStorage)
+                              y el selector de "Planificar rutas" (sessionStorage)
      Pedidos.mountPage(el, opts)    pantalla completa "Pedidos en curso"
      Pedidos.mountPicker(el, opts)  lista compacta para elegir pedidos de la ruta
      ambos devuelven { setData(entregas), unmount() }
@@ -149,7 +149,7 @@
         h("div", { class: "ord-actions" },
           h("button", { type: "button", class: "ord-btn", onclick: () => store.selectAll(S.pedidos) }, "Elegir todos"),
           h("button", { type: "button", class: "ord-btn", onclick: () => store.clear() }, "Limpiar elección"),
-          cfg.onGoRoutes ? h("button", { type: "button", class: "ord-btn ord-primary", onclick: cfg.onGoRoutes }, "Ir a Asignar Rutas →") : null));
+          cfg.onGoRoutes ? h("button", { type: "button", class: "ord-btn ord-primary", onclick: cfg.onGoRoutes }, "Ir a Planificar rutas →") : null));
 
       const tabla = h("div", { class: "ord-scroll", id: "ordList" });
       root.append(
@@ -204,7 +204,7 @@
     };
   }
 
-  /* ============ Selector compacto dentro de "Asignar Rutas" ============ */
+  /* ============ Selector compacto dentro de "Planificar rutas" ============ */
   function mountPicker(container, opts) {
     const cfg = Object.assign({ onGoOrders: null }, opts || {});
     const S = { pedidos: [], loaded: false };

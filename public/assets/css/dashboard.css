@@ -145,6 +145,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ev .ev-msg-warn, .as .as-warning { background: #ff9e4512; border-color: var(--mid); color: var(--mid); }
 
 /* Planificador de ruta multi-paradas (routePlanner.js) */
+/* Guardar la ruta trazada */
+.save-route { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.save-route h3 { margin: 0 0 4px; font: 600 17px "Barlow Condensed", sans-serif; }
+.save-route-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.save-route-row input { flex: 1 1 160px; min-height: 42px; padding: 8px 12px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 14px; }
+.save-route-row .primary-button { min-height: 42px; padding: 8px 16px; }
+.save-route-row .primary-button:disabled { opacity: .6; cursor: wait; }
+
 .mr-card { margin: 0 0 20px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
 .mr-heading h3 { margin: 2px 0 14px; font: 600 19px "Barlow Condensed", sans-serif; }
 .mr-list { position: relative; margin: 0; padding: 0; list-style: none; }

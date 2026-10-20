@@ -40,7 +40,7 @@
     <header class="topbar">
       <div class="page-heading">
         <span class="eyebrow" id="pageEyebrow">PLANIFICACIÓN OPERATIVA</span>
-        <h1 id="pageTitle">Asignar Rutas</h1>
+        <h1 id="pageTitle">Planificar rutas</h1>
         <p id="pageDescription">Configure y despache unidades de forma segura.</p>
       </div>
       <div class="top-actions">
@@ -79,6 +79,15 @@
               <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
               <div class="route-options-heading"><h3>Opciones de ruta</h3><span>OSRM · calles</span></div>
               <div id="routeOptions" aria-live="polite"></div>
+              <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
+                <h3>Guardar esta ruta</h3>
+                <p class="privacy-note">Queda lista en «Empleados y Vehículos» para asignarle conductor, guardias y vehículo.</p>
+                <div class="save-route-row">
+                  <input id="saveRouteName" type="text" maxlength="80" aria-label="Nombre de la ruta" placeholder="Nombre de la ruta">
+                  <button id="saveRouteBtn" class="primary-button" type="button">Guardar ruta</button>
+                </div>
+                <p id="saveRouteMsg" class="notice hidden" role="status"></p>
+              </section>
             </section>
           </aside>
           <section class="map-section" aria-label="Mapa y recorrido">
@@ -121,6 +130,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="/assets/js/core/api.js"></script>
   <script src="/assets/js/appNavigation.js"></script>
   <script src="/assets/js/eventosEspecialesJS.js"></script>
   <script src="/assets/js/alertasSeguridad.js"></script>

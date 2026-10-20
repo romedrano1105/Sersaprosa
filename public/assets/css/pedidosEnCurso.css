@@ -43,7 +43,7 @@
 .ord-completada { color: var(--route, #19d3a2); background: rgba(25, 211, 162, .14); }
 .ord-sinruta { color: #ff9aa0; background: rgba(255, 77, 85, .14); }
 
-/* Selector compacto dentro de Asignar Rutas */
+/* Selector compacto dentro de Planificar rutas */
 .ord-picker { margin-bottom: 20px; padding: 14px; background: var(--panel, #0c151f); border: 1px solid var(--line, #1c2c3b); border-radius: 8px; }
 .ord-picker-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .ord-kicker { color: var(--route, #19d3a2); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
