@@ -13,11 +13,22 @@ from fastapi import APIRouter, Header, HTTPException
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
-from . import rutas_logica
+from . import database, rutas_admin, rutas_logica
 from .eventos_router import usuario_coordinador
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rutas", tags=["rutas planificadas"])
+
+
+def _respaldo(funcion, *args):
+    """Escribe con el cliente de servicio cuando la función SQL no está creada."""
+    try:
+        return funcion(database.cliente_servicio(), *args)
+    except rutas_admin.ReglaDeNegocio as error:
+        raise HTTPException(409, str(error)) from error
+    except Exception as error:
+        logger.exception("Falló el respaldo de escritura de rutas.")
+        raise HTTPException(503, "No se pudo guardar la ruta. Revise SUPABASE_SERVICE_ROLE_KEY y las tablas.") from error
 
 
 class RutaNueva(BaseModel):
@@ -39,6 +50,9 @@ def guardar(req: RutaNueva, authorization: str | None = Header(default=None)):
             "p_usuario": usuario,
         }).execute().data
     except APIError as error:
+        if rutas_admin.funcion_ausente(error):
+            resultado = _respaldo(rutas_admin.guardar_ruta, nombre, pedidos, usuario)
+            return resultado
         logger.exception("No se pudo guardar la ruta planificada.")
         code = getattr(error, "code", "")
         if code in {"22023", "P0001"}:
@@ -87,6 +101,8 @@ def actualizar(req: RutaEditada, authorization: str | None = Header(default=None
             "p_usuario": usuario,
         }).execute().data
     except APIError as error:
+        if rutas_admin.funcion_ausente(error):
+            return _respaldo(rutas_admin.actualizar_ruta, req.id, nombre, pedidos, usuario)
         logger.exception("No se pudo actualizar la ruta planificada.")
         code = getattr(error, "code", "")
         if code in {"22023", "P0001"}:

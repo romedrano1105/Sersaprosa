@@ -262,9 +262,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .route-options-bar:empty { display: none; }
 .route-options-bar .route-option { display: inline-flex; align-items: baseline; gap: 8px; width: auto; margin: 0; padding: 7px 12px; border-radius: 99px; }
 .route-options-bar .route-option small { margin: 0; }
-#pickerBox > summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none; font: 600 18px "Barlow Condensed", sans-serif; }
-#pickerBox > summary::-webkit-details-marker { display: none; }
-#pickerBox > summary::before { content: "▸"; color: var(--route); font-size: 14px; }
-#pickerBox[open] > summary::before { content: "▾"; }
-#pickerBox > summary small { color: var(--faint); font: 400 11px "Inter", sans-serif; }
-#pickerBox .ord-picker { margin-top: 12px; }
+
+
+/* Barra del mapa (estilo, eventos, búsqueda) */
+.map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 12px; }
+.map-toolbar select, .map-search input { min-height: 36px; padding: 6px 10px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; }
+.map-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.map-toggle input { accent-color: var(--route); }
+.map-search { display: flex; flex: 1 1 200px; min-width: 0; }
+.map-search input { flex: 1; min-width: 0; border-radius: 6px 0 0 6px; }
+.map-search button { min-height: 36px; padding: 0 12px; color: var(--route); background: var(--panel-raised); border: 1px solid var(--line); border-left: 0; border-radius: 0 6px 6px 0; font-size: 16px; cursor: pointer; }
+.map-toolbar .route-metrics-inline { margin-left: auto; }
+#map.map-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
