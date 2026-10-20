@@ -54,10 +54,17 @@ flujo de trabajo del día:
 
 1. **Pedidos en curso**: pedidos que faltan por entregar; se eligen los que van en la ruta
    (`pedidosEnCurso.js`).
-2. **Planificar rutas**: traza el recorrido de los pedidos elegidos y lo **guarda**
-   (`POST /rutas/guardar`), lo que crea la ruta en `rutas_planificadas`.
+2. **Planificar rutas** (centro de control, `centroRutas.js`): rutas de hoy con su estado
+   (borrador, sin asignar, asignada, en curso, completada); acciones editar, asignar,
+   desasignar, invertir orden, optimizar y ver historial; tarjetas de asignación, alertas
+   (riesgo, retrasos, notificaciones), resumen y completados; lista de pedidos con ETA y
+   mapa. Una ruta nueva se **guarda** con `POST /rutas/guardar`; también existen
+   `POST /rutas/listar`, `POST /rutas/actualizar` y `POST /disponibilidad/desasignar`
+   (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
+   `desasignar_ruta_operativa`).
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
-4. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones.
+4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
+5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
 
 Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
 `window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,
