@@ -2,7 +2,7 @@
 así se puede probar con `python -m unittest tests_entregas.py -v`.
 
 Estados en la base de datos: pendiente · en_proceso · completada.
-La página (entregasDiaJS.js) usa: pendiente · proceso · completada.
+La página (pedidosEnCurso.js) usa: pendiente · proceso · completada.
 """
 import unicodedata
 from datetime import date, datetime
