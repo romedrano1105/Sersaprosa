@@ -61,6 +61,13 @@
         <!-- Centro de control de rutas (centroRutas.js): rutas de hoy, estado, acciones y tarjetas de resumen -->
         <div id="centroRutas"></div>
 
+        <!-- Fila "Inicio de ruta": centroRutas.js la coloca al principio de la lista de pedidos -->
+        <div id="originRow" class="origin-card" aria-label="Punto de inicio de la ruta">
+          <div class="origin-mark" aria-hidden="true">⚑</div>
+          <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
+          <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual (el GPS solo se pide al pulsar)">⌖</button>
+        </div>
+
         <!-- Guardar la ruta trazada (solo en borrador): la relocaliza dashboard.js -->
         <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
           <div class="save-route-copy">
@@ -77,21 +84,11 @@
         <div class="routes-layout">
           <aside class="route-panel">
             <section class="route-step route-tasks" aria-label="Pedidos de la ruta">
-              <section class="origin-card" aria-label="Punto de inicio de la ruta">
-                <div class="origin-mark" aria-hidden="true">A</div>
-                <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
-                <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual">⌖</button>
-              </section>
-              <p class="privacy-note">El GPS solo se solicita al pulsar el botón y se comparte con OSRM para calcular el recorrido.</p>
               <p id="routeMessage" class="notice hidden" role="status"></p>
               <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
+              <!-- centroRutas.js pinta aquí: buscar y filtrar, la fila de inicio y los pedidos numerados -->
               <div id="taskList"></div>
             </section>
-
-            <details id="pickerBox" class="route-step" open>
-              <summary>Elegir pedidos de la ruta <small>(solo en borrador)</small></summary>
-              <section id="orderPicker" aria-label="Pedidos en curso para la ruta"></section>
-            </details>
 
             <details class="route-step route-custom">
               <summary>Ruta personalizada <small>(opcional · origen, paradas y destino a mano)</small></summary>
@@ -100,18 +97,26 @@
           </aside>
 
           <section class="map-section" aria-label="Mapa y recorrido">
-            <div class="map-card-head">
-              <div><span>VISTA PREVIA OPERATIVA</span><h2>Mapa del recorrido</h2></div>
+            <div class="map-toolbar" role="toolbar" aria-label="Opciones del mapa">
+              <select id="mapStyle" aria-label="Estilo del mapa">
+                <option value="calles">Calles (OpenStreetMap)</option>
+                <option value="oscuro">Calles oscuro</option>
+              </select>
+              <label class="map-toggle"><input id="mapEventsToggle" type="checkbox" checked> Eventos de riesgo</label>
+              <form id="mapSearch" class="map-search" role="search">
+                <input id="mapSearchInput" type="search" maxlength="120" placeholder="Buscar dirección en el mapa…" aria-label="Buscar dirección en el mapa" autocomplete="off">
+                <button type="submit" aria-label="Buscar">⌕</button>
+              </form>
               <div class="route-metrics-inline" aria-label="Métricas de la ruta">
                 <span>Distancia <strong id="mDist">–</strong></span>
                 <span>Tiempo <strong id="mEta">–</strong></span>
                 <span>Riesgo <strong id="mRisk">–</strong></span>
-                <span class="map-source">OpenStreetMap · OSRM</span>
               </div>
             </div>
+            <p id="mapSearchMsg" class="notice hidden" role="status"></p>
             <div id="routeOptions" class="route-options-bar" aria-live="polite"></div>
             <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
-              <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap</span></div>
+              <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap · OSRM</span></div>
             </div>
           </section>
         </div>

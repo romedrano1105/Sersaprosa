@@ -47,3 +47,10 @@ def buscar_empleado_por_codigo(codigo: str):
     )
     empleados = resultado.data or []
     return empleados[0] if empleados else None
+
+
+def cliente_servicio():
+    """Cliente con la clave de servicio, solo para el respaldo de escritura del backend."""
+    if not SUPABASE_SERVICE_ROLE_KEY:
+        raise AuthConfigurationError("Falta configurar SUPABASE_SERVICE_ROLE_KEY.")
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
