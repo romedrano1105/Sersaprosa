@@ -1,57 +1,57 @@
 /* Pedidos en curso (pedidosEnCurso.js). Todas las clases empiezan con "ord-" y usan
    las variables de dashboard.css (--panel, --line, --text, --muted, --route, --high, --mid). */
 .ord, .ord * { box-sizing: border-box; }
-.ord { color: var(--text, #eef3f8); }
-.ord-state { margin: 0; padding: 24px; text-align: center; color: var(--muted, #8394a5); border: 1px dashed var(--line, #1c2c3b); border-radius: 8px; }
+.ord { color: var(--text, #f2f3f5); }
+.ord-state { margin: 0; padding: 24px; text-align: center; color: var(--muted, #9a9fa8); border: 1px dashed var(--line, #33363c); border-radius: 8px; }
 
 /* Contadores */
 .ord-counters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
-.ord-cnt { padding: 12px 14px; background: var(--panel-raised, #101c28); border: 1px solid var(--line, #1c2c3b); border-left: 4px solid var(--route, #19d3a2); border-radius: 6px; }
-.ord-cnt.ord-warn { border-left-color: var(--mid, #ff9e45); }
+.ord-cnt { padding: 12px 14px; background: var(--panel-raised, #26282c); border: 1px solid var(--line, #33363c); border-left: 4px solid var(--route, #5b8cff); border-radius: 6px; }
+.ord-cnt.ord-warn { border-left-color: var(--mid, #f5a524); }
 .ord-n { font: 700 30px/1 "Barlow Condensed", sans-serif; }
-.ord-l { margin-top: 4px; color: var(--muted, #8394a5); font-size: 13px; }
+.ord-l { margin-top: 4px; color: var(--muted, #9a9fa8); font-size: 13px; }
 
 /* Filtros y acciones */
 .ord-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
-.ord-input { min-height: 40px; padding: 8px 12px; color: var(--text, #eef3f8); background: var(--bg, #070c12); border: 1px solid var(--line, #1c2c3b); border-radius: 6px; font: inherit; font-size: 14px; }
+.ord-input { min-height: 40px; padding: 8px 12px; color: var(--text, #f2f3f5); background: var(--bg, #16171a); border: 1px solid var(--line, #33363c); border-radius: 6px; font: inherit; font-size: 14px; }
 .ord-filters input[type="search"] { flex: 1 1 240px; }
-.ord-check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted, #8394a5); font-size: 14px; cursor: pointer; }
-.ord-check input, .ord-picklist input, .ord-table input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--route, #19d3a2); flex: none; }
-.ord-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 14px; background: var(--panel-raised, #101c28); border: 1px solid var(--line, #1c2c3b); border-radius: 6px; font-size: 14px; }
-.ord-hint { color: var(--muted, #8394a5); }
+.ord-check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted, #9a9fa8); font-size: 14px; cursor: pointer; }
+.ord-check input, .ord-picklist input, .ord-table input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--route, #5b8cff); flex: none; }
+.ord-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 10px 14px; background: var(--panel-raised, #26282c); border: 1px solid var(--line, #33363c); border-radius: 6px; font-size: 14px; }
+.ord-hint { color: var(--muted, #9a9fa8); }
 .ord-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.ord-btn { min-height: 38px; padding: 7px 14px; color: var(--text, #eef3f8); background: transparent; border: 1px solid var(--line, #1c2c3b); border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.ord-btn:hover { border-color: var(--route, #19d3a2); color: var(--route, #19d3a2); }
-.ord-btn.ord-primary { color: #04231c; background: var(--route, #19d3a2); border-color: var(--route, #19d3a2); }
-.ord-btn.ord-primary:hover { color: #04231c; filter: brightness(1.08); }
-.ord-link { padding: 4px 0; color: var(--route, #19d3a2); background: transparent; border: 0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-.ord :focus-visible { outline: 2px solid var(--route, #19d3a2); outline-offset: 2px; }
+.ord-btn { min-height: 38px; padding: 7px 14px; color: var(--text, #f2f3f5); background: transparent; border: 1px solid var(--line, #33363c); border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ord-btn:hover { border-color: var(--route, #5b8cff); color: var(--route, #5b8cff); }
+.ord-btn.ord-primary { color: #ffffff; background: var(--route, #5b8cff); border-color: var(--route, #5b8cff); }
+.ord-btn.ord-primary:hover { color: #ffffff; filter: brightness(1.08); }
+.ord-link { padding: 4px 0; color: var(--route, #5b8cff); background: transparent; border: 0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.ord :focus-visible { outline: 2px solid var(--route, #5b8cff); outline-offset: 2px; }
 
 /* Tabla de la pantalla de pedidos */
 .ord-scroll { overflow-x: auto; }
 .ord-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
-.ord-table th, .ord-table td { padding: 10px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line, #1c2c3b); }
-.ord-table th { color: var(--muted, #8394a5); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ord-table th, .ord-table td { padding: 10px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line, #33363c); }
+.ord-table th { color: var(--muted, #9a9fa8); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .ord-col-check { width: 64px; text-align: center !important; }
-.ord-table tr.ord-on { background: rgba(25, 211, 162, .07); }
-.ord-sub { display: block; margin-top: 2px; color: var(--muted, #8394a5); font-size: 12px; }
+.ord-table tr.ord-on { background: rgba(91, 140, 255, .07); }
+.ord-sub { display: block; margin-top: 2px; color: var(--muted, #9a9fa8); font-size: 12px; }
 
 /* Etiquetas de estado */
 .ord-pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.ord-pendiente { color: var(--mid, #ff9e45); background: rgba(255, 158, 69, .14); }
-.ord-proceso { color: var(--low, #2494ff); background: rgba(36, 148, 255, .14); }
-.ord-completada { color: var(--route, #19d3a2); background: rgba(25, 211, 162, .14); }
+.ord-pendiente { color: var(--mid, #f5a524); background: rgba(255, 158, 69, .14); }
+.ord-proceso { color: var(--low, #5b8cff); background: rgba(36, 148, 255, .14); }
+.ord-completada { color: var(--route, #5b8cff); background: rgba(91, 140, 255, .14); }
 .ord-sinruta { color: #ff9aa0; background: rgba(255, 77, 85, .14); }
 
 /* Selector compacto dentro de Planificar rutas */
-.ord-picker { margin-bottom: 20px; padding: 14px; background: var(--panel, #0c151f); border: 1px solid var(--line, #1c2c3b); border-radius: 8px; }
+.ord-picker { margin-bottom: 20px; padding: 14px; background: var(--panel, #1f2124); border: 1px solid var(--line, #33363c); border-radius: 8px; }
 .ord-picker-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
-.ord-kicker { color: var(--route, #19d3a2); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+.ord-kicker { color: var(--route, #5b8cff); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
 .ord-title { margin: 2px 0 0; font: 600 20px/1.1 "Barlow Condensed", sans-serif; }
 .ord-picker .ord-actions { margin-bottom: 10px; }
 .ord-picklist { max-height: 300px; overflow: auto; margin: 0; padding: 0; list-style: none; }
-.ord-pick { margin-bottom: 6px; border: 1px solid var(--line, #1c2c3b); border-radius: 6px; background: var(--bg, #070c12); }
-.ord-pick.ord-on { border-color: var(--route, #19d3a2); background: rgba(25, 211, 162, .07); }
+.ord-pick { margin-bottom: 6px; border: 1px solid var(--line, #33363c); border-radius: 6px; background: var(--bg, #16171a); }
+.ord-pick.ord-on { border-color: var(--route, #5b8cff); background: rgba(91, 140, 255, .07); }
 .ord-pick label { display: flex; align-items: center; gap: 10px; padding: 9px 10px; cursor: pointer; }
 .ord-pick-main { display: flex; flex: 1; flex-direction: column; min-width: 0; font-size: 13px; }
 .ord-pick-main .ord-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
