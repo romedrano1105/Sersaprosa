@@ -61,7 +61,8 @@ flujo de trabajo del día:
    mapa. Una ruta nueva se **guarda** con `POST /rutas/guardar`; también existen
    `POST /rutas/listar`, `POST /rutas/actualizar` y `POST /disponibilidad/desasignar`
    (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
-   `desasignar_ruta_operativa`).
+   `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
+   `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Header, HTTPException
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
-from . import database
+from . import database, rutas_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/disponibilidad", tags=["disponibilidad operativa"])
@@ -114,6 +114,15 @@ def desasignar(req: Desasignacion, authorization: str | None = Header(default=No
     try:
         result = cliente.rpc("desasignar_ruta_operativa", {"p_ruta": req.ruta, "p_usuario": usuario}).execute().data
     except APIError as error:
+        if rutas_admin.funcion_ausente(error):
+            try:
+                rutas_admin.desasignar_ruta(database.cliente_servicio(), req.ruta)
+            except rutas_admin.ReglaDeNegocio as regla:
+                raise HTTPException(409, str(regla)) from regla
+            except Exception as fallo:
+                logger.exception("Falló el respaldo de desasignación.")
+                raise HTTPException(503, "No se pudo quitar la asignación.") from fallo
+            return {"ruta": req.ruta, "desasignada": True}
         logger.exception("No se pudo quitar la asignación operativa.")
         code = getattr(error, "code", "")
         if code in {"22023", "P0001"}:
