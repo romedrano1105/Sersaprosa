@@ -7,14 +7,14 @@
    ===================================================================== */
 
 /* Tema alternativo para el módulo fuera del dashboard. */
-body.dsp-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a6b5;--route:#3cc8b4;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+body.dsp-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93a6b5;--route:#5b8cff;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
 /* Contenedor centrado del módulo fuera del dashboard. */
 .dsp-shell{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
 
 /* Módulo */
 /* MÓDULO: variables propias (--d-*) que toman los colores de PaginaPrincipal y, */
 /* si no existen, usan los mismos valores por defecto. */
-.dsp{--d-bg:var(--bg,#14202b);--d-panel:var(--panel,#1d2c3a);--d-line:var(--line,#2e4153);--d-tx:var(--tx,#e8eef2);--d-mut:var(--mut,#93a6b5);--d-brand:var(--route,#3cc8b4);--d-no:var(--high,#e5533d);--d-warn:var(--mid,#f2b544);--d-ok:#5fd0a0;color:var(--d-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+.dsp{--d-bg:var(--bg,#1f2124);--d-panel:var(--panel,#26282c);--d-line:var(--line,#3d4047);--d-tx:var(--tx,#e8eef2);--d-mut:var(--mut,#93a6b5);--d-brand:var(--route,#5b8cff);--d-no:var(--high,#e5533d);--d-warn:var(--mid,#f2b544);--d-ok:#3ec27a;color:var(--d-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
 /* Mismo cálculo de tamaños que usa PaginaPrincipal (border-box). */
 .dsp,.dsp *{box-sizing:border-box}
 .dsp-root{display:block}
@@ -66,7 +66,7 @@ body.dsp-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93
 
 /* BOTONES y lista desplegable de rutas. */
 .dsp .dsp-btn{font:inherit;font-weight:500;cursor:pointer;background:transparent;color:var(--d-tx);border:1px solid var(--d-line);border-radius:4px;padding:7px 12px;width:auto}
-.dsp .dsp-btn.dsp-primary{background:var(--d-brand);color:#06241f;border-color:var(--d-brand)}
+.dsp .dsp-btn.dsp-primary{background:var(--d-brand);color:#1b2133;border-color:var(--d-brand)}
 .dsp .dsp-btn:disabled{opacity:.5;cursor:not-allowed}
 .dsp .dsp-select{display:block;width:100%;margin:0;padding:9px 10px;font:inherit;background:var(--d-bg);color:var(--d-tx);border:1px solid var(--d-line);border-radius:4px}
 .dsp .dsp-select.dsp-auto{display:inline-block;width:auto;margin-left:4px;padding:5px 8px}
