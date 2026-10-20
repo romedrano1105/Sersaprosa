@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/assets/css/verificarConduCSS.css">
   <link rel="stylesheet" href="/assets/css/notificacionesCSS.css">
   <link rel="stylesheet" href="/assets/css/pedidosEnCurso.css">
+  <link rel="stylesheet" href="/assets/css/centroRutas.css">
 </head>
 <body data-rr-manual>
   <section id="login" class="login-screen">
@@ -57,19 +58,25 @@
 
     <main class="dashboard-main">
       <section id="routesScreen" class="screen" aria-labelledby="pageTitle">
+        <!-- Centro de control de rutas (centroRutas.js): rutas de hoy, estado, acciones y tarjetas de resumen -->
+        <div id="centroRutas"></div>
+
+        <!-- Guardar la ruta trazada (solo en borrador): la relocaliza dashboard.js -->
+        <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
+          <div class="save-route-copy">
+            <h3>Guardar esta ruta</h3>
+            <p class="privacy-note">Queda lista para asignarle conductor, guardias y vehículo.</p>
+          </div>
+          <div class="save-route-row">
+            <input id="saveRouteName" type="text" maxlength="80" aria-label="Nombre de la ruta" placeholder="Nombre de la ruta">
+            <button id="saveRouteBtn" class="primary-button" type="button">Guardar ruta</button>
+          </div>
+          <p id="saveRouteMsg" class="notice hidden" role="status"></p>
+        </section>
+
         <div class="routes-layout">
           <aside class="route-panel">
-            <section id="orderPicker" class="route-step" aria-label="Pedidos en curso para la ruta"></section>
-            <section class="route-details route-step">
-              <div class="section-heading">
-                <div><span class="section-kicker">RECORRIDO PROGRAMADO</span><h2 id="routeTitle">Ruta del día</h2></div>
-                <span class="secure-badge">SEGURA</span>
-              </div>
-              <div class="route-metrics" aria-label="Métricas de la ruta">
-                <div><span>Distancia</span><strong id="mDist">–</strong></div>
-                <div><span>Tiempo estimado</span><strong id="mEta">–</strong></div>
-                <div><span>Riesgo</span><strong id="mRisk">–</strong></div>
-              </div>
+            <section class="route-step route-tasks" aria-label="Pedidos de la ruta">
               <section class="origin-card" aria-label="Punto de inicio de la ruta">
                 <div class="origin-mark" aria-hidden="true">A</div>
                 <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
@@ -77,35 +84,38 @@
               </section>
               <p class="privacy-note">El GPS solo se solicita al pulsar el botón y se comparte con OSRM para calcular el recorrido.</p>
               <p id="routeMessage" class="notice hidden" role="status"></p>
-              <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
               <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
-              <div class="route-options-heading"><h3>Opciones de ruta</h3><span>OSRM · calles</span></div>
-              <div id="routeOptions" aria-live="polite"></div>
-              <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
-                <h3>Guardar esta ruta</h3>
-                <p class="privacy-note">Queda lista en «Empleados y Vehículos» para asignarle conductor, guardias y vehículo.</p>
-                <div class="save-route-row">
-                  <input id="saveRouteName" type="text" maxlength="80" aria-label="Nombre de la ruta" placeholder="Nombre de la ruta">
-                  <button id="saveRouteBtn" class="primary-button" type="button">Guardar ruta</button>
-                </div>
-                <p id="saveRouteMsg" class="notice hidden" role="status"></p>
-              </section>
+              <div id="taskList"></div>
             </section>
+
+            <details id="pickerBox" class="route-step" open>
+              <summary>Elegir pedidos de la ruta <small>(solo en borrador)</small></summary>
+              <section id="orderPicker" aria-label="Pedidos en curso para la ruta"></section>
+            </details>
+
             <details class="route-step route-custom">
               <summary>Ruta personalizada <small>(opcional · origen, paradas y destino a mano)</small></summary>
               <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
             </details>
           </aside>
+
           <section class="map-section" aria-label="Mapa y recorrido">
             <div class="map-card-head">
               <div><span>VISTA PREVIA OPERATIVA</span><h2>Mapa del recorrido</h2></div>
-              <span class="map-source">OpenStreetMap · OSRM</span>
+              <div class="route-metrics-inline" aria-label="Métricas de la ruta">
+                <span>Distancia <strong id="mDist">–</strong></span>
+                <span>Tiempo <strong id="mEta">–</strong></span>
+                <span>Riesgo <strong id="mRisk">–</strong></span>
+                <span class="map-source">OpenStreetMap · OSRM</span>
+              </div>
             </div>
+            <div id="routeOptions" class="route-options-bar" aria-live="polite"></div>
             <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
               <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap</span></div>
             </div>
           </section>
         </div>
+        <span id="routeTitle" hidden></span>
       </section>
 
       <section id="ordersScreen" class="screen hidden" aria-labelledby="pageTitle">
@@ -194,6 +204,7 @@
   <script src="/assets/js/notificacionesJS.js"></script>
   <script src="/assets/js/routePlanner.js"></script>
   <script src="/assets/js/pedidosEnCurso.js"></script>
+  <script src="/assets/js/centroRutas.js"></script>
   <script src="/assets/js/riesgoRutas.js"></script>
   <script src="/assets/js/dashboard.js"></script>
 </body>
