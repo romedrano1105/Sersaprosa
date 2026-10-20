@@ -5,8 +5,9 @@
   const LOGIN_URL = "/PaginaPrincipal.html";
   const LINKS = [
     { id: "routes", label: "Asignar Rutas", detail: "Planificación", icon: "↗" },
+    { id: "orders", label: "Pedidos en curso", detail: "Pendientes y en proceso", icon: "▤" },
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
-        { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
+    { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
     { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠",
       href: "/riesgo_rutas.html", rol: "coordinador_rutas" }
   ];
@@ -35,6 +36,7 @@
 function activeSection() {
     if (global.location.pathname.endsWith("/riesgo-rutas.html")) return "risk";
     return global.location.hash === "#monitoreo" ? "monitor" :
+      global.location.hash === "#pedidos" ? "orders" :
       global.location.hash === "#personal" ? "daily" : "routes";
   }
 
@@ -120,7 +122,7 @@ function activeSection() {
         }
         // Estamos fuera de la página principal: volver a ella
         if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
-          const hashes = { routes: "", monitor: "#monitoreo", daily: "#personal" };
+          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", daily: "#personal" };
           global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
           return;
         }

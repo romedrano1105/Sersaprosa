@@ -23,7 +23,9 @@
   let alertModule = null;
   let notificationsModule = null;
   let availabilityModule = null;
-  let assignmentModule = null;
+  let ordersModule = null;
+  let pickerModule = null;
+  let recalcTimer = null;
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
@@ -110,6 +112,7 @@
       throw new Error("El servicio de entregas devolvió una respuesta no válida.");
     }
     deliveries = response.entregas;
+    [ordersModule, pickerModule].forEach(module => module && module.setData(deliveries));
   }
 
   async function loadEvents() {
@@ -252,8 +255,13 @@
       }));
   }
 
+  // Pedidos en curso que se eligieron para la ruta (por defecto, todos los que están en curso).
+  function selectedOrders() {
+    return window.Pedidos.store.effective(deliveries);
+  }
+
   function dailyStops() {
-    return deliveries.filter(hasLocation).map(delivery => ({
+    return selectedOrders().filter(hasLocation).map(delivery => ({
       name: delivery.cliente || delivery.direccion || "Destino diario",
       detail: delivery.direccion || "",
       time: delivery.hora || "",
@@ -396,16 +404,18 @@
     $("stops").replaceChildren();
     $("routeOptions").replaceChildren();
     try {
-      const missing = manualStops ? [] : deliveries.filter(delivery => !hasLocation(delivery));
+      const chosen = manualStops ? [] : selectedOrders();
+      const missing = chosen.filter(delivery => !hasLocation(delivery));
       const stops = manualStops || dailyStops();
       if (!stops.length) {
-        throw new Error(deliveries.length ?
-          "Los destinos de hoy no tienen coordenadas guardadas. Añádelas en Supabase para calcular la ruta diaria." :
-          "No hay destinos programados para hoy.");
+        throw new Error(
+          !deliveries.some(window.Pedidos.enCurso) ? "No hay pedidos en curso para hoy." :
+          !chosen.length ? "Elige al menos un pedido en curso para calcular la ruta." :
+          "Los pedidos elegidos no tienen coordenadas guardadas. Añádelas en Supabase para trazar la ruta.");
       }
-      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : "Ruta del día";
+      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : "Ruta de pedidos (" + stops.length + ")";
       if (missing.length) {
-        $("routeMessage").textContent = missing.length + " destino(s) no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
+        $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
         $("routeMessage").classList.remove("hidden");
       }
       routeChoices = await requestRoutes(stops);
@@ -456,10 +466,23 @@
      });
    }
 
-  // Tras asignar en un panel, el otro se recarga para que vea lo mismo (el que asignó ya se recargó solo).
-  function refreshAvailabilityPanels(source) {
-    [availabilityModule, assignmentModule].forEach(module => {
-      if (module && module !== source) module.reload();
+  // Pedidos en curso: la pantalla completa y el selector de "Asignar Rutas" comparten la misma elección.
+  function mountOrderModules() {
+    if (ordersModule) return;
+    ordersModule = window.Pedidos.mountPage($("panelPedidos"), { onGoRoutes: () => setScreen("routes") });
+    pickerModule = window.Pedidos.mountPicker($("orderPicker"), { onGoOrders: () => setScreen("orders") });
+    ordersModule.setData(deliveries);
+    pickerModule.setData(deliveries);
+    // Al cambiar la elección se vuelve a trazar la ruta (con una pequeña espera para agrupar clics seguidos).
+    window.Pedidos.store.subscribe(() => {
+      if (manualStops) return;
+      clearTimeout(recalcTimer);
+      recalcTimer = setTimeout(async () => {
+        if (await calculateRoute()) {
+          lastRouteInput = routeInputSignature();
+          lastRiskInput = riskInputSignature();
+        }
+      }, 500);
     });
   }
 
@@ -471,22 +494,6 @@
       LOAD: "/disponibilidad/listar",
       ASSIGN: "/disponibilidad/asignar",
       ROLE_ALLOWED: "coordinador_rutas",
-      onAssigned: refreshAvailabilityPanels,
-      onUnauthorized: () => window.AppNavigation.handleUnauthorized()
-    });
-  }
-
-  function mountAssignmentPanel() {
-    if (assignmentModule) return;
-    assignmentModule = window.Disponibilidad.mount($("routeAssignment"), {
-      view: "assignment",
-      showHeader: false,
-      showHistory: false,
-      showQuick: false,
-      LOAD: "/disponibilidad/listar",
-      ASSIGN: "/disponibilidad/asignar",
-      ROLE_ALLOWED: "coordinador_rutas",
-      onAssigned: refreshAvailabilityPanels,
       onUnauthorized: () => window.AppNavigation.handleUnauthorized()
     });
   }
@@ -505,13 +512,15 @@
   }
 
   function setScreen(name) {
-    const screen = ["routes", "monitor", "daily"].includes(name) ? name : "routes";
+    const screen = ["routes", "orders", "monitor", "daily"].includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
+    $("ordersScreen").classList.toggle("hidden", screen !== "orders");
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
-      routes: ["PLANIFICACIÓN OPERATIVA", "Asignar Rutas", "Configure y despache unidades de forma segura."],
+      routes: ["PLANIFICACIÓN OPERATIVA", "Asignar Rutas", "Elija pedidos en curso y trace su recorrido de forma segura."],
+      orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
     };
@@ -521,8 +530,9 @@
     $("pageDescription").textContent = description;
     window.AppNavigation.setActive(screen);
     if (screen === "routes") {
-      mountAssignmentPanel();
       if (map) setTimeout(() => map.invalidateSize(), 50);
+    } else if (screen === "orders") {
+      mountOrderModules();
     } else if (screen === "monitor") {
       setMonitorTab(monitorTab);
     } else {
@@ -542,7 +552,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, availabilityModule, assignmentModule].forEach(module => {
+    [eventModule, alertModule, availabilityModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     const deliveriesResult = results[0];
@@ -585,7 +595,7 @@
     }
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
-    mountAssignmentPanel();
+    mountOrderModules();
     mountNotificationsPanel();
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     window.addEventListener("app:navigate", event => setScreen(event.detail));
@@ -614,7 +624,8 @@
         $("locate").disabled = false;
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
-    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" : "routes");
+    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" :
+      location.hash === "#pedidos" ? "orders" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();
