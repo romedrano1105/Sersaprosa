@@ -86,7 +86,7 @@ function activeSection() {
     const brand = createElement("div", { class: "app-nav-brand" });
     const logo = createElement("img", {
       class: "app-nav-logo",
-      src: "/assets/img/sersaprosa-logo.svg",
+      src: "/assets/img/sersaprosa_logo.png",
       alt: ""
     });
     const brandCopy = createElement("span", { class: "app-nav-brand-copy" });
