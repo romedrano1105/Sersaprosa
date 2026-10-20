@@ -3,7 +3,7 @@
 
   const CENTER = [13.6929, -89.2182];
   const OSRM_URL = "https://router.project-osrm.org/route/v1/driving/";
-  const COLORS = { alta: "#ff4d55", media: "#ff9e45", baja: "#2494ff" };
+  const COLORS = { alta: "#e5484d", media: "#f5a524", baja: "#5b8cff" };
   const $ = id => document.getElementById(id);
   const sessionKey = "session";
   let session = null;
@@ -364,7 +364,7 @@
     routeChoices.forEach((choice, index) => {
       const selected = index === selectedRoute;
       const line = L.polyline(choice.geometry, {
-        color: selected ? "#3cc8b4" : "#7c8d9a",
+        color: selected ? "#f2873b" : "#7c8d9a",
         weight: selected ? 6 : 3,
         opacity: selected ? 0.95 : 0.55
       }).addTo(routeLayers);
