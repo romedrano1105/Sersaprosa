@@ -78,10 +78,117 @@
       actionError: "",
       busy: false,
       filtro: "todas",
-      historial: "todos"
+      historial: "todos",
+      demo: false            // modo demostración: datos de ejemplo en memoria, no toca el servidor
     };
     let timer = null;
     let destroyed = false;
+    let demoFilas = [];
+    let demoAuditoria = [];
+    let demoContador = 0;
+
+    // ---------- Modo demostración ----------
+    // Para presentar el apartado sin base de datos: 7 notificaciones de ejemplo (todas dicen "demo"),
+    // se pueden marcar como leídas y simular que llega una nueva. Nada se guarda ni se envía.
+    const DEMO_USUARIO = "Administrador (demo)";
+    const COLOR_DE = { alta: "roja", media: "naranja", baja: "amarilla" };
+    const DEMO_NUEVAS = [
+      ["choque", "alta", "Choque en la carretera Panamericana (demo)", "Ruta Oriente", "Soyapango"],
+      ["emergencia", "alta", "Emergencia: unidad detenida en la vía (demo)", "Ruta Centro", "Centro"],
+      ["evento", "media", "Cierre vial por trabajos en el bulevar (demo)", "Ruta Poniente", "Santa Tecla"],
+      ["alerta", "baja", "Velocidad por encima del límite (demo)", "Ruta Centro", "Escalón"]
+    ];
+
+    function demoFila(origen, urgencia, titulo, ruta, zona, haceMin, leida) {
+      demoContador += 1;
+      const creada = new Date(Date.now() - haceMin * 60000).toISOString();
+      const fila = {
+        id: "demo-" + demoContador, origen, ruta, titulo, zona, fecha: creada, creada_en: creada,
+        urgencia: urgencia || null, leida: false, leida_nombre: null, leida_en: null
+      };
+      demoAuditoria.push({ accion: "generada", fecha: creada, usuario: "Sistema", notificacion_id: fila.id });
+      if (leida) {
+        fila.leida = true;
+        fila.leida_nombre = DEMO_USUARIO;
+        fila.leida_en = new Date(Date.now() - (haceMin - 20) * 60000).toISOString();
+        demoAuditoria.push({ accion: "leida", fecha: fila.leida_en, usuario: DEMO_USUARIO, notificacion_id: fila.id });
+      }
+      demoFilas.push(fila);
+    }
+
+    function demoReiniciar() {
+      demoFilas = [];
+      demoAuditoria = [];
+      demoContador = 0;
+      demoFila("choque", "alta", "Choque en el bulevar, cerca de Soyapango (demo)", "Ruta Oriente", "Soyapango", 12);
+      demoFila("emergencia", "alta", "Emergencia reportada cerca de Metrocentro (demo)", "Ruta Centro", "Centro", 25);
+      demoFila("evento", "media", "Marcha en el Centro Histórico (demo)", "Ruta Centro", "Centro", 90);
+      demoFila("alerta", "media", "Frenado brusco repetido en el trayecto (demo)", "Ruta Poniente", "Santa Tecla", 140);
+      demoFila("evento", "baja", "Feriado: más tránsito en centros comerciales (demo)", "Ruta Centro", "Escalón", 300);
+      demoFila("choque", null, "Incidente sin urgencia clasificada (demo)", "Ruta Oriente", "Ilopango", 420);
+      demoFila("alerta", "baja", "Desvío menor de la ruta planificada (demo)", "Ruta Poniente", "Santa Tecla", 600, true);
+    }
+
+    // Misma forma que devuelve POST /notificaciones/listar: más urgentes primero y, dentro, las más recientes.
+    function demoRespuesta() {
+      const orden = { alta: 0, media: 1, baja: 2 };
+      const items = demoFilas.map(n => Object.assign({}, n, { color: COLOR_DE[n.urgencia] || "sin_clasificar" }))
+        .sort((a, b) => (orden[a.urgencia] ?? 3) - (orden[b.urgencia] ?? 3) || new Date(b.fecha) - new Date(a.fecha));
+      const sinLeer = items.filter(n => !n.leida);
+      const porId = Object.fromEntries(items.map(n => [n.id, n]));
+      const audit = demoAuditoria.slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).map(r => {
+        const n = porId[r.notificacion_id] || {};
+        return Object.assign({}, r, { titulo: n.titulo || "Notificación", urgencia: n.urgencia || null, ruta: n.ruta || "" });
+      });
+      return {
+        items, audit,
+        resumen: {
+          total: items.length, no_leidas: sinLeer.length,
+          roja: sinLeer.filter(n => n.urgencia === "alta").length,
+          naranja: sinLeer.filter(n => n.urgencia === "media").length,
+          amarilla: sinLeer.filter(n => n.urgencia === "baja").length,
+          sin_clasificar: items.filter(n => !COLOR_DE[n.urgencia]).length
+        }
+      };
+    }
+
+    function demoAplicar() {
+      state.data = demoRespuesta();
+      state.syncError = state.syncDetail = state.loadError = state.actionError = "";
+      state.busy = false;
+      if (opts.onCount) opts.onCount(state.data.resumen.no_leidas);
+      render();
+    }
+
+    function demoActivar() {
+      demoReiniciar();
+      state.demo = true;
+      state.filtro = "todas";
+      demoAplicar();
+    }
+
+    function demoSalir() {
+      state.demo = false;
+      state.data = null;
+      refresh();
+    }
+
+    function demoNueva() {
+      const [origen, urgencia, titulo, ruta, zona] = DEMO_NUEVAS[demoContador % DEMO_NUEVAS.length];
+      demoFila(origen, urgencia, titulo, ruta, zona, 0);
+      demoAplicar();
+    }
+
+    function demoLeer(item) {
+      const fila = demoFilas.find(n => n.id === item.id);
+      if (fila && !fila.leida) {
+        fila.leida = true;
+        fila.leida_nombre = DEMO_USUARIO;
+        fila.leida_en = new Date().toISOString();
+        demoAuditoria.push({ accion: "leida", fecha: fila.leida_en, usuario: DEMO_USUARIO, notificacion_id: fila.id });
+      }
+      demoAplicar();
+    }
 
     async function request(path, payload) {
       if (!session || !session.token) throw Object.assign(new Error("Sesión vencida. Inicie sesión de nuevo."), { status: 401 });
@@ -118,6 +225,7 @@
 
     async function refresh() {
       if (destroyed || state.busy || !permitido()) return;
+      if (state.demo) { demoAplicar(); return; }
       state.busy = true;
       state.syncError = "";
       state.syncDetail = "";
@@ -148,6 +256,7 @@
     }
 
     async function marcarLeida(item) {
+      if (state.demo) { demoLeer(item); return; }
       state.actionError = "";
       try {
         await request(opts.READ || "/notificaciones/leer", { id: item.id });
@@ -292,6 +401,15 @@
         return;
       }
       const datos = state.data;
+      // Barra de la demostración: siempre visible para poder presentar el apartado sin datos reales.
+      raiz.append(h("div", { class: "nt-demo-bar" + (state.demo ? " nt-demo-on" : "") },
+        state.demo
+          ? [h("span", { class: "nt-demo-tag", role: "status" }, "MODO DEMOSTRACIÓN · datos de ejemplo, no se guardan"),
+             h("button", { type: "button", class: "nt-btn", onclick: demoNueva }, "+ Simular nueva"),
+             h("button", { type: "button", class: "nt-btn", onclick: () => { demoReiniciar(); demoAplicar(); } }, "Reiniciar"),
+             h("button", { type: "button", class: "nt-btn", onclick: demoSalir }, "Salir de la demo")]
+          : [h("span", { class: "nt-demo-help" }, "¿Sin datos para mostrar?"),
+             h("button", { type: "button", class: "nt-btn", onclick: demoActivar }, "Ver demostración")]));
       const fila = h("div", { class: "nt-banners" });
       if (state.syncError) fila.append(bannerFallo(state.syncError, state.syncDetail, refresh));
       if (state.loadError) fila.append(bannerFallo(state.loadError, "", refresh));

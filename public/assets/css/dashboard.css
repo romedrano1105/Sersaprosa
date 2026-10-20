@@ -55,11 +55,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .dashboard-main { min-height: calc(100vh - 126px); padding: 26px 34px 30px; }
 .screen { min-width: 0; }
-.routes-layout { display: grid; grid-template-columns: minmax(320px, 340px) minmax(0, 1fr); gap: 22px; align-items: start; }
+/* Planificar rutas: columna de pasos y mapa con la misma altura y los mismos bordes arriba y abajo. */
+.routes-layout { display: grid; grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); gap: 22px; align-items: stretch; height: calc(100vh - 186px); min-height: 560px; }
 .route-panel, .map-section, .monitor-content, .dsp-shell { min-width: 0; }
-.route-panel { max-height: calc(100vh - 178px); overflow: auto; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-.route-details { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
-.map-section { min-height: 620px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.route-panel { min-height: 0; overflow: auto; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+/* Pasos de la columna izquierda: sin tarjetas dentro de tarjetas, separados por una línea. */
+.route-step { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.route-panel > .route-step:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.route-panel .ord-picker, .route-panel .mr-card { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; }
+.route-custom summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none; font: 600 18px "Barlow Condensed", sans-serif; }
+.route-custom summary::-webkit-details-marker { display: none; }
+.route-custom summary::before { content: "▸"; color: var(--route); font-size: 14px; }
+.route-custom[open] summary::before { content: "▾"; }
+.route-custom summary small { color: var(--faint); font: 400 11px "Inter", sans-serif; }
+.route-custom .mr-card { margin-top: 12px; }
+.map-section { min-height: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .map-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .map-card-head > div > span { color: var(--route); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 .map-card-head h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
@@ -112,7 +122,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .text-link { display: inline-flex; gap: 8px; margin-top: 18px; color: var(--route); font-size: 12px; text-decoration: none; }
 .text-link:hover { color: var(--route); }
 
-.map-frame { position: relative; min-height: 540px; height: calc(100vh - 240px); overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #0a121a; box-shadow: 0 16px 42px #0005; }
+.map-frame { position: relative; flex: 1; min-height: 360px; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: #0a121a; box-shadow: 0 16px 42px #0005; }
 #map { position: absolute; inset: 0; width: 100%; height: 100%; background: #152330; }
 .map-caption { position: absolute; z-index: 500; right: 12px; bottom: 12px; left: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid #ffffff20; border-radius: 5px; background: #080e15e8; color: #c2ceda; font-size: 10px; pointer-events: none; }
 .map-legend { display: inline-flex; align-items: center; gap: 7px; }
@@ -195,7 +205,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .topbar { align-items: flex-start; }
   .top-actions { flex-wrap: wrap; }
   .dashboard-main { padding: 22px; }
-  .routes-layout { grid-template-columns: minmax(300px, 340px) minmax(0, 1fr); }
+  .routes-layout { grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); }
   .route-panel { padding: 18px; }
   .map-section { padding: 15px; }
 }
@@ -203,9 +213,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .topbar { flex-direction: column; padding: 18px 18px 16px 68px; }
   .top-actions { justify-content: flex-start; width: 100%; }
   .dashboard-main { min-height: 0; padding: 14px; }
-  .routes-layout { display: flex; flex-direction: column; }
+  .routes-layout { display: flex; flex-direction: column; height: auto; min-height: 0; }
   .map-section { order: -1; width: 100%; min-height: 0; padding: 12px; }
-  .map-frame { min-height: 48vh; height: 48vh; }
+  .map-frame { flex: none; min-height: 48vh; height: 48vh; }
   .route-panel { width: 100%; max-height: none; overflow: visible; padding: 18px; }
   .monitor-content, .dsp-shell { padding: 12px; }
 }
@@ -215,7 +225,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .refresh-button { width: 100%; }
   .mr-card { padding: 12px; }
   .mr-input { font-size: 16px; }
-  .map-frame { min-height: 42vh; height: 42vh; }
+  .map-frame { flex: none; min-height: 42vh; height: 42vh; }
   .map-caption { right: 7px; bottom: 7px; left: 7px; align-items: flex-start; flex-direction: column; font-size: 9px; }
   .login-card { padding: 28px 22px; }
 }
@@ -223,3 +233,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .login-card { animation: appear .3s ease-out; }
   @keyframes appear { from { opacity: 0; transform: translateY(8px); } }
 }
+
+/* Riesgo de rutas dentro de la página principal: formulario a la izquierda y listado a la derecha. */
+/* Mismos colores que el resto del panel: se redefinen los tokens que usa riesgoRutas.css. */
+#riskScreen { --font-cera-pro: "Inter", system-ui, sans-serif; --surface-deep-panel: var(--panel); --surface-raised-surface: var(--panel-raised);
+  --surface-overlay: #0a121a; --color-graphite: var(--line); --color-steel: #26384a; --color-signal-blue: var(--route); --color-deep-signal: #12b58a;
+  --radius-cards: 8px; --radius-buttons: 6px; --radius-inputs: 6px; --card-padding: 20px; }
+#riskScreen #rr-form button[type="submit"] { color: #04231c; }
+#riskScreen .rr-contenedor { max-width: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: 22px; align-items: start; }
+#riskScreen .rr-tarjeta { margin-bottom: 0; }
+#riskScreen #rr-detalle { grid-column: 1 / -1; }
+@media (max-width: 900px) { #riskScreen .rr-contenedor { grid-template-columns: 1fr; } }
