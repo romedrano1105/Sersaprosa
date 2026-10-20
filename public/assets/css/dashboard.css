@@ -39,7 +39,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .login-footnote { display: block; margin-top: 18px; color: var(--faint); text-align: center; }
 
 .dashboard { min-height: 100vh; background: radial-gradient(circle at 86% -10%, #222530 0, transparent 30%), var(--bg); }
-.topbar { min-height: 126px; padding: 26px 34px 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); background: #080e15d9; }
+.topbar { min-height: 126px; padding: 26px 34px 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); background: #16171ad9; }
 .page-heading h1 { margin: 5px 0 3px; font: 600 32px/1 "Barlow Condensed", sans-serif; letter-spacing: .015em; }
 .page-heading p { margin: 0; color: var(--muted); font-size: 11px; }
 .top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
