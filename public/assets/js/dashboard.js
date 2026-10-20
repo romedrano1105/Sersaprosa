@@ -26,6 +26,10 @@
   let ordersModule = null;
   let pickerModule = null;
   let recalcTimer = null;
+  let centroModule = null;   // centro de control de rutas (centroRutas.js)
+  let notifData = null;      // última respuesta de notificaciones (para las alertas de la ruta)
+  let stopMarkers = [];      // marcadores de las paradas trazadas, en orden
+  const ORDER_KEY = "ordenVisita";
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
@@ -88,6 +92,7 @@
     }
     deliveries = response.entregas;
     [ordersModule, pickerModule].forEach(module => module && module.setData(deliveries));
+    pushCentro();
   }
 
   async function loadEvents() {
@@ -179,9 +184,11 @@
     return Math.hypot(px - fraction * dx, py - fraction * dy);
   }
 
-  function riskForRoute(route) {
+  // Puntaje de riesgo del recorrido y los eventos que lo cruzan (dentro de su radio).
+  function routeRiskDetail(route) {
     const line = route.geometry.coordinates;
     let score = 0;
+    const events = [];
     mapEvents.filter(event => hasLocation(event)).forEach(event => {
       const center = [Number(event.lng), Number(event.lat)];
       let closest = Infinity;
@@ -192,9 +199,14 @@
       if (closest <= radius) {
         const weight = event.severity === "alta" ? 5 : event.severity === "media" ? 2 : 1;
         score += weight * (1 - closest / radius);
+        events.push(event);
       }
     });
-    return score;
+    return { score, events };
+  }
+
+  function riskForRoute(route) {
+    return routeRiskDetail(route).score;
   }
 
   function riskLabel(score) {
@@ -216,13 +228,17 @@
       route.geometry.coordinates.every(point => Array.isArray(point) && validCoordinates(point[1], point[0])) &&
       Number.isFinite(route.distance) && Number.isFinite(route.duration));
     if (!candidates.length) throw new Error("El servicio de rutas devolvió geometría incompleta.");
-    return candidates.map(route => ({
-      raw: route,
-      distanceKm: route.distance / 1000,
-      durationMin: route.duration / 60,
-      riskScore: riskForRoute(route),
-      geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
-    })).sort((first, second) =>
+    return candidates.map(route => {
+      const risk = routeRiskDetail(route);
+      return {
+        raw: route,
+        distanceKm: route.distance / 1000,
+        durationMin: route.duration / 60,
+        riskScore: risk.score,
+        riskEvents: risk.events,
+        geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+      };
+    }).sort((first, second) =>
       (first.riskScore * 250 + first.durationMin + first.distanceKm) -
       (second.riskScore * 250 + second.durationMin + second.distanceKm))
       .map((route, index) => Object.assign(route, {
@@ -235,8 +251,48 @@
     return window.Pedidos.store.effective(deliveries);
   }
 
+  function currentRoute() {
+    return centroModule ? centroModule.activeRoute : null;
+  }
+
+  // Orden de visita guardado en este navegador, por ruta (invertir / optimizar).
+  function visitOrderKey() {
+    const route = currentRoute();
+    return route ? "r:" + route.id : "borrador";
+  }
+
+  function readVisitOrder() {
+    try {
+      const all = JSON.parse(sessionStorage.getItem(ORDER_KEY) || "{}");
+      return Array.isArray(all[visitOrderKey()]) ? all[visitOrderKey()] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function saveVisitOrder(ids) {
+    try {
+      const all = JSON.parse(sessionStorage.getItem(ORDER_KEY) || "{}");
+      all[visitOrderKey()] = ids;
+      sessionStorage.setItem(ORDER_KEY, JSON.stringify(all));
+    } catch (error) { /* sin almacenamiento: el orden vale solo hasta recargar */ }
+  }
+
+  // Todos los pedidos que muestra la lista, en orden de visita: los de la ruta guardada o, en borrador, los elegidos.
+  function routeAllOrders() {
+    const util = window.CentroRutas.util;
+    const route = currentRoute();
+    return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(), readVisitOrder());
+  }
+
+  // Los que realmente se trazan: en curso y con coordenadas.
+  function tracedOrders() {
+    return routeAllOrders().filter(order => window.Pedidos.enCurso(order) && hasLocation(order));
+  }
+
   function dailyStops() {
-    return selectedOrders().filter(hasLocation).map(delivery => ({
+    return tracedOrders().map(delivery => ({
+      id: String(delivery.id),
       name: delivery.cliente || delivery.direccion || "Destino diario",
       detail: delivery.direccion || "",
       time: delivery.hora || "",
@@ -273,7 +329,7 @@
 
   function drawRoutes(stops) {
     routeLayers.clearLayers();
-    $("stops").replaceChildren();
+    stopMarkers = [];
     const options = $("routeOptions");
     options.replaceChildren();
     const bounds = [];
@@ -319,13 +375,7 @@
       const popup = element("div", "", (index + 1) + ". " + stop.name);
       if (stop.detail) popup.append(element("small", "", stop.detail));
       marker.bindPopup(popup);
-      const item = element("li", "", (index + 1) + ". " + stop.name);
-      if (stop.time) item.append(element("small", "", stop.time));
-      item.addEventListener("click", () => {
-        map.setView([stop.lat, stop.lng], 15);
-        marker.openPopup();
-      });
-      $("stops").append(item);
+      stopMarkers.push({ marker, lat: stop.lat, lng: stop.lng });
     });
     const combined = bounds.reduce((result, bound) => result.extend(bound), L.latLngBounds([]));
     if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
@@ -375,7 +425,7 @@
 
   // ---- Guardar la ruta trazada (paso 2 → 3 del flujo): queda disponible para asignarle personal ----
   function routeOrderIds() {
-    return manualStops ? [] : selectedOrders().filter(hasLocation).map(order => String(order.id));
+    return manualStops || currentRoute() ? [] : tracedOrders().map(order => String(order.id));
   }
 
   function suggestedRouteName() {
@@ -386,7 +436,7 @@
 
   // Solo se ofrece guardar cuando hay una ruta trazada a partir de pedidos elegidos (no la personalizada).
   function updateSaveRoute() {
-    const available = !manualStops && routeChoices.length > 0 && routeOrderIds().length > 0;
+    const available = !manualStops && !currentRoute() && routeChoices.length > 0 && routeOrderIds().length > 0;
     $("saveRoute").classList.toggle("hidden", !available);
     if (available && !$("saveRouteName").value) $("saveRouteName").value = suggestedRouteName();
   }
@@ -413,19 +463,21 @@
   async function calculateRoute() {
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
-    $("stops").replaceChildren();
     $("routeOptions").replaceChildren();
     try {
-      const chosen = manualStops ? [] : selectedOrders();
+      const route = currentRoute();
+      const chosen = manualStops ? [] : routeAllOrders().filter(window.Pedidos.enCurso);
       const missing = chosen.filter(delivery => !hasLocation(delivery));
       const stops = manualStops || dailyStops();
       if (!stops.length) {
         throw new Error(
+          route ? (chosen.length ? "Los pedidos pendientes de esta ruta no tienen coordenadas guardadas." :
+            "Esta ruta no tiene pedidos pendientes por trazar.") :
           !deliveries.some(window.Pedidos.enCurso) ? "No hay pedidos en curso para hoy." :
           !chosen.length ? "Elige al menos un pedido en curso para calcular la ruta." :
           "Los pedidos elegidos no tienen coordenadas guardadas. Añádelas en Supabase para trazar la ruta.");
       }
-      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : "Ruta de pedidos (" + stops.length + ")";
+      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : route ? route.nombre : "Ruta de pedidos (" + stops.length + ")";
       if (missing.length) {
         $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
         $("routeMessage").classList.remove("hidden");
@@ -435,11 +487,14 @@
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
       updateSaveRoute();
+      pushCentro();
       return true;
     } catch (error) {
       routeChoices = [];
       updateSaveRoute();
+      stopMarkers = [];
       routeLayers.clearLayers();
+      pushCentro();
       $("mDist").textContent = "–";
       $("mEta").textContent = "–";
       $("mRisk").textContent = "–";
@@ -472,6 +527,7 @@
        READ: "/notificaciones/leer",
        ROLE_ALLOWED: "coordinador_rutas",
        onUnauthorized: () => window.AppNavigation.handleUnauthorized(),
+       onData: data => { notifData = data; pushCentro(); },
        onCount: count => {
          const badge = $("notifCount");
          badge.textContent = count > 99 ? "99+" : String(count);
@@ -479,6 +535,63 @@
        }
      });
    }
+
+  // ---- Centro de control de rutas (centroRutas.js) ----
+  // Le entrega lo último que calculó este archivo: pedidos en orden de visita, el recorrido elegido y las alertas.
+  function pushCentro() {
+    if (!centroModule) return;
+    const choice = routeChoices[selectedRoute] || null;
+    centroModule.update({
+      deliveries,
+      orders: routeAllOrders(),
+      result: choice,
+      manual: Boolean(manualStops),
+      originLabel: $("originLabel").textContent,
+      events: choice ? choice.riskEvents.filter(event => event.severity === "alta" || event.severity === "media") : [],
+      notifs: notifData
+    });
+  }
+
+  async function recalcAndRemember() {
+    if (await calculateRoute()) {
+      lastRouteInput = routeInputSignature();
+      lastRiskInput = riskInputSignature();
+    }
+  }
+
+  // Elegir una ruta guardada (o null = nueva ruta en borrador). Deja la ruta personalizada, si había una.
+  function selectRoute(route) {
+    manualStops = null;
+    centroModule.setActive(route ? route.id : null);
+    const picker = $("pickerBox");
+    if (picker) picker.classList.toggle("hidden", Boolean(route));
+    $("saveRouteName").value = "";
+    return recalcAndRemember();
+  }
+
+  // Invertir u optimizar el orden de visita de los pedidos que se trazan; se recuerda por ruta en este navegador.
+  function reorderStops(kind) {
+    const traced = tracedOrders();
+    if (traced.length < 2) return;
+    const util = window.CentroRutas.util;
+    const ordered = kind === "reverse" ? traced.slice().reverse() : util.ordenarVecinoCercano(origin, traced);
+    saveVisitOrder(ordered.map(order => String(order.id)));
+    return recalcAndRemember();
+  }
+
+  function focusStop(index) {
+    const stop = stopMarkers[index];
+    if (!stop) return;
+    map.setView([stop.lat, stop.lng], 15);
+    stop.marker.openPopup();
+  }
+
+  // Tras asignar, desasignar o editar una ruta: se recargan pedidos y personal, y se vuelve a trazar.
+  async function afterRouteChange() {
+    await loadDeliveries().catch(() => {});
+    if (availabilityModule) availabilityModule.reload();
+    await recalcAndRemember();
+  }
 
   // Pedidos en curso: la pantalla completa y el selector de "Planificar rutas" comparten la misma elección.
   function mountOrderModules() {
@@ -489,14 +602,9 @@
     pickerModule.setData(deliveries);
     // Al cambiar la elección se vuelve a trazar la ruta (con una pequeña espera para agrupar clics seguidos).
     window.Pedidos.store.subscribe(() => {
-      if (manualStops) return;
+      if (manualStops || currentRoute()) return;
       clearTimeout(recalcTimer);
-      recalcTimer = setTimeout(async () => {
-        if (await calculateRoute()) {
-          lastRouteInput = routeInputSignature();
-          lastRiskInput = riskInputSignature();
-        }
-      }, 500);
+      recalcTimer = setTimeout(recalcAndRemember, 500);
     });
   }
 
@@ -574,6 +682,7 @@
     [eventModule, alertModule, availabilityModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
+    if (centroModule) centroModule.refresh();
     const deliveriesResult = results[0];
     const eventsResult = results[1];
     let routeOk = false;
@@ -614,6 +723,15 @@
     }
     initMap();
     setTimeout(() => map.invalidateSize(), 50);
+    centroModule = window.CentroRutas.mount($("centroRutas"), {
+      taskContainer: $("taskList"),
+      post,
+      onSelectRoute: selectRoute,
+      onReorder: reorderStops,
+      onFocusStop: focusStop,
+      onGoTo: name => setScreen(name),
+      onChanged: afterRouteChange
+    });
     mountOrderModules();
     mountNotificationsPanel();
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });

@@ -101,3 +101,28 @@ def asignar(req: Asignacion, authorization: str | None = Header(default=None)):
         "fecha": result["fecha"],
         "usuario": result["usuario"],
     }
+
+
+class Desasignacion(BaseModel):
+    ruta: str = Field(min_length=1, max_length=100)
+
+
+@router.post("/desasignar")
+def desasignar(req: Desasignacion, authorization: str | None = Header(default=None)):
+    """Quita conductor, guardias y vehículo de una ruta de hoy: vuelven a estar disponibles."""
+    cliente, usuario = _coordinador(authorization)
+    try:
+        result = cliente.rpc("desasignar_ruta_operativa", {"p_ruta": req.ruta, "p_usuario": usuario}).execute().data
+    except APIError as error:
+        logger.exception("No se pudo quitar la asignación operativa.")
+        code = getattr(error, "code", "")
+        if code in {"22023", "P0001"}:
+            raise HTTPException(409, str(getattr(error, "message", "La ruta no tiene una asignación para hoy."))) from error
+        if code == "42501":
+            raise HTTPException(403, "No tiene permiso para desasignar rutas.") from error
+        raise HTTPException(
+            503, "No se pudo quitar la asignación. Revise el esquema y las políticas de Supabase."
+        ) from error
+    if not isinstance(result, dict) or not result.get("ruta"):
+        raise HTTPException(502, "El servidor no confirmó la desasignación.")
+    return {"ruta": result["ruta"], "desasignada": True}
