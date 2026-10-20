@@ -74,6 +74,13 @@
 .nt-warn { margin: 9px 0 0; padding: 7px 9px; color: var(--nt-muted); background: #ffffff0d; border-left: 3px solid var(--nt-gray); font-size: 10px; }
 .nt-item-action { display: flex; align-items: center; flex: none; max-width: 150px; text-align: right; }
 .nt-item-action small { color: var(--nt-faint); font-size: 9px; }
+/* Barra del modo demostración */
+.nt-demo-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.nt-demo-help { margin-right: auto; color: var(--nt-faint); font-size: 12px; }
+.nt-demo-on { padding: 8px 10px; background: #0f2a25; border: 1px dashed var(--nt-teal); border-radius: 6px; justify-content: flex-start; }
+.nt-demo-tag { margin-right: auto; color: var(--nt-teal); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.nt-demo-bar .nt-btn { min-height: 34px; font-size: 12px; }
+
 .nt-btn { padding: 8px 11px; color: var(--nt-text); background: #101c28; border: 1px solid #294052; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600; white-space: nowrap; }
 .nt-btn:hover { border-color: var(--nt-teal); color: var(--nt-teal); }
 

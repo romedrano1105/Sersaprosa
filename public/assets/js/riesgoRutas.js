@@ -445,11 +445,20 @@
     }
   });
 
-  (async () => {
+  async function cargarInicial() {
     try {
       await Promise.all([cargarTipos(), cargarRutas()]);
     } catch (error) {
       estado(error.message, true);
     }
-  })();
+  }
+
+  // Se puede volver a llamar (window.RiesgoRutas.reload) cada vez que se abre la pantalla.
+  window.RiesgoRutas = { reload: cargarInicial };
+
+  // En la página principal (<body data-rr-manual>) se carga al abrir la pantalla, ya con sesión;
+  // en la página suelta riesgo_rutas.html se carga de inmediato.
+  if (!document.body.hasAttribute("data-rr-manual")) {
+    cargarInicial();
+  }
 })();
