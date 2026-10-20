@@ -51,33 +51,8 @@
     }
   }
 
-  function apiUrl(path) {
-    return (session.apiBase || location.origin).replace(/\/$/, "") + path;
-  }
-
-  async function post(path, payload) {
-    const response = await fetch(apiUrl(path), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.token },
-      body: JSON.stringify(payload)
-    });
-    let result = {};
-    try {
-      result = await response.json();
-    } catch (error) {
-      result = {};
-    }
-    if (response.status === 401) {
-      window.AppNavigation.handleUnauthorized();
-      throw new Error("La sesión venció. Inicia sesión de nuevo.");
-    }
-    if (!response.ok) {
-      const detail = result.detail;
-      const message = detail && typeof detail === "object" ? detail.message : detail;
-      throw new Error(message || "Error al consultar el servidor (" + response.status + ").");
-    }
-    return result;
-  }
+  // Llamadas al backend: núcleo compartido (core/api.js), con token y manejo de sesión vencida.
+  const post = (path, payload) => window.Api.post(path, payload);
 
   function validCoordinates(lat, lng) {
     const latitude = Number(lat);
@@ -398,6 +373,43 @@
     refreshDashboard();
   }
 
+  // ---- Guardar la ruta trazada (paso 2 → 3 del flujo): queda disponible para asignarle personal ----
+  function routeOrderIds() {
+    return manualStops ? [] : selectedOrders().filter(hasLocation).map(order => String(order.id));
+  }
+
+  function suggestedRouteName() {
+    const now = new Date();
+    return "Ruta " + now.toLocaleDateString("es-SV", { day: "2-digit", month: "2-digit" }) + " " +
+      now.toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // Solo se ofrece guardar cuando hay una ruta trazada a partir de pedidos elegidos (no la personalizada).
+  function updateSaveRoute() {
+    const available = !manualStops && routeChoices.length > 0 && routeOrderIds().length > 0;
+    $("saveRoute").classList.toggle("hidden", !available);
+    if (available && !$("saveRouteName").value) $("saveRouteName").value = suggestedRouteName();
+  }
+
+  async function saveRoute() {
+    const button = $("saveRouteBtn");
+    const message = $("saveRouteMsg");
+    button.disabled = true;
+    message.classList.add("hidden");
+    try {
+      const result = await post("/rutas/guardar", { nombre: $("saveRouteName").value, pedidos: routeOrderIds() });
+      message.textContent = "Ruta «" + result.nombre + "» guardada con " + result.entregas + " pedido(s). " +
+        "Ya puedes asignarle conductor, guardias y vehículo en Empleados y Vehículos.";
+      $("saveRouteName").value = "";
+      await loadDeliveries().catch(() => {});
+      if (availabilityModule) availabilityModule.reload();
+    } catch (error) {
+      message.textContent = error.message;
+    }
+    message.classList.remove("hidden");
+    button.disabled = false;
+  }
+
   async function calculateRoute() {
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
@@ -422,9 +434,11 @@
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
+      updateSaveRoute();
       return true;
     } catch (error) {
       routeChoices = [];
+      updateSaveRoute();
       routeLayers.clearLayers();
       $("mDist").textContent = "–";
       $("mEta").textContent = "–";
@@ -466,7 +480,7 @@
      });
    }
 
-  // Pedidos en curso: la pantalla completa y el selector de "Asignar Rutas" comparten la misma elección.
+  // Pedidos en curso: la pantalla completa y el selector de "Planificar rutas" comparten la misma elección.
   function mountOrderModules() {
     if (ordersModule) return;
     ordersModule = window.Pedidos.mountPage($("panelPedidos"), { onGoRoutes: () => setScreen("routes") });
@@ -519,7 +533,7 @@
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
-      routes: ["PLANIFICACIÓN OPERATIVA", "Asignar Rutas", "Elija pedidos en curso y trace su recorrido de forma segura."],
+      routes: ["PLANIFICACIÓN OPERATIVA", "Planificar rutas", "Elija pedidos en curso, trace el recorrido y guarde la ruta."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
@@ -603,6 +617,7 @@
       button.addEventListener("click", () => setMonitorTab(button.dataset.monitorPanel));
     });
     $("refresh").addEventListener("click", refreshDashboard);
+    $("saveRouteBtn").addEventListener("click", saveRoute);
     $("locate").addEventListener("click", () => {
       if (!navigator.geolocation) {
         $("routeMessage").textContent = "Este navegador no permite obtener la ubicación actual.";
