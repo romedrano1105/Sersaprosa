@@ -157,6 +157,7 @@
       state.syncError = state.syncDetail = state.loadError = state.actionError = "";
       state.busy = false;
       if (opts.onCount) opts.onCount(state.data.resumen.no_leidas);
+      if (opts.onData) opts.onData(state.data);
       render();
     }
 
@@ -246,6 +247,7 @@
         if (!datos || !Array.isArray(datos.items) || !datos.resumen) throw new Error(MSG_LOAD);
         state.data = datos;
         if (opts.onCount) opts.onCount(datos.resumen.no_leidas);
+        if (opts.onData) opts.onData(datos);
       } catch (error) {
         if (sesionVencida(error)) return;
         state.loadError = MSG_LOAD;
@@ -276,6 +278,7 @@
         state.data = datos;
         state.loadError = "";
         if (opts.onCount) opts.onCount(datos.resumen.no_leidas);
+        if (opts.onData) opts.onData(datos);
       } catch (error) {
         if (sesionVencida(error)) return;
         state.loadError = MSG_LOAD;
