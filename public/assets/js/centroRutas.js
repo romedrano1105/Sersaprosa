@@ -16,7 +16,8 @@
    Uso (ver dashboard.js):
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
-       onFocusStop(i), onGoTo(pantalla), onChanged(), getOrigin()
+       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), selection (Pedidos.store),
+       originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
      centro.update({ deliveries, orders, result, manual, originLabel, events, notifications });
    ===================================================================== */
@@ -133,7 +134,7 @@
     svg.setAttribute("viewBox", "0 0 100 100");
     svg.setAttribute("class", "cc-donut");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", porcentaje + "% completado");
+    svg.setAttribute("aria-label", porcentaje + "% entregado");
     const circulo = (clase, extra) => {
       const node = global.document.createElementNS(SVG_NS, "circle");
       node.setAttribute("cx", "50"); node.setAttribute("cy", "50"); node.setAttribute("r", String(r));
@@ -148,7 +149,11 @@
     texto.setAttribute("x", "50"); texto.setAttribute("y", "55"); texto.setAttribute("text-anchor", "middle");
     texto.setAttribute("class", "cc-donut-text");
     texto.textContent = porcentaje + "%";
-    svg.append(texto);
+    const sub = global.document.createElementNS(SVG_NS, "text");
+    sub.setAttribute("x", "50"); sub.setAttribute("y", "68"); sub.setAttribute("text-anchor", "middle");
+    sub.setAttribute("class", "cc-donut-sub"); sub.textContent = "entregado";
+    texto.setAttribute("y", "52");
+    svg.append(texto, sub);
     return svg;
   }
   const hora = ms => new Date(ms).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" });
@@ -179,6 +184,8 @@
     const asignacionDe = ruta => (ruta && S.disp ? S.disp.asg.find(a => a.ruta === ruta.id) || null : null);
     const nombreDe = (lista, id, clave) => { const x = lista.find(e => e.id === id); return x ? x[clave] : id; };
 
+    // En borrador la lista incluye los pedidos en curso aún sin elegir (con casilla) para poder armar la ruta ahí mismo.
+    const esBorrador = () => !activa() && !S.manual && !!opts.selection;
     function derivar() {
       const trazados = S.orders.filter(p => enCurso(p) && tieneUbicacion(p));
       const tramos = (S.result && S.result.raw && Array.isArray(S.result.raw.legs)) ? S.result.raw.legs : [];
@@ -186,9 +193,15 @@
       S.vista = S.orders.map(p => {
         const i = trazados.indexOf(p);
         const eta = i >= 0 && etas[i] ? etas[i] : null;
-        return { p, i, eta, tarde: eta ? minutosTarde(eta, p.hora) : 0 };
+        return { p, i, eta, tarde: eta ? minutosTarde(eta, p.hora) : 0, sel: true };
       });
       S.retrasoMax = S.vista.reduce((m, v) => Math.max(m, v.tarde), 0);
+      S.nTarde = S.vista.filter(v => v.tarde > 0).length;
+      if (esBorrador()) {
+        const elegidos = new Set(S.orders.map(p => String(p.id)));
+        S.vista = S.vista.concat(S.deliveries.filter(p => enCurso(p) && !elegidos.has(String(p.id))).sort(porHora)
+          .map(p => ({ p, i: -1, eta: null, tarde: 0, sel: false })));
+      }
     }
 
     /* ---- datos propios: rutas de hoy y disponibilidad ---- */
@@ -384,46 +397,57 @@
         h("span", { "aria-hidden": "true", class: "cc-ico" }, icono), texto);
     }
 
+    // Selector de rutas (la flecha ← de la cabecera): lista las rutas de hoy y "Nueva ruta".
+    let selectorAbierto = false;
+    function renderSelector() {
+      const lista = h("ul", { class: "cc-switch-list", role: "menu" },
+        S.rutas.map(x => {
+          const est = estadoRuta(pedidosDeRuta(S.deliveries, x), !!asignacionDe(x));
+          return h("li", { role: "none" }, h("button", { type: "button", role: "menuitem", class: "cc-switch-item" + (x.id === S.activeId ? " is-active" : ""),
+            onclick: () => { selectorAbierto = false; opts.onSelectRoute && opts.onSelectRoute(x); render(); } },
+          h("i", { class: "cc-dot cc-" + est, "aria-hidden": "true" }), h("span", {}, x.nombre), h("small", {}, ESTADOS_RUTA[est])));
+        }),
+        h("li", { role: "none" }, h("button", { type: "button", role: "menuitem", class: "cc-switch-item cc-switch-new" + (!S.activeId ? " is-active" : ""),
+          onclick: () => { selectorAbierto = false; opts.onSelectRoute && opts.onSelectRoute(null); render(); } }, "＋ Nueva ruta")));
+      return h("div", { class: "cc-switch", role: "region", "aria-label": "Rutas de hoy" },
+        S.rutasError ? h("p", { class: "cc-warn", role: "status" }, "⚠ " + S.rutasError) : null,
+        S.rutas.length ? null : h("p", { class: "cc-hint" }, "Todavía no hay rutas guardadas hoy."), lista);
+    }
+
     function renderCabecera() {
       const ruta = activa();
       const a = asignacionDe(ruta);
       const estado = ruta ? estadoRuta(S.orders, !!a) : "borrador";
       const trazados = S.orders.filter(p => enCurso(p) && tieneUbicacion(p)).length;
       const r = S.result;
-      const partes = [];
-      if (ruta) partes.push("ID " + ruta.id);
-      if (ruta && ruta.zona) partes.push(ruta.zona);
-      partes.push(S.orders.length + " pedido" + (S.orders.length === 1 ? "" : "s"));
-      if (r) partes.push(r.distanceKm.toFixed(1) + " km · " + Math.round(r.durationMin) + " min");
-      const titulo = S.manual ? "Ruta personalizada" : ruta ? ruta.nombre : "Nueva ruta (borrador)";
+      const titulo = S.manual ? "Ruta personalizada" : ruta ? ruta.nombre : "Nueva ruta";
+      const etaFinal = S.vista.reduce((m, v) => Math.max(m, v.eta || 0), 0);
+      const restante = etaFinal ? Math.max(0, Math.round((etaFinal - Date.now()) / 60000)) : null;
+      const metricas = [];
+      metricas.push(h("span", {}, S.orders.length + (S.orders.length === 1 ? " pedido" : " pedidos")));
+      if (r) metricas.push(h("span", {}, r.distanceKm.toFixed(1) + " km, " + Math.round(r.durationMin) + " min"));
+      if (etaFinal) metricas.push(h("span", {}, "Llegada " + hora(etaFinal) + (restante != null ? " · faltan " + restante + " min" : "")));
+      if (S.retrasoMax) metricas.push(h("span", { class: "cc-late-dot" }, "● " + S.retrasoMax + " min tarde"));
       const nodos = [];
-      if (coordinador) {
-        nodos.push(h("div", { class: "cc-routebar", role: "group", "aria-label": "Rutas de hoy" },
-          h("span", { class: "cc-label" }, "RUTAS DE HOY"),
-          S.rutas.map(x => {
-            const est = estadoRuta(pedidosDeRuta(S.deliveries, x), !!asignacionDe(x));
-            return h("button", { type: "button", class: "cc-chip cc-" + est, "aria-pressed": String(x.id === S.activeId),
-              onclick: () => opts.onSelectRoute && opts.onSelectRoute(x) },
-            h("i", { "aria-hidden": "true" }), x.nombre);
-          }),
-          h("button", { type: "button", class: "cc-chip cc-new", "aria-pressed": String(!S.activeId),
-            onclick: () => opts.onSelectRoute && opts.onSelectRoute(null) }, "＋ Nueva ruta"),
-          S.rutasError ? h("span", { class: "cc-warn", role: "status", title: S.rutasError }, "⚠ Rutas no disponibles") : null));
-      }
       nodos.push(h("div", { class: "cc-head" },
-        h("div", {},
+        h("div", { class: "cc-head-main" },
           h("div", { class: "cc-title" },
+            coordinador ? h("button", { type: "button", class: "cc-back", "aria-expanded": String(selectorAbierto), "aria-label": "Cambiar de ruta (rutas de hoy)",
+              title: "Rutas de hoy", onclick: () => { selectorAbierto = !selectorAbierto; render(); } }, "←") : null,
             h("h2", {}, titulo),
-            h("span", { class: "cc-badge cc-b-" + estado }, ESTADOS_RUTA[estado]),
-            S.retrasoMax ? h("span", { class: "cc-badge cc-b-late", title: "Llegada estimada posterior a la hora programada" }, "⏱ " + S.retrasoMax + " min de retraso") : null),
-          h("div", { class: "cc-sub" }, partes.join(" · "))),
+            h("span", { class: "cc-badge cc-b-" + estado }, ESTADOS_RUTA[estado])),
+          h("div", { class: "cc-id" }, ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : S.manual ? "Origen, paradas y destino a mano" : "Sin guardar · elige pedidos y guarda la ruta"),
+          h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
           boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
-          boton("Asignar", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
-          boton("Desasignar", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
+          boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
+          boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
           boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita"),
           boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio"),
-          boton("Ver historial", "⟲", abrirHistorial, !ruta, ruta ? "" : "Guarda la ruta primero")) : null));
+          boton("Ver historial", "⟲", abrirHistorial, !ruta, ruta ? "" : "Guarda la ruta primero"),
+          !ruta && !S.manual && typeof opts.onSave === "function"
+            ? boton("Guardar ruta", "💾", () => opts.onSave(), S.orders.length === 0, "Guarda la ruta para asignarla", "cc-primary") : null) : null));
+      if (selectorAbierto && coordinador) nodos.push(renderSelector());
       if (S.mensaje) nodos.push(h("p", { class: "cc-msg cc-msg-" + S.mensaje.tipo, role: "status" }, S.mensaje.texto));
       return nodos;
     }
@@ -439,7 +463,7 @@
       const sinLeer = S.notifs && Array.isArray(S.notifs.items)
         ? S.notifs.items.filter(n => !n.leida && (!ruta || norm(n.ruta) === norm(ruta.nombre))).length : null;
       const nRiesgo = S.events.length;
-      const nTarde = S.vista.filter(v => v.tarde > 0).length;
+      const nTarde = S.nTarde || 0;
 
       let asignado;
       if (!coordinador) asignado = h("p", { class: "cc-hint" }, "La asignación la gestiona el coordinador de rutas.");
@@ -466,9 +490,9 @@
           coordinador ? h("button", { type: "button", class: "cc-link", onclick: () => opts.onGoTo && opts.onGoTo("daily") }, "Empleados y Vehículos →") : null),
         tarjeta("Alertas de la ruta",
           h("div", { class: "cc-tiles" },
-            tile(nRiesgo, nRiesgo === 1 ? "Evento de riesgo" : "Eventos de riesgo", nRiesgo ? "cc-t-red" : "cc-t-ok"),
-            tile(nTarde, nTarde === 1 ? "Pedido con retraso" : "Pedidos con retraso", nTarde ? "cc-t-amber" : "cc-t-ok"),
-            res.sinUbicacion ? tile(res.sinUbicacion, "Sin coordenadas", "cc-t-amber") : null),
+            tile(nRiesgo, nRiesgo === 1 ? "Con riesgo" : "Con riesgo", nRiesgo ? "cc-t-red" : "cc-t-ok"),
+            tile(nTarde, nTarde === 1 ? "Retrasado" : "Retrasados", nTarde ? "cc-t-amber" : "cc-t-ok")),
+          res.sinUbicacion ? h("p", { class: "cc-hint" }, res.sinUbicacion + " sin coordenadas (no se trazan).") : null,
           sinLeer == null ? null : h("button", { type: "button", class: "cc-link", onclick: () => opts.onGoTo && opts.onGoTo("monitor") },
             sinLeer + (sinLeer === 1 ? " notificación sin leer" : " notificaciones sin leer") + " →")),
         tarjeta("Resumen de pedidos",
@@ -477,13 +501,13 @@
             h("div", {}, h("b", {}, res.pendientes), h("span", {}, "Pendientes")),
             h("div", {}, h("b", {}, res.proceso), h("span", {}, "En proceso"))),
           h("button", { type: "button", class: "cc-link", onclick: () => opts.onGoTo && opts.onGoTo("orders") }, "Pedidos en curso →")),
-        tarjeta(ruta ? "Completados de la ruta" : "Completados hoy",
+        tarjeta(ruta ? "Completados (ruta)" : "Completados (hoy)",
           h("div", { class: "cc-done" }, donut(porcentaje),
             h("ul", { class: "cc-legend" },
+              h("li", { class: "cc-l-total" }, "Total ", h("b", {}, res.total)),
               h("li", { class: "cc-l-done" }, "Completados ", h("b", {}, res.completados)),
               h("li", { class: "cc-l-proc" }, "En proceso ", h("b", {}, res.proceso)),
-              h("li", { class: "cc-l-pend" }, "Pendientes ", h("b", {}, res.pendientes)),
-              h("li", { class: "cc-l-total" }, "Total ", h("b", {}, res.total)))),
+              h("li", { class: "cc-l-pend" }, "Pendientes ", h("b", {}, res.pendientes)))),
           enCursoN === 0 && res.total ? h("p", { class: "cc-hint" }, "Todos los pedidos están completados.") : null));
     }
 
@@ -499,49 +523,58 @@
       }
     }
 
+    // Columna izquierda: buscar y filtrar, fila "Inicio de ruta" y los pedidos numerados.
     function renderTareas() {
       if (!taskBox) return;
-      taskBox.replaceChildren();
-      const visibles = S.vista.filter(pasaFiltro);
-      taskBox.append(
-        h("div", { class: "cc-tasks-head" },
-          h("h3", {}, "Pedidos ", h("span", { class: "cc-count" }, "(" + S.vista.length + ")")),
-          h("div", { class: "cc-tools" },
-            h("input", { type: "search", class: "cc-input", placeholder: "Buscar…", "aria-label": "Buscar pedido", value: S.q,
-              oninput: e => { S.q = e.target.value; renderLista(); } }),
-            h("select", { class: "cc-input", "aria-label": "Filtrar pedidos", onchange: e => { S.filtro = e.target.value; renderLista(); } },
-              [["todos", "Todos"], ["pendiente", "Pendientes"], ["proceso", "En proceso"], ["completada", "Completados"], ["retraso", "Con retraso"], ["sin_ubicacion", "Sin coordenadas"]]
-                .map(([v, t]) => h("option", { value: v, selected: S.filtro === v }, t))))),
-        h("ol", { class: "cc-tasklist", id: "ccLista", "aria-live": "polite" }));
-      renderLista(visibles);
+      const store = opts.selection;
+      taskBox.replaceChildren(...[
+        h("div", { class: "cc-tools" },
+          h("input", { type: "search", class: "cc-input", placeholder: "Buscar pedido…", "aria-label": "Buscar pedido", value: S.q,
+            oninput: e => { S.q = e.target.value; renderLista(); } }),
+          h("select", { class: "cc-input", "aria-label": "Filtrar pedidos", onchange: e => { S.filtro = e.target.value; renderLista(); } },
+            [["todos", "Filtro: todos"], ["pendiente", "Pendientes"], ["proceso", "En proceso"], ["completada", "Completados"], ["retraso", "Con retraso"], ["sin_ubicacion", "Sin coordenadas"]]
+              .map(([v, t]) => h("option", { value: v, selected: S.filtro === v }, t)))),
+        esBorrador() ? h("div", { class: "cc-pick-tools" },
+          h("button", { type: "button", class: "cc-link", onclick: () => store.selectAll(S.deliveries) }, "Elegir todos"),
+          h("button", { type: "button", class: "cc-link", onclick: () => store.clear() }, "Ninguno")) : null,
+        opts.originNode || null,
+        h("ol", { class: "cc-tasklist", id: "ccLista", "aria-live": "polite" })
+      ].filter(Boolean));
+      renderLista();
     }
 
-    function renderLista(visibles) {
+    function renderLista() {
       const lista = taskBox && taskBox.querySelector("#ccLista");
       if (!lista) return;
-      const filas = visibles || S.vista.filter(pasaFiltro);
+      const filas = S.vista.filter(pasaFiltro);
       lista.replaceChildren();
       if (!S.vista.length) {
-        lista.append(h("li", { class: "cc-empty" }, activa() ? "Esta ruta no tiene pedidos." : "Elige pedidos para esta ruta en el selector de arriba."));
+        lista.append(h("li", { class: "cc-empty" }, activa() ? "Esta ruta no tiene pedidos." : "No hay pedidos en curso para hoy."));
         return;
       }
       if (!filas.length) { lista.append(h("li", { class: "cc-empty" }, "Ningún pedido coincide con el filtro.")); return; }
       filas.forEach(v => {
         const p = v.p;
         const traza = v.i >= 0;
-        lista.append(h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") },
+        const hecho = p.estado === "completada";
+        const caja = esBorrador()
+          ? h("input", { type: "checkbox", class: "cc-pick", checked: v.sel, disabled: !tieneUbicacion(p) && !v.sel,
+              "aria-label": "Incluir " + (p.cliente || p.id) + " en la ruta", title: tieneUbicacion(p) ? "" : "Sin coordenadas",
+              onchange: () => opts.selection.toggle(p.id, S.deliveries) }) : null;
+        let derecha;
+        if (hecho) derecha = [h("span", { class: "cc-done-tag" }, "Completado")];
+        else if (v.eta) derecha = [h("span", { class: v.tarde ? "cc-eta-late" : "cc-eta" }, (v.tarde ? "⏱ " : "") + "ETA " + hora(v.eta)),
+          v.tarde ? h("small", { class: "cc-eta-late" }, "+" + v.tarde + " min") : null, p.hora ? h("small", {}, "Prog. " + p.hora) : null];
+        else derecha = [p.hora ? h("span", {}, "Hoy, " + p.hora) : null, !tieneUbicacion(p) ? h("small", { class: "cc-eta-late" }, "Sin coordenadas") : null];
+        lista.append(h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") + (v.sel ? "" : " cc-off") },
+          caja,
           h("button", { type: "button", class: "cc-task-btn", disabled: !traza, title: traza ? "Ver en el mapa" : "",
             onclick: () => opts.onFocusStop && opts.onFocusStop(v.i) },
-          h("span", { class: "cc-num" }, traza ? String(v.i + 1) : p.estado === "completada" ? "✓" : "–"),
+          h("span", { class: "cc-num" }, hecho ? "✓" : traza ? String(v.i + 1) : "–"),
           h("span", { class: "cc-task-main" },
-            h("strong", {}, p.cliente || "Sin cliente"),
-            h("small", {}, p.direccion || "Sin dirección"),
-            h("small", {}, [p.zona, p.productos].filter(Boolean).join(" · "))),
-          h("span", { class: "cc-task-side" },
-            h("span", { class: "cc-pill cc-p-" + p.estado }, ESTADOS_PEDIDO[p.estado] || p.estado),
-            v.eta ? h("small", { class: v.tarde ? "cc-eta-late" : "" }, "ETA " + hora(v.eta) + (v.tarde ? " · +" + v.tarde + " min" : "")) : null,
-            p.hora ? h("small", {}, "Prog. " + p.hora) : null,
-            enCurso(p) && !tieneUbicacion(p) ? h("small", { class: "cc-eta-late" }, "Sin coordenadas") : null))));
+            h("strong", {}, p.direccion || p.cliente || "Sin dirección"),
+            h("small", {}, [p.cliente, p.contacto, p.productos].filter(Boolean).join(" · ") || p.zona || "")),
+          h("span", { class: "cc-task-side" }, derecha.filter(Boolean)))));
       });
     }
 
@@ -554,9 +587,12 @@
       const barra = h("div", { class: "cc-widgets-bar" },
         h("button", { type: "button", class: "cc-link", "aria-expanded": String(abierto),
           onclick: () => { S.widgets = !S.widgets; try { global.localStorage.setItem(WIDGETS_KEY, S.widgets ? "abierto" : "cerrado"); } catch (e) { /* sin almacenamiento */ } render(); } },
-        abierto ? "Ocultar resumen ▴" : "Mostrar resumen ▾"));
+        abierto ? "Ocultar resumen ⌃" : "Mostrar resumen ⌄"));
       // replaceChildren convierte null en el texto "null": solo se pasan nodos reales.
-      container.replaceChildren(...[...cabecera, barra, abierto ? renderWidgets() : null].filter(Boolean));
+      const nSel = S.vista.filter(v => v.sel).length;
+      const titulo = h("h3", { class: "cc-tasks-title" }, "Pedidos ", h("span", { class: "cc-count" }, "(" + nSel + ")"),
+        esBorrador() && S.vista.length > nSel ? h("small", {}, " · " + (S.vista.length - nSel) + " más sin elegir") : null);
+      container.replaceChildren(...[...cabecera, barra, abierto ? renderWidgets() : null, titulo].filter(Boolean));
       renderTareas();
     }
 
@@ -573,6 +609,7 @@
       setActive(id) { S.activeId = id; render(); },
       get activeRoute() { return activa(); },
       refresh,
+      findRoute(id) { return S.rutas.find(r => r.id === id) || null; },
       unmount() { vivo = false; cerrarModal(); container.replaceChildren(); if (taskBox) taskBox.replaceChildren(); }
     };
   }

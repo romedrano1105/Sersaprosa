@@ -24,10 +24,10 @@
   let notificationsModule = null;
   let availabilityModule = null;
   let ordersModule = null;
-  let pickerModule = null;
   let recalcTimer = null;
   let centroModule = null;   // centro de control de rutas (centroRutas.js)
   let notifData = null;      // última respuesta de notificaciones (para las alertas de la ruta)
+  let searchMarker = null;   // marcador de la búsqueda de direcciones del mapa
   let stopMarkers = [];      // marcadores de las paradas trazadas, en orden
   const ORDER_KEY = "ordenVisita";
   let lastRefreshAt = 0;
@@ -85,13 +85,41 @@
     eventLayers = L.layerGroup().addTo(map);
   }
 
+  // Barra del mapa: estilo de calles, capa de eventos de riesgo y búsqueda de direcciones.
+  function mountMapToolbar() {
+    $("mapStyle").addEventListener("change", event => {
+      $("map").classList.toggle("map-dark", event.target.value === "oscuro");
+    });
+    $("mapEventsToggle").addEventListener("change", event => {
+      if (!eventLayers) return;
+      if (event.target.checked) eventLayers.addTo(map); else map.removeLayer(eventLayers);
+    });
+    $("mapSearch").addEventListener("submit", async event => {
+      event.preventDefault();
+      const text = $("mapSearchInput").value.trim();
+      const message = $("mapSearchMsg");
+      if (text.length < 3) return;
+      message.classList.add("hidden");
+      try {
+        const place = await geocodePoint({ text });
+        map.setView([place.lat, place.lng], 16);
+        if (searchMarker) map.removeLayer(searchMarker);
+        searchMarker = L.marker([place.lat, place.lng]).addTo(map);
+        searchMarker.bindPopup(element("div", "", place.label || text)).openPopup();
+      } catch (error) {
+        message.textContent = error.message || "No se encontró esa dirección.";
+        message.classList.remove("hidden");
+      }
+    });
+  }
+
   async function loadDeliveries() {
     const response = await post("/entregas/listar", { fecha: todayISO() });
     if (!response || !Array.isArray(response.entregas)) {
       throw new Error("El servicio de entregas devolvió una respuesta no válida.");
     }
     deliveries = response.entregas;
-    [ordersModule, pickerModule].forEach(module => module && module.setData(deliveries));
+    if (ordersModule) ordersModule.setData(deliveries);
     pushCentro();
   }
 
@@ -441,6 +469,16 @@
     if (available && !$("saveRouteName").value) $("saveRouteName").value = suggestedRouteName();
   }
 
+  // Botón «Guardar ruta» del encabezado: lleva a la barra de guardado y pone el cursor en el nombre.
+  function focusSaveRoute() {
+    updateSaveRoute();
+    const bar = $("saveRoute");
+    if (bar.classList.contains("hidden")) return;
+    bar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    $("saveRouteName").focus();
+    $("saveRouteName").select();
+  }
+
   async function saveRoute() {
     const button = $("saveRouteBtn");
     const message = $("saveRouteMsg");
@@ -453,6 +491,9 @@
       $("saveRouteName").value = "";
       await loadDeliveries().catch(() => {});
       if (availabilityModule) availabilityModule.reload();
+      await centroModule.refresh();
+      const saved = centroModule.findRoute(String(result.id));
+      if (saved) await selectRoute(saved); // pasa a la ruta guardada para poder asignarla de inmediato
     } catch (error) {
       message.textContent = error.message;
     }
@@ -563,8 +604,6 @@
   function selectRoute(route) {
     manualStops = null;
     centroModule.setActive(route ? route.id : null);
-    const picker = $("pickerBox");
-    if (picker) picker.classList.toggle("hidden", Boolean(route));
     $("saveRouteName").value = "";
     return recalcAndRemember();
   }
@@ -597,12 +636,11 @@
   function mountOrderModules() {
     if (ordersModule) return;
     ordersModule = window.Pedidos.mountPage($("panelPedidos"), { onGoRoutes: () => setScreen("routes") });
-    pickerModule = window.Pedidos.mountPicker($("orderPicker"), { onGoOrders: () => setScreen("orders") });
     ordersModule.setData(deliveries);
-    pickerModule.setData(deliveries);
     // Al cambiar la elección se vuelve a trazar la ruta (con una pequeña espera para agrupar clics seguidos).
     window.Pedidos.store.subscribe(() => {
       if (manualStops || currentRoute()) return;
+      pushCentro(); // la lista refleja la casilla al instante; el trazado se recalcula enseguida
       clearTimeout(recalcTimer);
       recalcTimer = setTimeout(recalcAndRemember, 500);
     });
@@ -729,9 +767,13 @@
       onSelectRoute: selectRoute,
       onReorder: reorderStops,
       onFocusStop: focusStop,
+      selection: window.Pedidos.store,
+      originNode: $("originRow"),
+      onSave: focusSaveRoute,
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });
+    mountMapToolbar();
     mountOrderModules();
     mountNotificationsPanel();
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
