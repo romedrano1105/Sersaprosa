@@ -526,15 +526,18 @@
   }
 
   function setScreen(name) {
-    const screen = ["routes", "orders", "monitor", "daily"].includes(name) ? name : "routes";
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "daily", "risk"] : ["routes", "orders", "monitor", "daily"];
+    const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
     $("ordersScreen").classList.toggle("hidden", screen !== "orders");
+    $("riskScreen").classList.toggle("hidden", screen !== "risk");
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
       routes: ["PLANIFICACIÓN OPERATIVA", "Planificar rutas", "Elija pedidos en curso, trace el recorrido y guarde la ruta."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
+      risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
     };
@@ -545,6 +548,8 @@
     window.AppNavigation.setActive(screen);
     if (screen === "routes") {
       if (map) setTimeout(() => map.invalidateSize(), 50);
+    } else if (screen === "risk") {
+      if (window.RiesgoRutas) window.RiesgoRutas.reload();
     } else if (screen === "orders") {
       mountOrderModules();
     } else if (screen === "monitor") {
@@ -640,7 +645,7 @@
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
     setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" :
-      location.hash === "#pedidos" ? "orders" : "routes");
+      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();

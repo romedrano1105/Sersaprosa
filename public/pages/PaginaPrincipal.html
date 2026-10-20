@@ -9,6 +9,9 @@
   <link rel="icon" href="/assets/img/sersaprosa-logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- variables.css y riesgoRutas.css van ANTES de dashboard.css para que dashboard.css gobierne el body -->
+  <link rel="stylesheet" href="/assets/css/variables.css">
+  <link rel="stylesheet" href="/assets/css/riesgoRutas.css">
   <link rel="stylesheet" href="/assets/css/appNavigation.css">
   <link rel="stylesheet" href="/assets/css/dashboard.css">
   <link rel="stylesheet" href="/assets/css/eventosEspecialesCSS.css">
@@ -17,7 +20,7 @@
   <link rel="stylesheet" href="/assets/css/notificacionesCSS.css">
   <link rel="stylesheet" href="/assets/css/pedidosEnCurso.css">
 </head>
-<body>
+<body data-rr-manual>
   <section id="login" class="login-screen">
     <form class="login-card" id="loginForm" autocomplete="on">
       <img class="login-logo" src="/assets/img/sersaprosa-logo.svg" alt="SERSAPROSA">
@@ -56,9 +59,8 @@
       <section id="routesScreen" class="screen" aria-labelledby="pageTitle">
         <div class="routes-layout">
           <aside class="route-panel">
-            <section id="orderPicker" aria-label="Pedidos en curso para la ruta"></section>
-            <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
-            <section class="route-details">
+            <section id="orderPicker" class="route-step" aria-label="Pedidos en curso para la ruta"></section>
+            <section class="route-details route-step">
               <div class="section-heading">
                 <div><span class="section-kicker">RECORRIDO PROGRAMADO</span><h2 id="routeTitle">Ruta del día</h2></div>
                 <span class="secure-badge">SEGURA</span>
@@ -89,10 +91,14 @@
                 <p id="saveRouteMsg" class="notice hidden" role="status"></p>
               </section>
             </section>
+            <details class="route-step route-custom">
+              <summary>Ruta personalizada <small>(opcional · origen, paradas y destino a mano)</small></summary>
+              <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
+            </details>
           </aside>
           <section class="map-section" aria-label="Mapa y recorrido">
             <div class="map-card-head">
-              <div><span>VISTA PREVIA OPERATIVA</span><h2>Ruta del día</h2></div>
+              <div><span>VISTA PREVIA OPERATIVA</span><h2>Mapa del recorrido</h2></div>
               <span class="map-source">OpenStreetMap · OSRM</span>
             </div>
             <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
@@ -104,6 +110,56 @@
 
       <section id="ordersScreen" class="screen hidden" aria-labelledby="pageTitle">
         <div id="panelPedidos" class="monitor-content"></div>
+      </section>
+
+      <!-- Riesgo de rutas: misma página que riesgo_rutas.html (ids rr-*, lógica en riesgoRutas.js), integrada aquí. -->
+      <section id="riskScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div class="rr-contenedor">
+          <form id="rr-form" class="rr-tarjeta" novalidate>
+            <h2>Monto, tipo de carga y riesgo</h2>
+            <div class="rr-campo">
+              <label for="rr-ruta">Ruta</label>
+              <select id="rr-ruta" aria-describedby="rr-err-ruta">
+                <option value="">Selecciona una ruta…</option>
+              </select>
+              <p class="rr-error" id="rr-err-ruta" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <label for="rr-monto">Monto (USD)</label>
+              <input id="rr-monto" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 25000.00" aria-describedby="rr-err-monto">
+              <p class="rr-error" id="rr-err-monto" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <label for="rr-tipo">Tipo de carga</label>
+              <select id="rr-tipo" aria-describedby="rr-err-tipo">
+                <option value="">Selecciona un tipo…</option>
+              </select>
+              <p class="rr-error" id="rr-err-tipo" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <span class="rr-etiqueta">Nivel de riesgo (automático)</span>
+              <div id="rr-nivel" aria-live="polite">
+                <span class="rr-badge rr-badge--vacio">Se calculará al ingresar monto y tipo de carga</span>
+              </div>
+            </div>
+            <button type="submit" class="rr-boton">Guardar</button>
+            <p id="rr-estado" class="rr-estado" role="status"></p>
+          </form>
+
+          <section class="rr-tarjeta">
+            <h2>Rutas</h2>
+            <div class="rr-tabla-scroll">
+              <table class="rr-tabla">
+                <thead>
+                  <tr><th>Ruta</th><th>Monto</th><th>Tipo de carga</th><th>Riesgo</th><th></th></tr>
+                </thead>
+                <tbody id="rr-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="rr-tarjeta" id="rr-detalle" hidden aria-live="polite"></section>
+        </div>
       </section>
 
       <section id="monitorScreen" class="screen hidden" aria-labelledby="pageTitle">
@@ -138,6 +194,7 @@
   <script src="/assets/js/notificacionesJS.js"></script>
   <script src="/assets/js/routePlanner.js"></script>
   <script src="/assets/js/pedidosEnCurso.js"></script>
+  <script src="/assets/js/riesgoRutas.js"></script>
   <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>
