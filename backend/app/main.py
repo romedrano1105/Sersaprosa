@@ -19,6 +19,7 @@ from .eventos_router import router as eventos_router
 from .geocodificacion_router import router as geocodificacion_router
 from .notificaciones_router import router as notificaciones_router
 from .rutas_riesgo import router as rutas_riesgo_router
+from .rutas_router import router as rutas_router
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ app.include_router(disponibilidad_router)
 app.include_router(notificaciones_router)
 app.include_router(rutas_riesgo_router)
 app.include_router(geocodificacion_router)
+app.include_router(rutas_router)  # /rutas/guardar
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
