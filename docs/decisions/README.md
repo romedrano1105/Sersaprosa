@@ -5,7 +5,7 @@ Cada ADR documenta una decisión difícil de revertir, con su contexto y consecu
 | Nº | Decisión | Estado |
 |----|----------|--------|
 | [0001](0001-front-vanilla-js-sin-framework.md) | Front en JavaScript puro, un módulo por pantalla | Aceptada |
-| [0002](0002-fastapi-supabase-rls-y-funciones-sql.md) | Backend FastAPI + Supabase con RLS y funciones SQL `security definer` | Aceptada |
+| [0002](0002-fastapi-intermediario-de-seguridad.md) | FastAPI como intermediario de seguridad y lógica hacia Supabase | Aceptada |
 | [0003](0003-respaldo-service-role-para-rutas.md) | Respaldo de escritura con service role si faltan funciones SQL | Aceptada |
 | [0004](0004-mapas-osm-y-osrm.md) | Mapa con OpenStreetMap y rutas con OSRM público | Aceptada |
 | [0005](0005-centro-de-control-de-rutas.md) | «Planificar rutas» como centro de control de rutas | Aceptada |
