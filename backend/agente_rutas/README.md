@@ -42,6 +42,13 @@ agente = AgenteRutaSegura(mi_fuente_incidentes, mi_fuente_trafico, mi_fuente_zon
 reporte = agente.decidir((13.70, -89.22), (13.70, -89.17))
 ```
 
+## En la aplicación (datos reales)
+`POST /agente/ruta-segura` (solo coordinador): `{"origen":{"lat":..,"lng":..},"destino":{...},"usar_llm":false}`.
+- Incidentes: `alertas_seguridad` + marchas/cierres de `eventos_especiales` con coordenadas (`fuentes_supabase.py`).
+- Zonas: hotspots dinámicos = celdas de ~550 m con ≥3 puntos (alta=2, media=1) en 30 días; ≥3 nivel 3, ≥4 nivel 4, ≥6 nivel 5.
+- Tráfico: sin fuente; el reporte lo indica en `advertencias`. Falta conectar una API de tráfico.
+- `usar_llm=true` requiere `pip install anthropic` y `ANTHROPIC_API_KEY` en Render.
+
 ## Pasar a datos reales
 Implementa `activos(caja, ahora)`, `tramos(caja)` y `zonas(caja)` (ver `fuentes.py`) sobre tu API de reportes,
 la API de tráfico y PostGIS/GeoJSON. Sin cambios en el agente. Si el LLM falla o no hay API key, el sistema

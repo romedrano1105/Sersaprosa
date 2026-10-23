@@ -12,6 +12,7 @@ from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
 from . import database, motor_rutas
+from .agente_router import router as agente_router
 from .alertas_seguridad_router import router as alertas_router
 from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
@@ -42,6 +43,7 @@ app.include_router(notificaciones_router)
 app.include_router(rutas_riesgo_router)
 app.include_router(geocodificacion_router)
 app.include_router(rutas_router)  # /rutas/guardar
+app.include_router(agente_router)  # /agente/ruta-segura (agente de IA, solo coordinador)
 
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
