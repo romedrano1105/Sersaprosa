@@ -15,7 +15,10 @@ const API_PATHS = [
   '/alertas/',
   '/disponibilidad/',
   '/notificaciones/',
-  '/rutas-riesgo'
+  '/rutas-riesgo',
+  '/rutas/',
+  '/viajes/',
+  '/agente/'
 ];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -54,7 +57,7 @@ function resolvePublicFile(pathname) {
 
 function isApiPath(pathname) {
   return API_PATHS.some(prefix =>
-    prefix === '/rutas_riesgo'
+    prefix === '/rutas-riesgo'
       ? pathname === prefix || pathname.startsWith(prefix + '/')
       : prefix.endsWith('/')
         ? pathname.startsWith(prefix)
