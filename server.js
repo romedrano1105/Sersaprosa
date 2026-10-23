@@ -54,7 +54,7 @@ function resolvePublicFile(pathname) {
 
 function isApiPath(pathname) {
   return API_PATHS.some(prefix =>
-    prefix === '/rutas-riesgo'
+    prefix === '/rutas_riesgo'
       ? pathname === prefix || pathname.startsWith(prefix + '/')
       : prefix.endsWith('/')
         ? pathname.startsWith(prefix)
