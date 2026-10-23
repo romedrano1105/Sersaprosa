@@ -138,6 +138,24 @@
     }
   }
 
+  // Dibuja la ruta óptima del agente (verde) y su justificación; sirve para el botón y para «Generar ruta».
+  function drawAgentReport(report) {
+    const chosen = report.ruta_elegida;
+    agentLayer.clearLayers();
+    const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
+    if (points.length > 1) {
+      const line = L.polyline(points, { color: "#3ec27a", weight: 5, opacity: 0.95, dashArray: "9 8" }).addTo(agentLayer);
+      map.fitBounds(line.getBounds(), { padding: [35, 35], maxZoom: 15 });
+    }
+    const risky = chosen.vetada;
+    const resume = chosen.distancia_km + " km · " + Math.round(chosen.duracion_min_ajustada) + " min" +
+      (chosen.desvio ? " · desvío para evitar riesgo" : "");
+    const warnings = (report.advertencias || []).slice();
+    (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
+    showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA",
+      [resume, report.justificacion], warnings);
+  }
+
   async function evaluateSafety() {
     const stops = manualStops || dailyStops();
     if (!stops.length) {
@@ -150,24 +168,11 @@
     showAgent("", "Evaluando seguridad…", ["Consultando incidentes, eventos y zonas de riesgo."]);
     try {
       const report = await post("/agente/ruta-segura", {
-        origen: { lat: origin[0], lng: origin[1] },
+        origen: { lat: routeOrigin()[0], lng: routeOrigin()[1] },
         destino: { lat: last.lat, lng: last.lng },
         usar_llm: $("agentLlm").checked
       });
-      const chosen = report.ruta_elegida;
-      agentLayer.clearLayers();
-      const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
-      if (points.length > 1) {
-        const line = L.polyline(points, { color: "#3ec27a", weight: 5, opacity: 0.95, dashArray: "9 8" }).addTo(agentLayer);
-        map.fitBounds(line.getBounds(), { padding: [35, 35], maxZoom: 15 });
-      }
-      const risky = chosen.vetada;
-      const resume = chosen.distancia_km + " km · " + Math.round(chosen.duracion_min_ajustada) + " min" +
-        (chosen.desvio ? " · desvío para evitar riesgo" : "");
-      const warnings = (report.advertencias || []).slice();
-      (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
-      showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta recomendada por el agente",
-        [resume, report.justificacion], warnings);
+      drawAgentReport(report);
     } catch (error) {
       agentLayer.clearLayers();
       showAgent("error", "No se pudo evaluar la seguridad", [error.message || "Inténtalo de nuevo."]);
@@ -341,6 +346,12 @@
     return window.Pedidos.store.effective(deliveries);
   }
 
+  // Las rutas generadas con «Nuevo viaje» traen su propio origen y destino.
+  function routeOrigin() {
+    const trip = (currentRoute() || {}).viaje;
+    return trip && !manualStops ? [Number(trip.origen.lat), Number(trip.origen.lng)] : origin;
+  }
+
   function currentRoute() {
     return centroModule ? centroModule.activeRoute : null;
   }
@@ -381,7 +392,7 @@
   }
 
   function dailyStops() {
-    return tracedOrders().map(delivery => ({
+    const stops = tracedOrders().map(delivery => ({
       id: String(delivery.id),
       name: delivery.cliente || delivery.direccion || "Destino diario",
       detail: delivery.direccion || "",
@@ -389,10 +400,22 @@
       lat: Number(delivery.lat),
       lng: Number(delivery.lng)
     }));
+    const trip = (currentRoute() || {}).viaje;
+    if (trip) {
+      stops.push({
+        id: "destino",
+        name: "Destino: " + trip.destino.texto,
+        detail: trip.destino.texto,
+        time: trip.horario || "",
+        lat: Number(trip.destino.lat),
+        lng: Number(trip.destino.lng)
+      });
+    }
+    return stops;
   }
 
   function routeInputSignature() {
-    return JSON.stringify([origin, manualStops || dailyStops()]);
+    return JSON.stringify([routeOrigin(), manualStops || dailyStops()]);
   }
 
   function riskInputSignature() {
@@ -402,7 +425,7 @@
   }
 
   async function requestRoutes(stops) {
-    const coordinates = [origin, ...stops.map(stop => [stop.lat, stop.lng])]
+    const coordinates = [routeOrigin(), ...stops.map(stop => [stop.lat, stop.lng])]
       .map(([lat, lng]) => lng + "," + lat).join(";");
     const query = new URLSearchParams({
       overview: "full",
@@ -444,7 +467,7 @@
       });
       options.append(button);
     });
-    const originMarker = L.marker(origin, {
+    const originMarker = L.marker(routeOrigin(), {
       icon: L.divIcon({
         className: "route-stop-icon",
         html: element("span", "route-stop-marker route-origin-marker", "A"),
@@ -667,6 +690,7 @@
   function selectRoute(route) {
     manualStops = null;
     centroModule.setActive(route ? route.id : null);
+    $("originLabel").textContent = route && route.viaje ? route.viaje.origen.texto : "Centro de San Salvador";
     $("saveRouteName").value = "";
     return recalcAndRemember();
   }
@@ -676,7 +700,7 @@
     const traced = tracedOrders();
     if (traced.length < 2) return;
     const util = window.CentroRutas.util;
-    const ordered = kind === "reverse" ? traced.slice().reverse() : util.ordenarVecinoCercano(origin, traced);
+    const ordered = kind === "reverse" ? traced.slice().reverse() : util.ordenarVecinoCercano(routeOrigin(), traced);
     saveVisitOrder(ordered.map(order => String(order.id)));
     return recalcAndRemember();
   }
@@ -686,6 +710,30 @@
     if (!stop) return;
     map.setView([stop.lat, stop.lng], 15);
     stop.marker.openPopup();
+  }
+
+  // ---- Viajes: «+» (Nuevo viaje) y edición antes de que la ruta salga ----
+  function openTrip(mode, route) {
+    const traced = tracedOrders().map(order => String(order.id));
+    window.Viajes.abrir({
+      modo: mode,
+      ruta: route || null,
+      pedidos: { ids: traced, eleccion: window.Pedidos.store.get() !== null && traced.length > 0 },
+      post,
+      get: path => window.Api.get(path),
+      onSaved: onTripSaved
+    });
+  }
+
+  // Tras generar o editar: se recarga todo, se abre la ruta y se dibuja la ruta óptima de la IA.
+  async function onTripSaved(result) {
+    await loadDeliveries().catch(() => {});
+    if (availabilityModule) availabilityModule.reload();
+    await centroModule.refresh();
+    const saved = centroModule.findRoute(String(result.ruta.id));
+    if (saved) await selectRoute(saved);
+    if (result.evaluacion && result.evaluacion.ruta_elegida) drawAgentReport(result.evaluacion);
+    $("noRoute").classList.add("hidden");
   }
 
   // Tras asignar, desasignar o editar una ruta: se recargan pedidos y personal, y se vuelve a trazar.
@@ -744,7 +792,7 @@
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
-      routes: ["PLANIFICACIÓN OPERATIVA", "Planificar rutas", "Elija pedidos en curso, trace el recorrido y guarde la ruta."],
+      routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
@@ -833,6 +881,8 @@
       selection: window.Pedidos.store,
       originNode: $("originRow"),
       onSave: focusSaveRoute,
+      onNewTrip: () => openTrip("nuevo"),
+      onEditTrip: route => openTrip("editar", route),
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });
