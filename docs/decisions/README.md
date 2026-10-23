@@ -11,3 +11,4 @@ Cada ADR documenta una decisión difícil de revertir, con su contexto y consecu
 | [0005](0005-centro-de-control-de-rutas.md) | «Planificar rutas» como centro de control de rutas | Aceptada |
 | [0006](0006-despliegue-render-un-solo-servicio.md) | Despliegue en Render con FastAPI sirviendo el front | Aceptada |
 | [0007](0007-agente-de-rutas-seguras.md) | Agente de rutas seguras: ponderación determinista y LLM opcional | Aceptada |
+| [0008](0008-viajes-generar-ruta.md) | Nuevo viaje y GENERAR RUTA guardan el viaje en la ruta del día | Aceptada |

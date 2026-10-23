@@ -4,7 +4,7 @@
   const SESSION_KEY = "session";
   const LOGIN_URL = "/PaginaPrincipal.html";
   const LINKS = [
-    { id: "routes", label: "Planificar rutas", detail: "Trazar y guardar", icon: "↗" },
+    { id: "routes", label: "Tracking de rutas", detail: "Viajes, ruta óptima y seguimiento", icon: "↗" },
     { id: "orders", label: "Pedidos en curso", detail: "Pendientes y en proceso", icon: "▤" },
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
     { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
