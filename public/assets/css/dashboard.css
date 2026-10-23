@@ -274,3 +274,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .map-search button { min-height: 36px; padding: 0 12px; color: var(--route); background: var(--panel-raised); border: 1px solid var(--line); border-left: 0; border-radius: 0 6px 6px 0; font-size: 16px; cursor: pointer; }
 .map-toolbar .route-metrics-inline { margin-left: auto; }
 #map.map-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+
+/* Agente de rutas seguras */
+.agent-btn { min-height: 36px; padding: 0 12px; color: var(--text); background: var(--panel-raised); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.agent-btn:hover:not(:disabled) { border-color: var(--route); color: var(--route); }
+.agent-btn:disabled { opacity: .55; cursor: wait; }
+.agent-panel { margin-bottom: 12px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid #3ec27a; border-radius: 6px; font-size: 13px; }
+.agent-panel.is-risk { border-left-color: var(--high); }
+.agent-panel.is-error { border-left-color: var(--mid); }
+.agent-panel h3 { margin: 0 0 4px; font: 600 17px "Barlow Condensed", sans-serif; }
+.agent-panel p { margin: 4px 0; color: var(--muted); line-height: 1.5; }
+.agent-panel ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+.agent-panel li { margin: 2px 0; }
+.agent-panel .agent-warn { color: var(--mid); }
+.agent-panel .agent-close { float: right; padding: 0 6px; color: var(--muted); background: transparent; border: 0; font-size: 18px; cursor: pointer; }
