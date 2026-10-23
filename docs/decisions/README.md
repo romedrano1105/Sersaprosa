@@ -10,3 +10,4 @@ Cada ADR documenta una decisión difícil de revertir, con su contexto y consecu
 | [0004](0004-mapas-osm-y-osrm.md) | Mapa con OpenStreetMap y rutas con OSRM público | Aceptada |
 | [0005](0005-centro-de-control-de-rutas.md) | «Planificar rutas» como centro de control de rutas | Aceptada |
 | [0006](0006-despliegue-render-un-solo-servicio.md) | Despliegue en Render con FastAPI sirviendo el front | Aceptada |
+| [0007](0007-agente-de-rutas-seguras.md) | Agente de rutas seguras: ponderación determinista y LLM opcional | Aceptada |

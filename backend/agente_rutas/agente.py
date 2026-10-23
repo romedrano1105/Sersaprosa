@@ -105,6 +105,8 @@ class AgenteRutaSegura:
             advertencias.append("El modelo propuso una ruta con veto de seguridad; el sistema la sustituyó por la mejor sin veto.")
         if not texto or s.eleccion.get("corregida_por_validacion"):
             texto = justificar(elegida, descartadas)
+        if getattr(self.fuentes[1], "sin_datos", False):
+            advertencias = advertencias + ["Sin fuente de tráfico configurada: la evaluación no considera congestión ni accidentes viales."]
         return {
             "modo": modo,
             "ruta_elegida": {**elegida.a_dict(con_geometria=True), "desvio": elegida.ruta.via is not None},
