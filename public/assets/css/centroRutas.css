@@ -152,3 +152,19 @@
 .cc-task.cc-off:hover { opacity: 1; }
 .cc-done-tag { color: #3ec27a; font-size: 12px; font-weight: 600; }
 .cc-eta { font-size: 12px; font-weight: 600; }
+
+/* Viajes: botón «+» y formulario */
+.cc-plus { color: #fff; background: var(--route); border-color: var(--route); font-size: 22px; font-weight: 700; line-height: 1; }
+.cc-plus:hover { color: #fff; filter: brightness(1.12); border-color: var(--route); }
+.vj-form { display: grid; gap: 12px; }
+.vj-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.vj-field { display: grid; gap: 5px; align-content: start; font-size: 13px; color: var(--muted, #9a9fa8); }
+.vj-field .cc-input { width: 100%; color: var(--text, #f2f3f5); }
+.vj-field small { color: var(--faint, #6c717a); font-size: 11px; }
+.vj-req { color: var(--high, #e5484d); }
+.vj-error { min-height: 0; margin: 0; color: #ffb3b6; font-size: 12px; }
+.vj-error:empty { display: none; }
+.vj-field input[aria-invalid="true"], .vj-field select[aria-invalid="true"] { border-color: var(--high, #e5484d); }
+.vj-check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--muted, #9a9fa8); cursor: pointer; }
+.vj-check input { accent-color: var(--route, #5b8cff); width: 17px; height: 17px; }
+@media (max-width: 560px) { .vj-row { grid-template-columns: 1fr; } }
