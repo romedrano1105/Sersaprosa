@@ -1,0 +1,6 @@
+# Dependencias del agente. El núcleo (geometría, ponderación, fuentes simuladas) usa solo la biblioteca estándar.
+httpx>=0.28        # solo para el motor de rutas OSRM real (ya está en el requirements.txt raíz)
+anthropic>=0.40    # solo para el modo con LLM (Tool Calling); sin él el agente corre en modo determinista
+# Opcionales cuando migres las fuentes a datos espaciales reales:
+# shapely>=2.0     # sustituir backend/agente_rutas/geo.py (mismas firmas)
+# geopandas>=1.0   # cargar GeoJSON/PostGIS de zonas
