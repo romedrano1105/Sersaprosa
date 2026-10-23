@@ -103,6 +103,8 @@
                 <option value="oscuro">Calles oscuro</option>
               </select>
               <label class="map-toggle"><input id="mapEventsToggle" type="checkbox" checked> Eventos de riesgo</label>
+              <button id="agentBtn" class="agent-btn" type="button" title="El agente revisa incidentes y zonas de riesgo entre el inicio y la última parada">🛡 Evaluar seguridad</button>
+              <label class="map-toggle" title="Usa el modelo de IA para razonar (requiere configuración en el servidor)"><input id="agentLlm" type="checkbox"> Con IA</label>
               <form id="mapSearch" class="map-search" role="search">
                 <input id="mapSearchInput" type="search" maxlength="120" placeholder="Buscar dirección en el mapa…" aria-label="Buscar dirección en el mapa" autocomplete="off">
                 <button type="submit" aria-label="Buscar">⌕</button>
@@ -114,6 +116,7 @@
               </div>
             </div>
             <p id="mapSearchMsg" class="notice hidden" role="status"></p>
+            <section id="agentPanel" class="agent-panel hidden" aria-live="polite" aria-label="Evaluación de seguridad de la ruta"></section>
             <div id="routeOptions" class="route-options-bar" aria-live="polite"></div>
             <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
               <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap · OSRM</span></div>
