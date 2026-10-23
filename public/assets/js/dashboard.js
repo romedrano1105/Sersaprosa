@@ -11,6 +11,7 @@
   let origin = CENTER.slice();
   let routeLayers = null;
   let eventLayers = null;
+  let agentLayer = null;     // ruta que recomienda el agente de seguridad
   let deliveries = [];
   let manualStops = null; // paradas del planificador multi-paradas; null = ruta del día
   let mapEvents = [];
@@ -83,6 +84,7 @@
     }).addTo(map);
     routeLayers = L.layerGroup().addTo(map);
     eventLayers = L.layerGroup().addTo(map);
+    agentLayer = L.layerGroup().addTo(map);
   }
 
   // Barra del mapa: estilo de calles, capa de eventos de riesgo y búsqueda de direcciones.
@@ -94,6 +96,7 @@
       if (!eventLayers) return;
       if (event.target.checked) eventLayers.addTo(map); else map.removeLayer(eventLayers);
     });
+    $("agentBtn").addEventListener("click", evaluateSafety);
     $("mapSearch").addEventListener("submit", async event => {
       event.preventDefault();
       const text = $("mapSearchInput").value.trim();
@@ -111,6 +114,65 @@
         message.classList.remove("hidden");
       }
     });
+  }
+
+  // ---- Agente de rutas seguras: POST /agente/ruta-segura (inicio → última parada trazada) ----
+  function clearAgent() {
+    if (agentLayer) agentLayer.clearLayers();
+    $("agentPanel").classList.add("hidden");
+  }
+
+  function showAgent(kind, title, lines, warnings) {
+    const panel = $("agentPanel");
+    const close = element("button", "agent-close", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Cerrar evaluación");
+    close.addEventListener("click", clearAgent);
+    panel.className = "agent-panel" + (kind ? " is-" + kind : "");
+    panel.replaceChildren(close, element("h3", "", title));
+    lines.forEach(line => panel.append(element("p", "", line)));
+    if (warnings && warnings.length) {
+      const list = element("ul", "agent-warn");
+      warnings.forEach(text => list.append(element("li", "", text)));
+      panel.append(list);
+    }
+  }
+
+  async function evaluateSafety() {
+    const stops = manualStops || dailyStops();
+    if (!stops.length) {
+      showAgent("error", "No hay ruta que evaluar", ["Elige pedidos con coordenadas o calcula una ruta primero."]);
+      return;
+    }
+    const last = stops[stops.length - 1];
+    const button = $("agentBtn");
+    button.disabled = true;
+    showAgent("", "Evaluando seguridad…", ["Consultando incidentes, eventos y zonas de riesgo."]);
+    try {
+      const report = await post("/agente/ruta-segura", {
+        origen: { lat: origin[0], lng: origin[1] },
+        destino: { lat: last.lat, lng: last.lng },
+        usar_llm: $("agentLlm").checked
+      });
+      const chosen = report.ruta_elegida;
+      agentLayer.clearLayers();
+      const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
+      if (points.length > 1) {
+        const line = L.polyline(points, { color: "#3ec27a", weight: 5, opacity: 0.95, dashArray: "9 8" }).addTo(agentLayer);
+        map.fitBounds(line.getBounds(), { padding: [35, 35], maxZoom: 15 });
+      }
+      const risky = chosen.vetada;
+      const resume = chosen.distancia_km + " km · " + Math.round(chosen.duracion_min_ajustada) + " min" +
+        (chosen.desvio ? " · desvío para evitar riesgo" : "");
+      const warnings = (report.advertencias || []).slice();
+      (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
+      showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta recomendada por el agente",
+        [resume, report.justificacion], warnings);
+    } catch (error) {
+      agentLayer.clearLayers();
+      showAgent("error", "No se pudo evaluar la seguridad", [error.message || "Inténtalo de nuevo."]);
+    }
+    button.disabled = false;
   }
 
   async function loadDeliveries() {
@@ -502,6 +564,7 @@
   }
 
   async function calculateRoute() {
+    clearAgent();
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
     $("routeOptions").replaceChildren();
