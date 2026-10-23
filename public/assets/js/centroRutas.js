@@ -16,7 +16,7 @@
    Uso (ver dashboard.js):
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
-       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), selection (Pedidos.store),
+       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), selection (Pedidos.store),
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
      centro.update({ deliveries, orders, result, manual, originLabel, events, notifications });
@@ -427,6 +427,7 @@
       metricas.push(h("span", {}, S.orders.length + (S.orders.length === 1 ? " pedido" : " pedidos")));
       if (r) metricas.push(h("span", {}, r.distanceKm.toFixed(1) + " km, " + Math.round(r.durationMin) + " min"));
       if (etaFinal) metricas.push(h("span", {}, "Llegada " + hora(etaFinal) + (restante != null ? " · faltan " + restante + " min" : "")));
+      if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
       if (S.retrasoMax) metricas.push(h("span", { class: "cc-late-dot" }, "● " + S.retrasoMax + " min tarde"));
       const nodos = [];
       nodos.push(h("div", { class: "cc-head" },
@@ -434,12 +435,18 @@
           h("div", { class: "cc-title" },
             coordinador ? h("button", { type: "button", class: "cc-back", "aria-expanded": String(selectorAbierto), "aria-label": "Cambiar de ruta (rutas de hoy)",
               title: "Rutas de hoy", onclick: () => { selectorAbierto = !selectorAbierto; render(); } }, "←") : null,
+            coordinador && opts.onNewTrip ? h("button", { type: "button", class: "cc-back cc-plus", "aria-label": "Nuevo viaje: generar una ruta",
+              title: "Nuevo viaje", onclick: () => opts.onNewTrip() }, "+") : null,
             h("h2", {}, titulo),
             h("span", { class: "cc-badge cc-b-" + estado }, ESTADOS_RUTA[estado])),
-          h("div", { class: "cc-id" }, ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : S.manual ? "Origen, paradas y destino a mano" : "Sin guardar · elige pedidos y guarda la ruta"),
+          h("div", { class: "cc-id" }, ruta && ruta.viaje
+            ? "ID " + ruta.id + " · " + ruta.viaje.origen.texto + " → " + ruta.viaje.destino.texto + " · sale " + ruta.viaje.horario
+            : ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : S.manual ? "Origen, paradas y destino a mano" : "Sin guardar · elige pedidos y guarda la ruta"),
           h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
           boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
+          ruta && ruta.viaje && opts.onEditTrip ? boton("Editar viaje", "✎", () => opts.onEditTrip(ruta), !!a,
+            a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
           boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
           boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
           boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita"),

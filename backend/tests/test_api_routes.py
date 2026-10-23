@@ -28,6 +28,8 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/notificaciones/sincronizar", {}),
             ("/notificaciones/listar", {}),
             ("/rutas/geocodificar", {"query": "San Salvador"}),
+            ("/viajes/generar", {}),
+            ("/viajes/actualizar", {"id": "RT-1"}),
             ("/agente/ruta-segura", {"origen": {"lat": 13.7, "lng": -89.2}, "destino": {"lat": 13.71, "lng": -89.19}}),
             ("/rutas/guardar", {"nombre": "Ruta Centro", "pedidos": ["1"]}),
             ("/rutas/listar", {}),

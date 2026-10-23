@@ -6,6 +6,7 @@
 
      Api.session()              → { token, name, code, role, apiBase } o null
      Api.post(ruta, cuerpo)     → JSON de la respuesta; lanza Error con el mensaje del servidor
+     Api.get(ruta)              → igual, con GET
 
    401 = sesión vencida: cierra la sesión (AppNavigation.handleUnauthorized) y lanza Error.
    Los errores de FastAPI llegan como { detail } (texto u objeto con { message }).
@@ -24,7 +25,7 @@
     }
   }
 
-  async function post(path, payload) {
+  async function request(method, path, payload) {
     const current = session();
     if (!current) {
       if (global.AppNavigation) global.AppNavigation.handleUnauthorized();
@@ -32,9 +33,9 @@
     }
     const base = (current.apiBase || global.location.origin).replace(/\/$/, "");
     const response = await global.fetch(base + path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + current.token },
-      body: JSON.stringify(payload)
+      method,
+      headers: Object.assign({ Authorization: "Bearer " + current.token }, payload === undefined ? {} : { "Content-Type": "application/json" }),
+      body: payload === undefined ? undefined : JSON.stringify(payload)
     });
     let result = {};
     try {
@@ -54,5 +55,8 @@
     return result;
   }
 
-  global.Api = { session, post };
+  const post = (path, payload) => request("POST", path, payload);
+  const get = path => request("GET", path);
+
+  global.Api = { session, post, get };
 })(window);
