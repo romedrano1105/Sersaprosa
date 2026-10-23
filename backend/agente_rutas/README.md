@@ -43,6 +43,7 @@ reporte = agente.decidir((13.70, -89.22), (13.70, -89.17))
 ```
 
 ## En la aplicación (datos reales)
+En la pantalla «Planificar rutas», el botón **🛡 Evaluar seguridad** (barra del mapa) llama a este endpoint con el inicio y la última parada y dibuja la ruta recomendada en verde con su justificación.
 `POST /agente/ruta-segura` (solo coordinador): `{"origen":{"lat":..,"lng":..},"destino":{...},"usar_llm":false}`.
 - Incidentes: `alertas_seguridad` + marchas/cierres de `eventos_especiales` con coordenadas (`fuentes_supabase.py`).
 - Zonas: hotspots dinámicos = celdas de ~550 m con ≥3 puntos (alta=2, media=1) en 30 días; ≥3 nivel 3, ≥4 nivel 4, ≥6 nivel 5.
