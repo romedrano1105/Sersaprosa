@@ -47,12 +47,23 @@ def rutas_de_hoy(filas, hoy: date) -> list[dict]:
     for fila in filas or []:
         if str(fila.get("fecha") or "")[:10] != iso:
             continue
-        rutas.append({
+        ruta = {
             "id": str(fila.get("id")),
             "nombre": str(fila.get("nombre") or ""),
             "zona": str(fila.get("zona") or ""),
             "fecha": iso,
             "entregas": int(fila.get("entregas") or 0),
             "conductor": fila.get("conductor") or None,
-        })
+        }
+        if fila.get("destino_lat") is not None and fila.get("origen_lat") is not None:
+            # Rutas creadas con «Generar ruta» (viajes_logica): origen, destino, horario, carga y riesgo.
+            ruta["viaje"] = {
+                "origen": {"texto": fila.get("origen_texto") or "", "lat": fila["origen_lat"], "lng": fila["origen_lng"]},
+                "destino": {"texto": fila.get("destino_texto") or "", "lat": fila["destino_lat"], "lng": fila["destino_lng"]},
+                "horario": str(fila.get("hora_salida") or "")[:5],
+                "tipo_carga_id": fila.get("tipo_carga_id"),
+                "monto": fila.get("monto"),
+                "nivel_riesgo": fila.get("nivel_riesgo"),
+            }
+        rutas.append(ruta)
     return sorted(rutas, key=lambda r: r["nombre"].lower())

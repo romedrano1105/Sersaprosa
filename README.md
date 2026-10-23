@@ -54,7 +54,7 @@ flujo de trabajo del día:
 
 1. **Pedidos en curso**: pedidos que faltan por entregar; se eligen los que van en la ruta
    (`pedidosEnCurso.js`).
-2. **Planificar rutas** (centro de control, `centroRutas.js`): rutas de hoy con su estado
+2. **Tracking de rutas** (centro de control, `centroRutas.js`; antes «Planificar rutas»): rutas de hoy con su estado
    (borrador, sin asignar, asignada, en curso, completada); acciones editar, asignar,
    desasignar, invertir orden, optimizar y ver historial; tarjetas de asignación, alertas
    (riesgo, retrasos, notificaciones), resumen y completados; lista de pedidos con ETA y
@@ -63,6 +63,13 @@ flujo de trabajo del día:
    (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
    `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
    `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
+   El botón **«+»** abre **Nuevo viaje** (`viajeRutas.js`): origen, destino, horario, tipo de carga y monto.
+   **GENERAR RUTA** (`POST /viajes/generar`) valida (si falta algo, dice qué; fuera del horario de
+   entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
+   genera), ubica las direcciones, calcula la ruta óptima con el agente de IA y crea la ruta del día.
+   El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
+   haya salido, es decir, sin conductor asignado. Requiere aplicar
+   [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
