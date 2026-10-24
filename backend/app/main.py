@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
@@ -53,6 +53,14 @@ class CredencialesEmpleado(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+@app.exception_handler(Exception)
+async def error_inesperado(request, error):
+    """Siempre JSON (el front lo lee), con el tipo de error y sin datos sensibles; el detalle va a los logs."""
+    logger.exception("Error no controlado en %s", request.url.path)
+    return JSONResponse(status_code=500, content={
+        "detail": f"Error interno del servidor ({type(error).__name__}). Revise los logs del servicio en Render."})
+
+
 @app.post("/login")
 def login(credenciales: CredencialesEmpleado):
     codigo = credenciales.code.strip()
@@ -69,6 +77,12 @@ def login(credenciales: CredencialesEmpleado):
         raise HTTPException(
             status_code=502,
             detail="No fue posible consultar el empleado en Supabase. Revise la tabla y las políticas.",
+        ) from error
+    except Exception as error:  # p. ej. clave de Supabase mal pegada: create_client lanza otro tipo de error
+        logger.exception("Falló la conexión con Supabase al buscar el empleado.")
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo conectar con Supabase ({type(error).__name__}). Revise SUPABASE_URL y las claves en el servidor.",
         ) from error
 
     if not empleado:
