@@ -78,7 +78,8 @@ class Consulta:
         if self.op == "insert":
             if self.falla:
                 raise SimpleNamespace_error("PGRST204", "column origen_texto does not exist")
-            filas.append(dict(self.valores)); return Resp([self.valores])
+            nuevas = self.valores if isinstance(self.valores, list) else [self.valores]
+            filas.extend(dict(v) for v in nuevas); return Resp(nuevas)
         coincide = lambda r: all(f(r) for f in self.f)
         if self.op == "update":
             [r.update(self.valores) for r in filas if coincide(r)]; return Resp([])
@@ -92,14 +93,16 @@ def SimpleNamespace_error(code, msg):
 
 
 class Cliente:
-    def __init__(self, db, rpc_falla=False, sin_columnas=False):
-        self.db, self.rpc_falla, self.sin_columnas, self.llamadas = db, rpc_falla, sin_columnas, []
+    def __init__(self, db, rpc_falla=False, sin_columnas=False, sin_funciones=False):
+        self.db, self.rpc_falla, self.sin_columnas, self.sin_funciones, self.llamadas = db, rpc_falla, sin_columnas, sin_funciones, []
 
     def table(self, t): return Consulta(self.db, t, falla_insert=self.sin_columnas and t == "rutas_planificadas")
 
     def rpc(self, nombre, params):
         self.llamadas.append((nombre, params))
         def ejecutar():
+            if self.sin_funciones:
+                raise SimpleNamespace_error("PGRST202", "function not found")
             if self.rpc_falla:
                 raise RuntimeError("rpc caído")
             return Resp({"ruta_id": params["p_ruta_id"], "nivel_riesgo": "Medio"})
@@ -177,6 +180,53 @@ class GenerarTest(unittest.TestCase):
         with self.assertRaises(servicio.ErrorViaje) as cm:
             llamar(servicio.generar_viaje, OK, [], sin_columnas=True)
         self.assertIn("viajes_ruta.sql", cm.exception.mensaje)
+
+
+class TiposYRiesgoTest(unittest.TestCase):
+    def test_nivel_de_riesgo_como_en_sql(self):
+        self.assertEqual(logica.nivel_de_riesgo("500", 0), "Bajo")
+        self.assertEqual(logica.nivel_de_riesgo("500", 2), "Medio")
+        self.assertEqual(logica.nivel_de_riesgo("50000", 1), "Medio")
+        self.assertEqual(logica.nivel_de_riesgo("500000", 1), "Alto")
+
+    def test_tipos_vacios_se_siembran_y_se_listan(self):
+        db = {"tipos_carga": []}
+        # la tabla del fake asigna id al insertar solo si se lo damos: se simula con un cliente que numera
+        class Numera(Cliente):
+            def table(self, t):
+                q = super().table(t)
+                if t == "tipos_carga":
+                    original = q.insert
+                    q.insert = lambda v: original([{**x, "id": i + 1, "activo": True} for i, x in enumerate(v)])
+                return q
+        servicio_cli = Numera(db)
+        tipos = servicio.listar_tipos_carga(Cliente(db, sin_funciones=True), servicio_cli)
+        self.assertEqual(len(tipos), 6)
+        self.assertIn("Electrónicos", [t["nombre"] for t in tipos])
+
+    def test_si_la_funcion_de_riesgo_no_existe_se_calcula_en_el_servidor(self):
+        db = base()
+        db["tipos_carga"] = [{"id": 3, "sensibilidad": 1}]
+        r, db, cli = llamar(servicio.generar_viaje, OK, [], db=db, usuario_cli=Cliente(db, sin_funciones=True))
+        self.assertEqual(r["viaje"]["nivel_riesgo"], "Bajo")            # monto 1500.50 (0) + sensibilidad 1 = 1 → Bajo
+        self.assertEqual(db["rutas_planificadas"][0]["nivel_riesgo"], "Bajo")
+
+    def test_tipo_inexistente_deshace_la_ruta(self):
+        db = base()
+        db["tipos_carga"] = []
+        with self.assertRaises(servicio.ErrorViaje) as cm:
+            llamar(servicio.generar_viaje, OK, [], db=db, usuario_cli=Cliente(db, sin_funciones=True))
+        self.assertEqual(cm.exception.estado, 422)
+        self.assertEqual(db["rutas_planificadas"], [])
+
+    def test_coordenadas_elegidas_evitan_geocodificar(self):
+        def sin_geo(_):
+            raise AssertionError("no debe geocodificar")
+        datos = {**OK, "origen_lat": 13.7, "origen_lng": -89.2, "destino_lat": 13.71, "destino_lng": -89.19}
+        db = base()
+        servicio.generar_viaje(datos, [], usuario="Ana", cliente_usuario=Cliente(db), cliente_servicio=Cliente(db),
+                               geocodificar=sin_geo, evaluar=evaluar, hoy=HOY)
+        self.assertEqual(db["rutas_planificadas"][0]["destino_lat"], 13.71)
 
 
 class EditarTest(unittest.TestCase):
