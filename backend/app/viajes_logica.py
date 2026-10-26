@@ -116,3 +116,18 @@ def nombre_de_viaje(destino: str, horario: str, existentes: list[str]) -> str:
 def ruta_ya_salio(fila_ruta: dict, hay_asignacion: bool) -> bool:
     """Una ruta «sale» cuando se le asigna conductor y vehículo; desde ahí ya no se edita."""
     return hay_asignacion or bool((fila_ruta or {}).get("conductor"))
+
+
+# Tipos de carga de arranque (los mismos de riesgo_rutas.sql): (nombre, sensibilidad 0..2).
+TIPOS_CARGA_BASE = (
+    ("Efectivo / valores", 2), ("Joyería y metales preciosos", 2), ("Medicamentos", 1),
+    ("Electrónicos", 1), ("Documentos", 0), ("Mercancía general", 0),
+)
+
+
+def nivel_de_riesgo(monto, sensibilidad: int) -> str:
+    """Mismo cálculo que calcular_nivel_riesgo() de riesgo_rutas.sql (umbrales provisionales)."""
+    monto = Decimal(str(monto))
+    por_monto = 0 if monto < 10000 else 1 if monto < 100000 else 2
+    puntaje = por_monto + int(sensibilidad)
+    return "Bajo" if puntaje <= 1 else "Medio" if puntaje == 2 else "Alto"
