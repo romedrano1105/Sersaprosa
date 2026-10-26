@@ -1,4 +1,5 @@
 import logging
+import traceback
 from pathlib import Path
 
 import httpx
@@ -53,12 +54,18 @@ class CredencialesEmpleado(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+def _donde_fallo(error: BaseException) -> str:
+    """Últimos 2 pasos del traceback como «archivo:línea (función)». Sin datos del usuario ni del mensaje."""
+    marcos = traceback.extract_tb(error.__traceback__)[-2:]
+    return " ← ".join(f"{Path(m.filename).name}:{m.lineno} ({m.name})" for m in reversed(marcos))
+
+
 @app.exception_handler(Exception)
 async def error_inesperado(request, error):
-    """Siempre JSON (el front lo lee), con el tipo de error y sin datos sensibles; el detalle va a los logs."""
+    """Siempre JSON (el front lo lee). Indica tipo y lugar del fallo; el detalle completo va a los logs."""
     logger.exception("Error no controlado en %s", request.url.path)
     return JSONResponse(status_code=500, content={
-        "detail": f"Error interno del servidor ({type(error).__name__}). Revise los logs del servicio en Render."})
+        "detail": f"Error interno del servidor ({type(error).__name__} en {_donde_fallo(error)}). Revise los logs del servicio en Render."})
 
 
 @app.post("/login")
