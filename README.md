@@ -68,7 +68,7 @@ flujo de trabajo del día:
    entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
    genera), ubica las direcciones, calcula la ruta óptima con el agente de IA y crea la ruta del día.
    El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
-   haya salido, es decir, sin conductor asignado. Requiere aplicar
+   haya salido, es decir, sin conductor asignado. El formulario sugiere lugares que empiezan con lo escrito (lugares ya usados y del mapa; con `OPENROUTESERVICE_API_KEY` usa su autocompletado). Requiere aplicar
    [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
