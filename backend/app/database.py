@@ -1,3 +1,4 @@
+import json
 import os
 
 from supabase import create_client
@@ -45,8 +46,22 @@ def buscar_empleado_por_codigo(codigo: str):
         .limit(1)
         .execute()
     )
-    empleados = resultado.data or []
+    empleados = _filas(resultado.data)
     return _como_diccionario(empleados[0]) if empleados else None
+
+
+def _filas(datos) -> list:
+    """Lista de filas a partir de lo que devuelva la librería: lista, una fila suelta o JSON en texto."""
+    if isinstance(datos, (bytes, bytearray)):
+        datos = datos.decode("utf-8", errors="replace")
+    if isinstance(datos, str):
+        try:
+            datos = json.loads(datos)
+        except ValueError:
+            raise TypeError(f"Supabase respondió texto que no es JSON: «{datos[:120]}»") from None
+    if not datos:
+        return []
+    return [datos] if isinstance(datos, dict) else list(datos)
 
 
 def _como_diccionario(fila):
