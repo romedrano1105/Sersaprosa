@@ -771,11 +771,12 @@
 
   function setMonitorTab(name) {
     monitorTab = ["alerts", "notifications"].includes(name) ? name : "events";
-    $("monitorNotifs").classList.toggle("hidden", monitorTab !== "notifications");
+    if (monitorTab === "incidents") mountIncidentsPanel();
+    else if (monitorTab === "notifications") mountNotificationsPanel();
     $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
-    $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
-    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
-      button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
+    monitorTab = ["alerts", "notifications", "incidents"].includes(name) ? name : "events";
+    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+    button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
     });
     if (monitorTab === "notifications") mountNotificationsPanel();
     else if (monitorTab === "events") mountEventPanel();

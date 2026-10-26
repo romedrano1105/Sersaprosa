@@ -1,3 +1,20 @@
+  // ---- Incidentes de viajes en curso (incidentesViaje.js): consulta en segundo plano desde que inicia sesión ----
+  function startIncidents() {
+    if (!window.IncidentesViaje || (window.Api.session() || {}).role !== "coordinador_rutas") return;
+    window.IncidentesViaje.iniciar({
+      onCount: count => {
+        const badge = $("incCount");
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.classList.toggle("hidden", count === 0);
+      }
+    });
+  }
+
+  function mountIncidentsPanel() {
+    if (!window.IncidentesViaje || (window.Api.session() || {}).role !== "coordinador_rutas") return;
+    startIncidents();
+    window.IncidentesViaje.mount($("panelIncidentes"));
+  }
 /* =====================================================================
    CENTRO DE CONTROL DE RUTAS — SERSAPROSA   (window.CentroRutas)
 
