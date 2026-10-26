@@ -15,6 +15,7 @@ const API_PATHS = [
   '/alertas/',
   '/disponibilidad/',
   '/notificaciones/',
+  '/incidentes/',
   '/rutas-riesgo',
   '/rutas/',
   '/viajes/',
