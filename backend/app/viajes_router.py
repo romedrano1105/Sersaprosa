@@ -9,10 +9,10 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
-from . import database, viajes_servicio
+from . import database, lugares, viajes_servicio
 from .agente_router import _agente
 from .eventos_router import usuario_coordinador
-from .geocodificacion_router import geocodificar
+from .geocodificacion_router import buscar_lugares, geocodificar
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/viajes", tags=["viajes"])
@@ -25,6 +25,11 @@ class Viaje(BaseModel):
     horario: str | None = Field(default=None, max_length=10)
     tipo_carga_id: int | str | None = None
     monto: float | int | str | None = None
+    # Coordenadas del lugar elegido en la lista de sugerencias (opcionales; sin ellas se geocodifica el texto).
+    origen_lat: float | None = Field(default=None, ge=-90, le=90)
+    origen_lng: float | None = Field(default=None, ge=-180, le=180)
+    destino_lat: float | None = Field(default=None, ge=-90, le=90)
+    destino_lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 class ViajeNuevo(Viaje):
@@ -67,5 +72,42 @@ def generar(req: ViajeNuevo, authorization: str | None = Header(default=None)):
 def actualizar(req: ViajeEditado, authorization: str | None = Header(default=None)):
     try:
         return viajes_servicio.actualizar_viaje(req.id, req.model_dump(), **_dependencias(authorization))
+    except viajes_servicio.ErrorViaje as error:
+        raise _responder(error) from error
+
+
+class ConsultaLugar(BaseModel):
+    query: str = Field(min_length=1, max_length=120)
+
+
+@router.post("/sugerencias")
+def sugerencias(req: ConsultaLugar, authorization: str | None = Header(default=None)):
+    """Lugares que empiezan con lo escrito: primero los ya usados en el sistema, luego los del mapa."""
+    usuario_coordinador(authorization)
+    if len(lugares.normalizar(req.query)) < lugares.MIN_CARACTERES:
+        return {"sugerencias": []}
+    locales = []
+    try:
+        servicio = database.cliente_servicio()
+        rutas = servicio.table("rutas_planificadas").select("origen_texto,origen_lat,origen_lng,destino_texto,destino_lat,destino_lng") \
+            .not_.is_("destino_texto", "null").limit(300).execute().data or []
+        entregas = servicio.table("entregas").select("direccion,cliente,lat,lng").limit(500).execute().data or []
+        locales = lugares.candidatos_de_filas(rutas, entregas)
+    except Exception:  # sin tabla o sin clave: se sigue solo con el mapa
+        logger.warning("No se pudieron leer los lugares guardados.", exc_info=True)
+    propios = lugares.filtrar(req.query, locales)
+    externos = buscar_lugares(req.query) if len(propios) < lugares.MAX_SUGERENCIAS and len(req.query.strip()) >= 3 else []
+    return {"sugerencias": lugares.combinar(req.query, locales, externos)}
+
+
+@router.get("/tipos-carga")
+def tipos_carga(authorization: str | None = Header(default=None)):
+    cliente, _ = usuario_coordinador(authorization)
+    try:
+        servicio = database.cliente_servicio()
+    except database.AuthConfigurationError as error:
+        raise HTTPException(503, {"message": "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.", "errores": {}}) from error
+    try:
+        return viajes_servicio.listar_tipos_carga(cliente, servicio)
     except viajes_servicio.ErrorViaje as error:
         raise _responder(error) from error
