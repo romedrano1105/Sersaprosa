@@ -1,4 +1,5 @@
 import logging
+import os
 import traceback
 from pathlib import Path
 
@@ -67,6 +68,15 @@ async def error_inesperado(request, error):
     logger.exception("Error no controlado en %s", request.url.path)
     return JSONResponse(status_code=500, content={
         "detail": f"Error interno del servidor ({type(error).__name__} en {_donde_fallo(error)}). Revise los logs del servicio en Render."})
+
+
+@app.get("/version", include_in_schema=False)
+def version():
+    """Qué commit y rama están desplegados (Render define estas variables en cada deploy)."""
+    return JSONResponse(
+        {"commit": (os.getenv("RENDER_GIT_COMMIT") or "desconocido")[:7], "rama": os.getenv("RENDER_GIT_BRANCH") or "desconocida"},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/login")
