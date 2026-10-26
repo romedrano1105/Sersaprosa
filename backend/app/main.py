@@ -169,16 +169,25 @@ PAGINAS = {
     "riesgo_rutas.html",
 }
 
-app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
+class ArchivosSinCache(StaticFiles):
+    """Los navegadores deben revalidar siempre: así, tras un deploy, nadie se queda con JS o CSS viejos."""
+
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        respuesta.headers["Cache-Control"] = "no-cache"
+        return respuesta
+
+
+app.mount("/assets", ArchivosSinCache(directory=PUBLIC_DIR / "assets"), name="assets")
 
 
 @app.get("/", include_in_schema=False)
 def pagina_inicio():
-    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html")
+    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/{pagina}", include_in_schema=False)
 def pagina_html(pagina: str):
     if pagina not in PAGINAS:
         raise HTTPException(status_code=404, detail="Not Found")
-    return FileResponse(PUBLIC_DIR / "pages" / pagina)
+    return FileResponse(PUBLIC_DIR / "pages" / pagina, headers={"Cache-Control": "no-cache"})
