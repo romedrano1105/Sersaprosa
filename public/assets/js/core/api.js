@@ -50,7 +50,7 @@
     if (!response.ok) {
       const detail = result.detail;
       const message = detail && typeof detail === "object" ? detail.message : detail;
-      throw new Error(message || "Error al consultar el servidor (" + response.status + ").");
+      throw new Error(message || "Error al consultar el servidor (" + response.status + " en " + path + ").");
     }
     return result;
   }

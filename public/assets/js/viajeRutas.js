@@ -233,7 +233,7 @@
       if (previo && previo.tipo_carga_id != null) tipo.value = String(previo.tipo_carga_id);
     } catch (error) {
       tipo.replaceChildren(h("option", { value: "" }, "No disponible"));
-      pintar({}, error.message || "No se pudieron cargar los tipos de carga.");
+      pintar({}, "Tipos de carga: " + (error.message || "no se pudieron cargar."));
     }
 
     enviar.addEventListener("click", async () => {
