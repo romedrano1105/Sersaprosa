@@ -72,11 +72,70 @@
     return e;
   }
 
+  // Sugerencias al escribir: lugares que empiezan con lo escrito (primero los del sistema, luego los del mapa).
+  // Al elegir una, el formulario recuerda sus coordenadas y el servidor no tiene que volver a buscarla.
+  function autocompletar(input, post, id, alElegir) {
+    const lista = h("ul", { class: "vj-ac-list", role: "listbox", id: id + "-lista", hidden: true });
+    const aviso = h("span", { class: "vj-ac-estado", "aria-live": "polite" });
+    input.parentNode.classList.add("vj-ac");
+    input.parentNode.append(lista, aviso);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    input.setAttribute("aria-controls", id + "-lista");
+    input.setAttribute("aria-expanded", "false");
+    let items = [], activo = -1, espera = null, turno = 0;
+
+    function cerrar() { lista.hidden = true; input.setAttribute("aria-expanded", "false"); activo = -1; }
+    function marcar(i) {
+      activo = i;
+      [...lista.children].forEach((li, k) => li.setAttribute("aria-selected", String(k === i)));
+      if (i >= 0) lista.children[i].scrollIntoView({ block: "nearest" });
+    }
+    function elegir(i) {
+      const lugar = items[i];
+      if (!lugar) return;
+      input.value = lugar.texto;
+      cerrar();
+      alElegir(lugar.lat != null && lugar.lng != null ? { lat: Number(lugar.lat), lng: Number(lugar.lng) } : null);
+    }
+    function pintar(lugares) {
+      items = lugares;
+      lista.replaceChildren(...lugares.map((l, i) => h("li", { role: "option", "aria-selected": "false", class: "vj-ac-item",
+        onmousedown: e => { e.preventDefault(); elegir(i); } },
+      h("span", {}, l.texto), h("small", {}, l.fuente === "mapa" ? "mapa" : l.fuente === "ruta" ? "ruta anterior" : "pedido"))));
+      lista.hidden = !lugares.length;
+      input.setAttribute("aria-expanded", String(lugares.length > 0));
+      aviso.textContent = lugares.length ? lugares.length + " sugerencias" : "";
+      activo = -1;
+    }
+    async function buscar() {
+      const texto = input.value.trim();
+      if (texto.length < 2) { pintar([]); return; }
+      const mio = ++turno;
+      try {
+        const r = await post("/viajes/sugerencias", { query: texto });
+        if (mio === turno) pintar(Array.isArray(r.sugerencias) ? r.sugerencias : []);
+      } catch (error) {
+        if (mio === turno) pintar([]);   // sin sugerencias: se puede seguir escribiendo la dirección completa
+      }
+    }
+    input.addEventListener("input", () => { alElegir(null, true); clearTimeout(espera); espera = setTimeout(buscar, 300); });
+    input.addEventListener("keydown", e => {
+      if (lista.hidden && e.key === "ArrowDown") { buscar(); return; }
+      if (lista.hidden) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); marcar((activo + 1) % items.length); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); marcar((activo - 1 + items.length) % items.length); }
+      else if (e.key === "Enter" && activo >= 0) { e.preventDefault(); elegir(activo); }
+      else if (e.key === "Escape") { e.stopPropagation(); cerrar(); }
+    });
+    input.addEventListener("blur", () => setTimeout(cerrar, 120));
+  }
+
   let tiposCache = null;
 
   async function cargarTipos(get) {
     if (!tiposCache) {
-      const lista = await get("/rutas-riesgo/tipos-carga");
+      const lista = await get("/viajes/tipos-carga");
       if (!Array.isArray(lista)) throw new Error("No se pudieron cargar los tipos de carga.");
       tiposCache = lista;
     }
@@ -99,6 +158,10 @@
     const monto = h("input", { type: "number", class: "cc-input", min: "0.01", step: "0.01", inputmode: "decimal", placeholder: "0.00", value: previo && previo.monto != null ? String(previo.monto) : "" });
     const incluir = h("input", { type: "checkbox", checked: false, disabled: editar || !o.pedidos.eleccion });
     const controles = { origen, destino, horario, tipo_carga_id: tipo, monto };
+    // Coordenadas del lugar elegido de la lista (o las guardadas, al editar si el texto no cambió).
+    const lugares = { origen: previo ? { lat: previo.origen.lat, lng: previo.origen.lng } : null,
+      destino: previo ? { lat: previo.destino.lat, lng: previo.destino.lng } : null };
+    const textos = { origen: previo ? previo.origen.texto : "", destino: previo ? previo.destino.texto : "" };
 
     const resumenCaja = h("p", { class: "cc-modal-error vj-summary", role: "alert", hidden: true });
     const enviar = h("button", { type: "button", class: "cc-btn cc-primary" }, editar ? "GUARDAR CAMBIOS" : "GENERAR RUTA");
@@ -130,10 +193,24 @@
     }
     function esc(e) { if (e.key === "Escape" && !enviar.disabled) cerrar(); }
     cancelar.addEventListener("click", cerrar);
+    [["origen", origen], ["destino", destino]].forEach(([clave, input]) => {
+      autocompletar(input, o.post, "vj-" + clave, (lugar, escribiendo) => {
+        if (escribiendo) { if (input.value !== textos[clave]) lugares[clave] = null; return; }   // si cambió el texto, se olvida el lugar
+        lugares[clave] = lugar;
+        textos[clave] = input.value;
+      });
+    });
     fondo.addEventListener("click", e => { if (e.target === fondo && !enviar.disabled) cerrar(); });
     global.document.addEventListener("keydown", esc);
     global.document.body.append(fondo);
     origen.focus();
+
+    // Al corregir un campo se quita su aviso de error.
+    ORDEN.forEach(c => {
+      const limpiar = () => { cuerpo.querySelector("#vj-err-" + c).textContent = ""; controles[c].setAttribute("aria-invalid", "false"); };
+      controles[c].addEventListener("input", limpiar);
+      controles[c].addEventListener("change", limpiar);
+    });
 
     function pintar(errores, mensaje) {
       ORDEN.forEach(c => {
@@ -168,6 +245,9 @@
       enviar.textContent = editar ? "Guardando…" : "Generando ruta…";
       try {
         const cuerpoPeticion = Object.assign({}, datos, { tipo_carga_id: Number(datos.tipo_carga_id) });
+        ["origen", "destino"].forEach(c => {
+          if (lugares[c]) { cuerpoPeticion[c + "_lat"] = lugares[c].lat; cuerpoPeticion[c + "_lng"] = lugares[c].lng; }
+        });
         const resultado = editar
           ? await o.post("/viajes/actualizar", Object.assign({ id: o.ruta.id }, cuerpoPeticion))
           : await o.post("/viajes/generar", Object.assign({ pedidos: incluir.checked ? o.pedidos.ids : [] }, cuerpoPeticion));
