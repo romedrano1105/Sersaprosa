@@ -1,4 +1,5 @@
 import logging
+import traceback
 from pathlib import Path
 
 import httpx
@@ -54,12 +55,18 @@ class CredencialesEmpleado(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+def _donde_fallo(error: BaseException) -> str:
+    """Últimos 2 pasos del traceback como «archivo:línea (función)». Sin datos del usuario ni del mensaje."""
+    marcos = traceback.extract_tb(error.__traceback__)[-2:]
+    return " ← ".join(f"{Path(m.filename).name}:{m.lineno} ({m.name})" for m in reversed(marcos))
+
+
 @app.exception_handler(Exception)
 async def error_inesperado(request, error):
-    """Siempre JSON (el front lo lee), con el tipo de error y sin datos sensibles; el detalle va a los logs."""
+    """Siempre JSON (el front lo lee). Indica tipo y lugar del fallo; el detalle completo va a los logs."""
     logger.exception("Error no controlado en %s", request.url.path)
     return JSONResponse(status_code=500, content={
-        "detail": f"Error interno del servidor ({type(error).__name__}). Revise los logs del servicio en Render."})
+        "detail": f"Error interno del servidor ({type(error).__name__} en {_donde_fallo(error)}). Revise los logs del servicio en Render."})
 
 
 @app.post("/login")
@@ -79,11 +86,11 @@ def login(credenciales: CredencialesEmpleado):
             status_code=502,
             detail="No fue posible consultar el empleado en Supabase. Revise la tabla y las políticas.",
         ) from error
-    except Exception as error:  # p. ej. clave de Supabase mal pegada: create_client lanza otro tipo de error
+    except Exception as error:  # p. ej. clave de Supabase mal pegada o formato de fila inesperado
         logger.exception("Falló la conexión con Supabase al buscar el empleado.")
         raise HTTPException(
             status_code=503,
-            detail=f"No se pudo conectar con Supabase ({type(error).__name__}). Revise SUPABASE_URL y las claves en el servidor.",
+            detail=f"No se pudo leer el empleado en Supabase ({type(error).__name__}: {str(error)[:120]}). Revise SUPABASE_URL, las claves y la tabla empleados.",
         ) from error
 
     if not empleado:
@@ -163,16 +170,25 @@ PAGINAS = {
     "riesgo_rutas.html",
 }
 
-app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
+class ArchivosSinCache(StaticFiles):
+    """Los navegadores deben revalidar siempre: así, tras un deploy, nadie se queda con JS o CSS viejos."""
+
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        respuesta.headers["Cache-Control"] = "no-cache"
+        return respuesta
+
+
+app.mount("/assets", ArchivosSinCache(directory=PUBLIC_DIR / "assets"), name="assets")
 
 
 @app.get("/", include_in_schema=False)
 def pagina_inicio():
-    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html")
+    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/{pagina}", include_in_schema=False)
 def pagina_html(pagina: str):
     if pagina not in PAGINAS:
         raise HTTPException(status_code=404, detail="Not Found")
-    return FileResponse(PUBLIC_DIR / "pages" / pagina)
+    return FileResponse(PUBLIC_DIR / "pages" / pagina, headers={"Cache-Control": "no-cache"})
