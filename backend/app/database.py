@@ -46,7 +46,18 @@ def buscar_empleado_por_codigo(codigo: str):
         .execute()
     )
     empleados = resultado.data or []
-    return empleados[0] if empleados else None
+    return _como_diccionario(empleados[0]) if empleados else None
+
+
+def _como_diccionario(fila):
+    """Normaliza la fila a dict: según la versión de la librería puede llegar como modelo o mapeo."""
+    if isinstance(fila, dict):
+        return fila
+    if hasattr(fila, "model_dump"):
+        return fila.model_dump()
+    if hasattr(fila, "keys"):
+        return dict(fila)
+    raise TypeError(f"Supabase devolvió una fila de tipo {type(fila).__name__}, no un diccionario.")
 
 
 def cliente_servicio():

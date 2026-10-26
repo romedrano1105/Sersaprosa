@@ -85,11 +85,11 @@ def login(credenciales: CredencialesEmpleado):
             status_code=502,
             detail="No fue posible consultar el empleado en Supabase. Revise la tabla y las políticas.",
         ) from error
-    except Exception as error:  # p. ej. clave de Supabase mal pegada: create_client lanza otro tipo de error
+    except Exception as error:  # p. ej. clave de Supabase mal pegada o formato de fila inesperado
         logger.exception("Falló la conexión con Supabase al buscar el empleado.")
         raise HTTPException(
             status_code=503,
-            detail=f"No se pudo conectar con Supabase ({type(error).__name__}). Revise SUPABASE_URL y las claves en el servidor.",
+            detail=f"No se pudo leer el empleado en Supabase ({type(error).__name__}: {str(error)[:120]}). Revise SUPABASE_URL, las claves y la tabla empleados.",
         ) from error
 
     if not empleado:
