@@ -22,6 +22,9 @@ TIPOS = {
     "falla_mecanica": "Falla mecánica",
     "boton_panico": "Botón de pánico",
 }
+# Tipos que suma el historial (FCJ1-22, historial_incidentes.sql). Solo cambian la etiqueta que se ve;
+# los 5 de arriba siguen siendo los acordados en FCJ1-125.
+TIPOS_ADICIONALES = {"choque": "Choque", "emergencia": "Emergencia"}
 SEVERIDADES = {"alta": "Alta", "media": "Media", "baja": "Baja"}
 
 TIEMPO_MAX_ENTREGA_SEG = 10
@@ -60,7 +63,7 @@ def armar_item(incidente: dict, ruta: dict | None) -> dict:
         "ruta": ruta.get("nombre") or "Ruta sin nombre",
         "conductor": ruta.get("conductor") or "Sin conductor asignado",
         "tipo": incidente.get("tipo"),
-        "tipo_etiqueta": TIPOS.get(incidente.get("tipo"), str(incidente.get("tipo") or "Sin tipo")),
+        "tipo_etiqueta": {**TIPOS, **TIPOS_ADICIONALES}.get(incidente.get("tipo"), str(incidente.get("tipo") or "Sin tipo")),
         "severidad": incidente.get("severidad"),
         "severidad_etiqueta": SEVERIDADES.get(incidente.get("severidad"), "Sin clasificar"),
         "origen": incidente.get("origen"),
