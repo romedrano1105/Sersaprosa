@@ -363,6 +363,12 @@
 
       el.detalle.replaceChildren(titulo, lista);
       el.detalle.hidden = false;
+      if (
+        window.NoticiasRiesgo &&
+        typeof window.NoticiasRiesgo.cargar === "function"
+      ) {
+        window.NoticiasRiesgo.cargar(id);
+      }
     } catch (error) {
       estado(error.message, true);
     }
@@ -387,7 +393,20 @@
     if (!el.ruta.value) {
       mostrarNivel(null);
       el.detalle.hidden = true;
+      if (
+        window.NoticiasRiesgo &&
+        typeof window.NoticiasRiesgo.limpiar === "function"
+      ) {
+        window.NoticiasRiesgo.limpiar();
+      }
       return;
+    }
+
+    if (
+      window.NoticiasRiesgo &&
+      typeof window.NoticiasRiesgo.cargar === "function"
+    ) {
+      window.NoticiasRiesgo.cargar(ruta.id);
     }
 
     calcularRiesgo();
