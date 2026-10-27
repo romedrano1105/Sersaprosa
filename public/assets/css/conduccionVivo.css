@@ -1,0 +1,35 @@
+/* Conducción en vivo (conduccionVivo.js). Usa las variables de dashboard.css. */
+.cv { color: var(--text); }
+.cv h2 { margin: 0 0 4px; font: 700 24px/1.2 "Barlow Condensed", sans-serif; }
+.cv h3 { margin: 22px 0 10px; font-size: 14px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.cv p { margin: 0; }
+.cv-muted { color: var(--muted); font-size: 13px; }
+.cv-vacio { padding: 14px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); }
+
+.cv-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.cv-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cv-boton { padding: 8px 12px; border: 1px solid #3d4047; border-radius: 5px; background: transparent; color: var(--text); cursor: pointer; font-size: 13px; }
+.cv-boton:hover { background: var(--panel-raised); }
+
+/* Alertas dentro de la aplicación */
+.cv-alertas { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.cv-alerta { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-left: 5px solid var(--mid); border-radius: 6px; background: var(--panel-raised); font-size: 14px; }
+.cv-alerta-alta { border-left-color: var(--high); background: #e5484d14; }
+.cv-cerrar { width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; }
+.cv-cerrar:hover { background: #ffffff14; color: var(--text); }
+
+/* Tablas */
+.cv-scroll { overflow-x: auto; }
+.cv-tabla { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
+.cv-tabla th, .cv-tabla td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.cv-tabla th { color: var(--muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.cv-vel { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.cv-fila-peligro { background: #e5484d14; }
+.cv-fila-peligro .cv-vel { color: #ff9ca1; }
+.cv-fila-aviso td { color: var(--muted); background: #f5a52410; }
+
+.cv-pastilla { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 12px; white-space: nowrap; background: #ffffff14; }
+.cv-ok { color: #4cc38a; background: #228a5633; }
+.cv-aviso { color: var(--mid); background: #f5a5242b; }
+.cv-peligro { color: #ff9ca1; background: #e5484d2b; }
+.cv-nulo { color: var(--muted); }

@@ -13,16 +13,18 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
-from . import database, motor_rutas
+from . import database
 from .agente_router import router as agente_router
 from .alertas_seguridad_router import router as alertas_router
 from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
 from .geocodificacion_router import router as geocodificacion_router
+from .historial_incidentes_router import router as historial_incidentes_router
 from .incidentes_router import router as incidentes_router
 from .notificaciones_router import router as notificaciones_router
 from .rutas_riesgo import router as rutas_riesgo_router
+from .rutas_calculo_router import router as rutas_calculo_router
 from .rutas_router import router as rutas_router
 from .viajes_router import router as viajes_router
 
@@ -46,10 +48,12 @@ app.include_router(disponibilidad_router)
 app.include_router(notificaciones_router)
 app.include_router(rutas_riesgo_router)
 app.include_router(geocodificacion_router)
-app.include_router(rutas_router)  # /rutas/guardar
-app.include_router(viajes_router)  # /viajes/generar · /viajes/actualizar
-app.include_router(agente_router)  # /agente/ruta-segura (agente de IA, solo coordinador)
-app.include_router(incidentes_router)  # /incidentes/listar · /incidentes/registrar
+app.include_router(rutas_calculo_router)
+app.include_router(rutas_router)
+app.include_router(viajes_router)
+app.include_router(agente_router)
+app.include_router(incidentes_router)
+app.include_router(historial_incidentes_router)
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)
@@ -155,23 +159,6 @@ def login(credenciales: CredencialesEmpleado):
         "email": auth.user.email,
         "role": app_metadata.get("role", ""),
     }
-
-# --- GENERADOR DE RUTA EXISTENTE ---
-@app.post("/generar-ruta")
-def endpoint_generar_ruta(req: dict):
-    # 1. Leer Supabase
-    riesgos = database.obtener_riesgos()
-    
-    # 2. Calcular ruta
-    ruta_final = motor_rutas.calcular_ruta_segura(req['origen'], req['destino'], riesgos)
-    
-    # 3. Guardar historial
-    database.guardar_ruta({"ruta": ruta_final})
-    
-    # 4. Responder a la web
-    return {"status": "success", "ruta": ruta_final}
-
-
 
 # --- PÁGINAS WEB (frontend servido por esta misma API) ---
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
