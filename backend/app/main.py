@@ -20,6 +20,7 @@ from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
 from .geocodificacion_router import router as geocodificacion_router
+from .historial_incidentes_router import router as historial_incidentes_router
 from .incidentes_router import router as incidentes_router
 from .notificaciones_router import router as notificaciones_router
 from .rutas_riesgo import router as rutas_riesgo_router
@@ -51,7 +52,8 @@ app.include_router(rutas_calculo_router)
 app.include_router(rutas_router)  # /rutas/guardar
 app.include_router(viajes_router)  # /viajes/generar · /viajes/actualizar
 app.include_router(agente_router)  # /agente/ruta-segura (agente de IA, solo coordinador)
-app.include_router(incidentes_router)  # /incidentes/listar · /incidentes/registrar
+app.include_router(incidentes_router)  # /incidentes/listar · /incidentes/detalle · /incidentes/atender
+app.include_router(historial_incidentes_router)  # /incidentes/registrar · /incidentes/historial (FCJ1-22)
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)

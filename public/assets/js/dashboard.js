@@ -25,6 +25,8 @@
   let eventModule = null;
   let alertModule = null;
   let notificationsModule = null;
+  let incidentsModule = null;
+  let historyModule = null;
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -771,6 +773,29 @@
      });
    }
 
+  // Incidentes en curso (FCJ1-10 / FCJ1-30): arranca al iniciar sesión para que el contador y los avisos funcionen
+  // aunque no se esté en esa pestaña.
+  function startIncidents() {
+    if (!window.IncidentesViaje) return;
+    window.IncidentesViaje.iniciar({
+      onCount: count => {
+        const badge = $("incCount");
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.classList.toggle("hidden", count === 0);
+      }
+    });
+  }
+
+  function mountIncidentsPanel() {
+    if (incidentsModule) return;
+    incidentsModule = window.IncidentesViaje.mount($("panelIncidentes"));
+  }
+
+  // Historial de incidentes (FCJ1-22): se recarga cada vez que se abre la pestaña.
+  function mountHistoryPanel() {
+    historyModule = window.HistorialIncidentes.mount($("panelHistorialIncidentes"));
+  }
+
   // ---- Centro de control de rutas (centroRutas.js) ----
   // Le entrega lo último que calculó este archivo: pedidos en orden de visita, el recorrido elegido y las alertas.
   function pushCentro() {
@@ -877,18 +902,25 @@
     });
   }
 
+  // Pestañas de Monitoreo en Vivo: nombre → panel de la página.
+  const MONITOR_PANELS = {
+    notifications: "monitorNotifs", events: "monitorEvents", alerts: "monitorAlerts",
+    incidents: "monitorIncidents", history: "monitorHistory"
+  };
+
   function setMonitorTab(name) {
-    monitorTab = ["alerts", "notifications"].includes(name) ? name : "events";
-    if (monitorTab === "incidents") mountIncidentsPanel();
-    else if (monitorTab === "notifications") mountNotificationsPanel();
-    $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
-    monitorTab = ["alerts", "notifications", "incidents"].includes(name) ? name : "events";
-    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
-    button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
+    monitorTab = Object.prototype.hasOwnProperty.call(MONITOR_PANELS, name) ? name : "events";
+    Object.entries(MONITOR_PANELS).forEach(([tab, panelId]) => {
+      $(panelId).classList.toggle("hidden", monitorTab !== tab);
+    });
+    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+      button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
     });
     if (monitorTab === "notifications") mountNotificationsPanel();
     else if (monitorTab === "events") mountEventPanel();
-    else mountAlertPanel();
+    else if (monitorTab === "alerts") mountAlertPanel();
+    else if (monitorTab === "incidents") mountIncidentsPanel();
+    else mountHistoryPanel();
   }
 
   function setScreen(name) {
@@ -998,6 +1030,7 @@
     mountMapToolbar();
     mountOrderModules();
     mountNotificationsPanel();
+    startIncidents();
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     window.addEventListener("app:navigate", event => setScreen(event.detail));
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {

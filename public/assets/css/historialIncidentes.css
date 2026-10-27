@@ -1,0 +1,78 @@
+/* Historial de incidentes (FCJ1-22). Todas las clases empiezan con hi-.
+ * Colores por severidad: alta = rojo, media = naranja, baja = amarillo (igual que las alertas en curso). */
+.hi-sev-alta { --hi-color: #e5484d; }
+.hi-sev-media { --hi-color: #f5a524; }
+.hi-sev-baja { --hi-color: #f2c94c; }
+
+#panelHistorialIncidentes { display: grid; gap: 14px; color: #f2f3f5; font-family: "Inter", system-ui, sans-serif; }
+.hi-cabecera { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.hi-kicker { color: #5b8cff; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+.hi-cabecera h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.hi-cabecera p { margin: 4px 0 0; color: #9a9fa8; font-size: 12px; }
+.hi-contador strong { padding: 4px 12px; background: #23262d; border: 1px solid #3d4047; border-radius: 999px; font: 600 15px "Barlow Condensed", sans-serif; }
+
+/* Filtros */
+.hi-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; align-items: end; padding: 14px; background: #1c1e21; border: 1px solid #33363c; border-radius: 8px; }
+.hi-campo { display: grid; gap: 4px; min-width: 0; }
+.hi-campo label { color: #9a9fa8; font-size: 11px; }
+.hi-campo input, .hi-campo select { width: 100%; box-sizing: border-box; padding: 8px 10px; color: #f2f3f5; font: inherit; font-size: 13px; background: #15171b; border: 1px solid #3d4047; border-radius: 4px; color-scheme: dark; }
+.hi-campo input:focus-visible, .hi-campo select:focus-visible { outline: 2px solid #5b8cff; outline-offset: 1px; }
+.hi-acciones { display: flex; gap: 8px; }
+.hi-aviso { grid-column: 1 / -1; margin: 0; color: #ff8d90; font-size: 12px; }
+.hi-aviso[hidden] { display: none; }
+.hi-primario, .hi-secundario { padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; border-radius: 4px; cursor: pointer; }
+.hi-primario { color: #fff; background: #007afc; border: 0; }
+.hi-secundario { color: #f2f3f5; background: transparent; border: 1px solid #ffffff4d; }
+.hi-secundario:hover:not(:disabled) { border-color: #fff; }
+.hi-secundario:disabled { opacity: .4; cursor: default; }
+
+/* Estados y error */
+.hi-error { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: #2a2216; border: 1px solid #64411e; border-radius: 6px; }
+.hi-error strong, .hi-error small { display: block; }
+.hi-error small { margin-top: 3px; color: #9a9fa8; font-size: 11px; }
+.hi-error button { flex: none; padding: 8px 14px; color: #f2f3f5; background: transparent; border: 1px solid #ffffff4d; border-radius: 4px; cursor: pointer; }
+.hi-error button:hover { border-color: #fff; }
+.hi-estado { margin: 0; padding: 18px; text-align: center; color: #9a9fa8; background: #1c1e21; border: 1px dashed #3d4047; border-radius: 6px; }
+.hi-enlace { margin-left: 10px; padding: 0; color: #5b8cff; font: inherit; background: none; border: 0; text-decoration: underline; cursor: pointer; }
+
+/* Lista */
+.hi-resultados { display: grid; gap: 10px; }
+.hi-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hi-lista.hi-cargando { opacity: .55; }
+.hi-tarjeta { width: 100%; display: grid; gap: 4px; padding: 12px 14px; text-align: left; color: inherit; font: inherit; background: #1c1e21; border: 1px solid #33363c; border-left: 5px solid var(--hi-color, #9a9fa8); border-radius: 6px; cursor: pointer; }
+.hi-tarjeta:hover, .hi-tarjeta:focus-visible { border-color: var(--hi-color, #9a9fa8); outline: none; }
+.hi-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hi-linea { color: #d9dce1; font-size: 13px; overflow-wrap: anywhere; }
+.hi-tarjeta small { color: #9a9fa8; font-size: 11px; }
+.hi-chip { padding: 1px 8px; font-size: 10px; font-weight: 700; color: #111; background: var(--hi-color, #9a9fa8); border-radius: 999px; }
+.hi-chip.hi-estado-pendiente { color: #fff; background: #5b8cff; }
+.hi-chip.hi-estado-atendida { color: #07120f; background: #3fb27f; }
+
+.hi-pie { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: #9a9fa8; font-size: 12px; }
+.hi-pie > div { display: flex; align-items: center; gap: 10px; }
+.hi-pagina { color: #d9dce1; }
+
+/* Detalle */
+.hi-fondo { position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center; padding: 12px; background: #000a; }
+.hi-modal { position: relative; width: min(640px, 100%); max-height: 92vh; overflow: auto; padding: 22px; color: #f2f3f5; background: #1c1e21; border: 1px solid #3d4047; border-top: 5px solid var(--hi-color, #5b8cff); border-radius: 8px; }
+.hi-modal h3 { margin: 0 28px 12px 0; font: 600 22px "Barlow Condensed", sans-serif; }
+.hi-modal h4 { margin: 14px 0 6px; font-size: 13px; color: #9a9fa8; }
+.hi-cerrar { position: absolute; top: 8px; right: 12px; color: #d9dce1; font-size: 26px; background: none; border: 0; cursor: pointer; }
+.hi-datos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.hi-datos dt { color: #9a9fa8; }
+.hi-datos dd { margin: 0; overflow-wrap: anywhere; }
+.hi-mapa { height: 250px; margin: 14px 0; background: #15171b; border-radius: 6px; font-size: 12px; color: #9a9fa8; }
+.hi-auditoria { margin: 0; padding-left: 18px; color: #d9dce1; font-size: 12px; }
+.hi-auditoria li { margin-bottom: 4px; }
+.hi-nota { margin: 0; color: #9a9fa8; font-size: 12px; }
+
+@media (max-width: 560px) {
+  .hi-datos { grid-template-columns: 1fr; }
+  .hi-datos dt { margin-top: 6px; }
+  .hi-error { flex-wrap: wrap; }
+}
+
+/* Con la pestaña «Historial de incidentes» la barra de pestañas ya no cabe en el celular:
+ * se desplaza dentro de su propia caja en vez de ensanchar toda la página. */
+.monitor-tabs { max-width: 100%; box-sizing: border-box; overflow-x: auto; scrollbar-width: thin; }
+.monitor-tabs button { flex: none; white-space: nowrap; }
