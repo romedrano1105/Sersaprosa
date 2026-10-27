@@ -113,8 +113,7 @@ def tipos_carga(authorization: str | None = Header(default=None)):
         raise _responder(error) from error
     
 
-from typing import List, Dict, Any
-from app.database import get_supabase_client
+from typing import Any
 
 @router.get("/monitoreo/en-vivo", response_model=list[dict[str, Any]])
 def obtener_viajes_monitoreo_en_vivo():
