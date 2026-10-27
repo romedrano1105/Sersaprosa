@@ -23,6 +23,9 @@
   let eventModule = null;
   let alertModule = null;
   let notificationsModule = null;
+  let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
+  let incidentModule = null;
+  let historyModule = null;
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -641,6 +644,22 @@
     });
   }
 
+  function mountDrivingPanel() {
+    if (drivingMounted) return;
+    drivingMounted = true;
+    window.ConduccionVivo.mount($("panelConduccion"));
+  }
+
+  function mountIncidentsPanel() {
+    if (incidentModule) return;
+    incidentModule = window.IncidentesViaje.mount($("panelIncidentes"));
+  }
+
+  function mountHistoryPanel() {
+    if (historyModule) return;
+    historyModule = window.HistorialIncidentes.mount($("panelHistorialIncidentes"));
+  }
+
   function mountAlertPanel() {
     if (alertModule) return;
     alertModule = window.AlertasSeguridad.mount($("panelAlertas"));
@@ -770,17 +789,36 @@
   }
 
   function setMonitorTab(name) {
-    monitorTab = ["alerts", "notifications"].includes(name) ? name : "events";
-    if (monitorTab === "incidents") mountIncidentsPanel();
-    else if (monitorTab === "notifications") mountNotificationsPanel();
+    const tabs = ["alerts", "notifications", "driving", "incidents", "history"];
+    monitorTab = tabs.includes(name) ? name : "events";
+
+    $("monitorNotifs").classList.toggle("hidden", monitorTab !== "notifications");
     $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
-    monitorTab = ["alerts", "notifications", "incidents"].includes(name) ? name : "events";
-    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
-    button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
+    $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
+    $("monitorDriving").classList.toggle("hidden", monitorTab !== "driving");
+    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");
+    $("monitorHistory").classList.toggle("hidden", monitorTab !== "history");
+
+    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+      button.setAttribute(
+        "aria-selected",
+        String(button.dataset.monitorPanel === monitorTab)
+      );
     });
-    if (monitorTab === "notifications") mountNotificationsPanel();
-    else if (monitorTab === "events") mountEventPanel();
-    else mountAlertPanel();
+
+    if (monitorTab === "notifications") {
+      mountNotificationsPanel();
+    } else if (monitorTab === "events") {
+      mountEventPanel();
+    } else if (monitorTab === "driving") {
+      mountDrivingPanel();
+    } else if (monitorTab === "incidents") {
+      mountIncidentsPanel();
+    } else if (monitorTab === "history") {
+      mountHistoryPanel();
+    } else {
+      mountAlertPanel();
+    }
   }
 
   function setScreen(name) {
@@ -829,7 +867,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, availabilityModule].forEach(module => {
+    [eventModule, alertModule, incidentModule, historyModule, availabilityModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -890,6 +928,13 @@
     mountMapToolbar();
     mountOrderModules();
     mountNotificationsPanel();
+    window.IncidentesViaje.iniciar({
+      onCount: count => {
+        const badge = $("incCount");
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.classList.toggle("hidden", count === 0);
+      }
+    });
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     window.addEventListener("app:navigate", event => setScreen(event.detail));
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {

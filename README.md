@@ -36,8 +36,10 @@ Para conservar el acceso con código de empleado, aplica
 Después, completa `empleados.email` con el email de una cuenta existente y
 confirmada en Supabase Auth para cada empleado activo. La contraseña ingresada
 se valida contra esa cuenta de Auth; no se consulta `empleados.password`.
-El servicio usa la clave service role exclusivamente para resolver el código
-de empleado a su email, y devuelve a la web el access token real de Supabase.
+El servicio usa la clave service role en el backend para resolver el código de
+empleado a su email, devolver el access token real de Supabase y, cuando se
+requiere, realizar operaciones administrativas de rutas, viajes y datos de
+seguridad. Nunca expone esa clave al navegador.
 
 Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
@@ -127,8 +129,8 @@ en la API y no simula cámaras ni posiciones de unidades.
    coordenadas verificadas en las entregas que deban incluirse en el mapa.
 
 No agregues secretos a Git ni al código del navegador. No se requiere
-`service_role` para OSRM ni para el mapa; la usa el backend en el flujo actual
-de login.
+`service_role` para OSRM ni para las teselas del mapa; el backend la usa solo
+en los flujos administrativos descritos arriba.
 
 ## Ejecutar localmente
 
