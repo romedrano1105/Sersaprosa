@@ -6,12 +6,12 @@
      --route, --high, --mid, --low) y, si no existen, sus mismos valores por defecto.
    ===================================================================== */
 
-/* Solo para la página independiente (eventosEspeciales.html). */
-body.ev-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a6b5;--route:#3cc8b4;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
+/* Tema alternativo para el módulo fuera del dashboard. */
+body.ev-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93a6b5;--route:#5b8cff;--high:#e5533d;--mid:#f2b544;--low:#7fb2e5;margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0)}
 .ev-shell{max-width:1200px;margin:0 auto;padding:20px 16px 48px}
 
 /* MÓDULO: variables propias (--e-*) tomadas de PaginaPrincipal. */
-.ev{--e-bg:var(--bg,#14202b);--e-panel:var(--panel,#1d2c3a);--e-line:var(--line,#2e4153);--e-tx:var(--tx,#e8eef2);--e-mut:var(--mut,#93a6b5);--e-brand:var(--route,#3cc8b4);--e-no:var(--high,#e5533d);--e-warn:var(--mid,#f2b544);--e-low:var(--low,#7fb2e5);--e-ok:#5fd0a0;color:var(--e-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
+.ev{--e-bg:var(--bg,#1f2124);--e-panel:var(--panel,#26282c);--e-line:var(--line,#3d4047);--e-tx:var(--tx,#e8eef2);--e-mut:var(--mut,#93a6b5);--e-brand:var(--route,#5b8cff);--e-no:var(--high,#e5533d);--e-warn:var(--mid,#f2b544);--e-low:var(--low,#7fb2e5);--e-ok:#3ec27a;color:var(--e-tx);font:15px/1.5 'IBM Plex Sans',system-ui,sans-serif}
 .ev,.ev *{box-sizing:border-box}
 .ev-root{display:block}
 
@@ -44,7 +44,7 @@ body.ev-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a
 .ev .ev-panel{background:var(--e-panel);border:1px solid var(--e-line);border-radius:4px;padding:14px;min-width:0;margin-bottom:14px}
 .ev .ev-gap{margin-top:16px}
 .ev .ev-btn{font:inherit;font-weight:500;cursor:pointer;background:transparent;color:var(--e-tx);border:1px solid var(--e-line);border-radius:4px;padding:7px 12px;width:auto;display:inline-block}
-.ev .ev-btn.ev-primary{background:var(--e-brand);color:#06241f;border-color:var(--e-brand)}
+.ev .ev-btn.ev-primary{background:var(--e-brand);color:#1b2133;border-color:var(--e-brand)}
 .ev .ev-btn:disabled{opacity:.5;cursor:not-allowed}
 .ev :focus-visible{outline:2px solid var(--e-brand);outline-offset:2px}
 .ev .ev-input,.ev .ev-select{display:block;width:100%;margin:0;padding:8px 10px;font:inherit;background:var(--e-bg);color:var(--e-tx);border:1px solid var(--e-line);border-radius:4px}
@@ -99,7 +99,7 @@ body.ev-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93a
 .ev .ev-chip-more{border-color:var(--e-line);color:var(--e-mut)}
 
 /* MAPA */
-.ev .ev-map{height:440px;border-radius:4px;background:#0e1822;margin-bottom:8px}
+.ev .ev-map{height:440px;border-radius:4px;background:#1a1c1f;margin-bottom:8px}
 .ev .ev-map-sm{height:300px}
 
 /* DETALLE */

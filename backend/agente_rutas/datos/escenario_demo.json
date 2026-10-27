@@ -1,0 +1,26 @@
+{
+  "zonas": [
+    {"id": "Z-01", "nombre": "Colonia Los Pinos (hotspot)", "nivel": 5,
+     "poligono": [[13.695, -89.200], [13.695, -89.190], [13.705, -89.190], [13.705, -89.200]],
+     "motivo": "concentración de asaltos a transportistas en los últimos 30 días"},
+    {"id": "Z-02", "nombre": "Mercado Sur", "nivel": 2,
+     "poligono": [[13.684, -89.196], [13.684, -89.188], [13.686, -89.188], [13.686, -89.196]],
+     "motivo": "hurtos menores"}
+  ],
+  "incidentes": [
+    {"id": "INC-101", "tipo": "asalto", "gravedad": 5, "ubicacion": [13.7003, -89.196], "radio_m": 300,
+     "hace_min": 15, "descripcion": "Asalto a camión de reparto, sospechosos huyeron al oriente"},
+    {"id": "INC-102", "tipo": "robo", "gravedad": 2, "ubicacion": [13.6885, -89.178], "radio_m": 150,
+     "hace_min": 70, "descripcion": "Robo de celular en parada de bus"},
+    {"id": "INC-103", "tipo": "bloqueo", "gravedad": 3, "ubicacion": [13.7, -89.21], "radio_m": 200,
+     "hace_min": 400, "vigencia_min": 120, "descripcion": "Bloqueo ya levantado (reporte vencido)"}
+  ],
+  "trafico": [
+    {"id": "T-01", "nombre": "Bulevar Los Próceres", "tipo": "congestion", "centro": [13.7, -89.185], "radio_m": 450,
+     "velocidad_kmh": 11, "flujo_libre_kmh": 45},
+    {"id": "T-02", "nombre": "Calle Rubén Darío", "tipo": "accidente", "centro": [13.7, -89.2085], "radio_m": 200,
+     "velocidad_kmh": 9, "flujo_libre_kmh": 35},
+    {"id": "T-03", "nombre": "Av. Sur (obra)", "tipo": "obra", "centro": [13.688, -89.19], "radio_m": 300,
+     "velocidad_kmh": 24, "flujo_libre_kmh": 35}
+  ]
+}

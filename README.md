@@ -1,14 +1,15 @@
 # Sersaprosa
 
-SERSAPROSA es una **aplicación web** de operaciones para planificar recorridos
-seguros, consultar entregas, revisar eventos y gestionar la disponibilidad de
-personal y vehículos. Combina un frontend web con una API FastAPI.
+SERSAPROSA es una **aplicación web** de operaciones con tres secciones:
+asignación y planificación de rutas, monitoreo de eventos y alertas, y
+disponibilidad de empleados y vehículos. Combina un frontend web con una API
+FastAPI.
 
 ## Estructura
 
 ```text
 public/
-  pages/                 Páginas HTML
+  pages/                 Página principal de la aplicación
   assets/
     css/                 Hojas de estilo
     js/                  Scripts del navegador
@@ -29,8 +30,6 @@ archivos `.env`.
 - `SUPABASE_ANON_KEY`: clave anon/public del proyecto.
 - `SUPABASE_SERVICE_ROLE_KEY`: clave de servicio, solo en el backend; nunca la
   publiques en el navegador ni en el repositorio.
-- `OPENROUTESERVICE_API_KEY`: clave de OpenRouteService, solo en el backend.
-  Si no está configurada o el servicio no responde, la API intenta usar OSRM.
 
 Para conservar el acceso con código de empleado, aplica
 [`backend/database/empleados_auth.sql`](backend/database/empleados_auth.sql).
@@ -44,50 +43,81 @@ Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
 al código del navegador ni al repositorio.
 
-El login envía las credenciales a `/login` en el mismo servicio FastAPI que
-sirve las páginas. Las demás peticiones usan ese mismo origen y el token que
-Supabase Auth devuelve al iniciar sesión.
+El navegador envía el login y las demás peticiones al mismo origen usando el
+token que Supabase Auth devuelve. En Render, FastAPI sirve también las páginas;
+en local, Node sirve los archivos y proxifica las llamadas API a FastAPI.
 
 ## Navegación y mapa
 
-El menú compartido está en `public/assets/js/appNavigation.js`; en teléfonos
-se abre con el botón **Menú**. Alertas de seguridad solo aparece para el rol
-`coordinador_rutas`.
+El menú compartido está en `public/assets/js/appNavigation.js` y sigue el
+flujo de trabajo del día:
 
-La navegación sigue el flujo operativo de planificación de rutas, monitoreo de
-eventos, entregas del día y disponibilidad de empleados y vehículos. La página
-principal consulta destinos y eventos mediante `/entregas/listar` y
-`/eventos/listar`. El endpoint autenticado `/rutas/calcular` solicita rutas a
-OpenRouteService y usa OSRM como respaldo; el navegador nunca recibe la clave.
-Antes de calcular, el backend carga de Supabase los eventos especiales vigentes
-y las alertas altas/medias de los últimos 90 días usando su clave service role.
-Las zonas con coordenadas se envían a OpenRouteService como áreas a evitar. Si
-OSRM no encuentra una alternativa fuera de ellas, la API rechaza la ruta en vez
-de mostrar una ruta insegura. Eventos sin coordenadas se notifican en el panel,
-pero no se pueden excluir espacialmente. La caché del backend conserva por seis
-horas las rutas válidas para las mismas coordenadas y zonas de riesgo; es local
-al proceso de la API.
+1. **Pedidos en curso**: pedidos que faltan por entregar; se eligen los que van en la ruta
+   (`pedidosEnCurso.js`).
+2. **Tracking de rutas** (centro de control, `centroRutas.js`; antes «Planificar rutas»): rutas de hoy con su estado
+   (borrador, sin asignar, asignada, en curso, completada); acciones editar, asignar,
+   desasignar, invertir orden, optimizar y ver historial; tarjetas de asignación, alertas
+   (riesgo, retrasos, notificaciones), resumen y completados; lista de pedidos con ETA y
+   mapa. Una ruta nueva se **guarda** con `POST /rutas/guardar`; también existen
+   `POST /rutas/listar`, `POST /rutas/actualizar` y `POST /disponibilidad/desasignar`
+   (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
+   `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
+   `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
+   El botón **«+»** abre **Nuevo viaje** (`viajeRutas.js`): origen, destino, horario, tipo de carga y monto.
+   **GENERAR RUTA** (`POST /viajes/generar`) valida (si falta algo, dice qué; fuera del horario de
+   entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
+   genera), ubica las direcciones, calcula la ruta óptima con el agente de IA y crea la ruta del día.
+   El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
+   haya salido, es decir, sin conductor asignado. El formulario sugiere lugares que empiezan con lo escrito (lugares ya usados y del mapa; con `OPENROUTESERVICE_API_KEY` usa su autocompletado). Requiere aplicar
+   [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
+3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
+4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
+5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
 
-Las entregas y eventos se vuelven a consultar cada dos minutos y el recorrido
-se recalcula cuando cambian sus coordenadas, el origen o los eventos que
-afectan al riesgo. **Actualizar ahora** permite forzar la consulta. La ubicación
-del navegador es opcional: **Iniciar seguimiento en vivo** solicita permiso
-explícito, muestra la posición e inicia el recálculo si el vehículo se desvía
-más de 60 metros de la ruta. El panel muestra las indicaciones paso a paso del
-proveedor de rutas seleccionado.
+Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
+`window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,
+`VerificarConduJS.js`, …) y `dashboard.js` como arranque que cambia de pantalla.
+`POST /rutas/guardar` usa la función SQL `guardar_ruta_operativa`. Las pruebas de
+lógica del front corren con `npm test` (`tests/js`) y las del backend con `pytest`.
+
+La página principal consulta destinos y eventos mediante `/entregas/listar` y
+`/eventos/listar`. El mapa usa teselas de OpenStreetMap; el backend calcula las
+rutas con OpenRouteService y usa OSRM como respaldo. El endpoint autenticado
+`/rutas/calcular` carga eventos especiales vigentes y alertas altas/medias de
+los últimos 90 días con la clave service role del servidor. Excluye zonas con
+coordenadas de las alternativas y rechaza el cálculo si el respaldo no encuentra
+una ruta que las evite. Los eventos sin coordenadas se indican en la página, ya
+que no pueden excluirse espacialmente. La caché del backend conserva rutas
+válidas durante seis horas. Los destinos y eventos se vuelven a consultar cada
+dos minutos y el recorrido se recalcula cuando cambian sus coordenadas, el
+origen o los riesgos. **Actualizar ahora** permite forzar la consulta. El GPS es
+opcional: solo se solicita al pulsar el botón de ubicación o iniciar el
+seguimiento en vivo, que actualiza la ruta tras detectar un desvío superior a
+60 metros.
+
+Para habilitar la asignación y disponibilidad reales, aplica
+[`backend/database/operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
+en Supabase. El esquema usa empleados activos de `empleados` (con su fecha de
+licencia), vehículos activos de `vehiculos` y rutas del día de
+`rutas_planificadas`; ingresa los vehículos y las rutas planificadas antes de
+usar la asignación. La API valida nuevamente en el servidor el rol, los
+documentos vigentes y que conductor, vehículo y ruta no estén ya asignados.
+En Supabase Auth asigna `app_metadata.role = coordinador_rutas` únicamente a
+las cuentas autorizadas para consultar y asignar rutas.
 
 Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
 en Supabase y guarda coordenadas verificadas en `entregas.lat` y
 `entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
-direcciones a un geocodificador externo. El número y disponibilidad de rutas
-alternativas depende de las opciones devueltas por OpenRouteService o, como respaldo, OSRM.
+direcciones a un geocodificador externo.
 
-El acceso a las tablas continúa bajo RLS usando el token del usuario; no se
+Las funciones `listar_disponibilidad_operativa` y `asignar_ruta_operativa`
+validan el rol del usuario dentro de PostgreSQL y se ejecutan con el token
+autenticado; la consulta de empleados devuelve solo los campos necesarios. No se
 expone la clave `service_role` al navegador ni se concede acceso a `anon`.
 Los mapas, las teselas y el cálculo de rutas dependen de servicios públicos
-externos (OpenStreetMap, CARTO y OSRM), que pueden limitar solicitudes o dejar
-de responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
+externos (OpenStreetMap, OpenRouteService y OSRM), que pueden limitar solicitudes
+o dejar de responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
 vehículos; por eso el monitoreo muestra eventos/incidentes reales disponibles
 en la API y no simula cámaras ni posiciones de unidades.
 
@@ -102,20 +132,30 @@ en la API y no simula cámaras ni posiciones de unidades.
 5. Aplica `backend/database/entregas_coordenadas.sql` en Supabase y completa
    coordenadas verificadas en las entregas que deban incluirse en el mapa.
 
-No agregues secretos a Git ni al código del navegador. La clave de
-OpenRouteService debe permanecer en el entorno del backend.
+No agregues secretos a Git ni al código del navegador. El backend usa la clave
+`service_role` para resolver el código de empleado y consultar los eventos y
+alertas necesarios para el cálculo seguro de rutas; no la expone al navegador.
 
-## Ejecutar
+## Ejecutar localmente
 
-Instala dependencias Python con `pip install -r requirements.txt` y ejecuta la
-API desde la raíz:
+Configura las variables de Supabase descritas arriba e instala dependencias
+Python con `pip install -r requirements.txt`. Inicia la API:
 
 ```text
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+npm run start:api
 ```
 
-El servidor estático se ejecuta con `npm start`. `/` y `/PaginaPrincipal.html`
-abren la página principal; las páginas secundarias conservan sus URLs actuales.
+En otra terminal, inicia el servidor web:
+
+```text
+npm start
+```
+
+Abre `http://localhost:3000`. El servidor de Node sirve la página principal y
+envía las solicitudes de la API a `http://127.0.0.1:8000`; cambia ese destino
+con la variable `API_ORIGIN` si ejecutas FastAPI en otro host o puerto. En
+despliegues donde FastAPI sirve también los archivos estáticos, configura el
+servicio como se indica en la sección de Render.
 
 ## Pruebas
 

@@ -1,129 +1,119 @@
-"""Cálculo de rutas por calles para usuarios autenticados."""
+"""Guardado de rutas planificadas (paso 2 del flujo: Pedidos → Rutas → Asignación → Monitoreo).
+
+POST /rutas/listar     → rutas planificadas de hoy (para el centro de control de rutas)
+POST /rutas/guardar    {"nombre": "...", "pedidos": ["id", ...]}
+  Crea la ruta de hoy y marca esos pedidos con su nombre. La escritura la hace la función
+  SQL `guardar_ruta_operativa` (security definer), igual que la asignación de personal.
+POST /rutas/actualizar {"id": "...", "nombre": "...", "pedidos": [...]}
+  Cambia el nombre y los pedidos de una ruta de hoy (función SQL `actualizar_ruta_operativa`).
+"""
 import logging
-import threading
-from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator
-from supabase import create_client
+from postgrest.exceptions import APIError
+from pydantic import BaseModel, Field
 
-from . import database, entregas_logica, eventos_logica, motor_rutas
+from . import database, rutas_admin, rutas_logica
+from .eventos_router import usuario_coordinador
+from .rutas_calculo_router import _normalizar_riesgos
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["rutas seguras"])
-_cliente_admin = None
-_cliente_admin_lock = threading.Lock()
+router = APIRouter(prefix="/rutas", tags=["rutas planificadas"])
 
 
-class SolicitudRuta(BaseModel):
-    coordinates: list[tuple[float, float]] = Field(min_length=2, max_length=50)
-
-    @field_validator("coordinates")
-    @classmethod
-    def validar_coordenadas(cls, coordinates):
-        for lat, lng in coordinates:
-            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-                raise ValueError("Una coordenada está fuera de rango.")
-        return coordinates
-
-
-def _usuario_autorizado(authorization):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    token = authorization.split(" ", 1)[1].strip()
-    if not token:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+def _respaldo(funcion, *args):
+    """Escribe con el cliente de servicio cuando la función SQL no está creada."""
     try:
-        usuario = database.supabase.auth.get_user(token).user
-    except Exception:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if not usuario:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if (usuario.app_metadata or {}).get("role") not in entregas_logica.ROLES_PERMITIDOS:
-        raise HTTPException(403, "No tiene permiso para calcular rutas.")
-
-
-def _leer_todas(fabrica):
-    filas = []
-    inicio = 0
-    while True:
-        lote = fabrica().range(inicio, inicio + 499).execute().data or []
-        filas.extend(lote)
-        if len(lote) < 500:
-            return filas
-        inicio += 500
-
-
-def _obtener_cliente_admin():
-    global _cliente_admin
-    if not database.SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(503, "Falta configurar SUPABASE_SERVICE_ROLE_KEY para cargar los eventos de seguridad.")
-    if _cliente_admin is None:
-        with _cliente_admin_lock:
-            if _cliente_admin is None:
-                _cliente_admin = create_client(database.SUPABASE_URL, database.SUPABASE_SERVICE_ROLE_KEY)
-    return _cliente_admin
-
-
-def _normalizar_riesgos(eventos, alertas, hoy=None):
-    niveles = {"alto": "alta", "medio": "media", "alta": "alta", "media": "media"}
-    riesgos = []
-    for evento in eventos:
-        severidad = niveles.get(evento.get("impacto"))
-        if severidad and eventos_logica.en_ventana(evento, hoy):
-            riesgos.append({
-                "severidad": severidad,
-                "lat": evento.get("lat"),
-                "lng": evento.get("lng"),
-                "radius_m": evento.get("radius_m"),
-            })
-    riesgos.extend(
-        {
-            "severidad": alerta.get("severidad"),
-            "lat": alerta.get("lat"),
-            "lng": alerta.get("lng"),
-            "radius_m": 250,
-        }
-        for alerta in alertas
-    )
-    return riesgos
-
-
-def _cargar_riesgos():
-    try:
-        cliente = _obtener_cliente_admin()
-        eventos = _leer_todas(
-            lambda: cliente.table("eventos_especiales").select("inicio,fin,lat,lng,radius_m,impacto")
-        )
-        alertas_desde = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
-        alertas_hasta = datetime.now(timezone.utc).isoformat()
-        alertas = _leer_todas(
-            lambda: cliente.table("alertas_seguridad")
-            .select("fecha,lat,lng,severidad")
-            .gte("fecha", alertas_desde)
-            .lte("fecha", alertas_hasta)
-            .in_("severidad", ["alta", "media"])
-        )
-    except HTTPException:
-        raise
+        return funcion(database.cliente_servicio(), *args)
+    except rutas_admin.ReglaDeNegocio as error:
+        raise HTTPException(409, str(error)) from error
     except Exception as error:
-        logger.exception("No fue posible cargar los eventos para evitar en el cálculo de rutas.")
-        raise HTTPException(
-            503,
-            "No fue posible verificar los eventos de seguridad. La ruta no se calculó.",
-        ) from error
-
-    return _normalizar_riesgos(eventos, alertas)
+        logger.exception("Falló el respaldo de escritura de rutas.")
+        raise HTTPException(503, "No se pudo guardar la ruta. Revise SUPABASE_SERVICE_ROLE_KEY y las tablas.") from error
 
 
-@router.post("/rutas/calcular")
-@router.post("/generar-ruta", include_in_schema=False)
-def calcular(req: SolicitudRuta, authorization: str | None = Header(default=None)):
-    _usuario_autorizado(authorization)
-    eventos = _cargar_riesgos()
+class RutaNueva(BaseModel):
+    nombre: str = Field(max_length=200)
+    pedidos: list[str] = Field(max_length=rutas_logica.MAX_PEDIDOS * 2)
+
+
+@router.post("/guardar")
+def guardar(req: RutaNueva, authorization: str | None = Header(default=None)):
+    cliente, usuario = usuario_coordinador(authorization)  # valida token y rol coordinador_rutas
     try:
-        return motor_rutas.calcular_rutas(req.coordinates, eventos)
+        nombre, pedidos = rutas_logica.validar_ruta(req.nombre, req.pedidos)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
-    except motor_rutas.ErrorProveedorRutas as error:
-        raise HTTPException(502, str(error)) from error
+    try:
+        resultado = cliente.rpc("guardar_ruta_operativa", {
+            "p_nombre": nombre,
+            "p_pedidos": pedidos,
+            "p_usuario": usuario,
+        }).execute().data
+    except APIError as error:
+        if rutas_admin.funcion_ausente(error):
+            resultado = _respaldo(rutas_admin.guardar_ruta, nombre, pedidos, usuario)
+            return resultado
+        logger.exception("No se pudo guardar la ruta planificada.")
+        code = getattr(error, "code", "")
+        if code in {"22023", "P0001"}:
+            raise HTTPException(409, str(getattr(error, "message", "No se pudo guardar la ruta."))) from error
+        if code == "42501":
+            raise HTTPException(403, "Solo el coordinador de rutas puede guardar rutas.") from error
+        raise HTTPException(
+            503, "No se pudo guardar la ruta. Revise el esquema y las políticas de Supabase."
+        ) from error
+    if not isinstance(resultado, dict) or not resultado.get("id"):
+        logger.error("La función guardar_ruta_operativa devolvió una respuesta no válida.")
+        raise HTTPException(502, "El servidor no devolvió una ruta válida.")
+    return resultado
+
+
+class RutaEditada(RutaNueva):
+    id: str = Field(min_length=1, max_length=100)
+
+
+@router.post("/listar")
+def listar(authorization: str | None = Header(default=None)):
+    cliente, _ = usuario_coordinador(authorization)
+    hoy = rutas_logica.hoy_el_salvador()
+    try:
+        filas = cliente.table("rutas_planificadas").select("*").eq("fecha", hoy.isoformat()).execute().data or []
+    except APIError as error:
+        logger.exception("No se pudieron cargar las rutas planificadas.")
+        raise HTTPException(
+            503, "No se pudieron cargar las rutas. Revise el esquema y las políticas de Supabase."
+        ) from error
+    return {"fecha": hoy.isoformat(), "rutas": rutas_logica.rutas_de_hoy(filas, hoy)}
+
+
+@router.post("/actualizar")
+def actualizar(req: RutaEditada, authorization: str | None = Header(default=None)):
+    cliente, usuario = usuario_coordinador(authorization)
+    try:
+        nombre, pedidos = rutas_logica.validar_ruta(req.nombre, req.pedidos)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    try:
+        resultado = cliente.rpc("actualizar_ruta_operativa", {
+            "p_ruta": req.id,
+            "p_nombre": nombre,
+            "p_pedidos": pedidos,
+            "p_usuario": usuario,
+        }).execute().data
+    except APIError as error:
+        if rutas_admin.funcion_ausente(error):
+            return _respaldo(rutas_admin.actualizar_ruta, req.id, nombre, pedidos, usuario)
+        logger.exception("No se pudo actualizar la ruta planificada.")
+        code = getattr(error, "code", "")
+        if code in {"22023", "P0001"}:
+            raise HTTPException(409, str(getattr(error, "message", "No se pudo actualizar la ruta."))) from error
+        if code == "42501":
+            raise HTTPException(403, "Solo el coordinador de rutas puede editar rutas.") from error
+        raise HTTPException(
+            503, "No se pudo actualizar la ruta. Revise el esquema y las políticas de Supabase."
+        ) from error
+    if not isinstance(resultado, dict) or not resultado.get("id"):
+        logger.error("La función actualizar_ruta_operativa devolvió una respuesta no válida.")
+        raise HTTPException(502, "El servidor no devolvió una ruta válida.")
+    return resultado

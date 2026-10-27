@@ -3,19 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#101c29">
+  <meta name="theme-color" content="#070c12">
   <meta name="description" content="Aplicación web de planificación y seguimiento de rutas seguras de SERSAPROSA.">
   <title>Planificación de rutas · SERSAPROSA</title>
-  <link rel="icon" href="/assets/img/sersaprosa-logo.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/img/sersaprosa_logo.png" type="image/png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- variables.css y riesgoRutas.css van ANTES de dashboard.css para que dashboard.css gobierne el body -->
+  <link rel="stylesheet" href="/assets/css/variables.css">
+  <link rel="stylesheet" href="/assets/css/riesgoRutas.css">
   <link rel="stylesheet" href="/assets/css/appNavigation.css">
   <link rel="stylesheet" href="/assets/css/dashboard.css">
+  <link rel="stylesheet" href="/assets/css/eventosEspecialesCSS.css">
+  <link rel="stylesheet" href="/assets/css/alertasSeguridad.css">
+  <link rel="stylesheet" href="/assets/css/verificarConduCSS.css">
+  <link rel="stylesheet" href="/assets/css/notificacionesCSS.css">
+  <link rel="stylesheet" href="/assets/css/pedidosEnCurso.css">
+  <link rel="stylesheet" href="/assets/css/centroRutas.css">
+  <link rel="stylesheet" href="/assets/css/incidentesViaje.css">
 </head>
-<body>
+<body data-rr-manual>
   <section id="login" class="login-screen">
     <form class="login-card" id="loginForm" autocomplete="on">
-      <img class="login-logo" src="/assets/img/sersaprosa-logo.svg" alt="SERSAPROSA">
+      <img class="login-logo" src="/assets/img/sersaprosa_logo.png" alt="SERSAPROSA">
       <span class="eyebrow">CENTRO DE OPERACIONES</span>
       <h1>Rutas seguras</h1>
       <p>Ingresa con tus credenciales de trabajador para continuar.</p>
@@ -34,9 +44,9 @@
   <div id="app" class="dashboard hidden">
     <header class="topbar">
       <div class="page-heading">
-        <span class="eyebrow">PLANIFICACIÓN OPERATIVA</span>
-        <h1>Asignar rutas</h1>
-        <p>Planifica entregas y consulta recorridos por las calles.</p>
+        <span class="eyebrow" id="pageEyebrow">PLANIFICACIÓN OPERATIVA</span>
+        <h1 id="pageTitle">Tracking de rutas</h1>
+        <p id="pageDescription">Configure y despache unidades de forma segura.</p>
       </div>
       <div class="top-actions">
         <div class="connection-status" id="connectionStatus" role="status"><i></i><span>Conectando</span></div>
@@ -47,70 +57,171 @@
       </div>
     </header>
 
-    <main class="workspace">
-      <aside class="route-panel">
-        <nav class="panel-tabs" aria-label="Panel de planificación">
-          <button type="button" data-panel="routes" aria-selected="true">Ruta del día</button>
-          <button type="button" data-panel="events" aria-selected="false">Eventos</button>
-        </nav>
+    <main class="dashboard-main">
+      <section id="routesScreen" class="screen" aria-labelledby="pageTitle">
+        <!-- Centro de control de rutas (centroRutas.js): rutas de hoy, estado, acciones y tarjetas de resumen -->
+        <div id="centroRutas"></div>
 
-        <section id="routesPanel" class="panel-content">
-          <div class="section-heading">
-            <div><span class="section-kicker">RECORRIDO PROGRAMADO</span><h2 id="routeTitle">Ruta del día</h2></div>
-            <span class="secure-badge">SEGURA</span>
-          </div>
-          <div class="route-metrics" aria-label="Métricas de la ruta">
-            <div><span>Distancia</span><strong id="mDist">–</strong></div>
-            <div><span>Tiempo estimado</span><strong id="mEta">–</strong></div>
-            <div><span>Riesgo</span><strong id="mRisk">–</strong></div>
-          </div>
-
-          <section class="origin-card" aria-label="Punto de inicio de la ruta">
-            <div class="origin-mark" aria-hidden="true">A</div>
-            <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
-            <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual">⌖</button>
-          </section>
-          <p class="privacy-note">El GPS solo se activa si inicias el seguimiento y se usa para actualizar tu posición y recalcular la ruta.</p>
-          <button class="secondary-button tracking-button" id="trackRoute" type="button">Iniciar seguimiento en vivo</button>
-          <p id="trackingStatus" class="tracking-status" role="status">Seguimiento detenido.</p>
-
-          <p id="routeMessage" class="notice hidden" role="status"></p>
-          <ol class="stops" id="stops" aria-label="Paradas del recorrido"></ol>
-          <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
-
-          <div class="route-options-heading"><h3>Opciones de ruta</h3><span id="providerLabel">OpenRouteService · respaldo OSRM</span></div>
-          <div id="routeOptions" aria-live="polite"></div>
-          <section class="navigation-guidance" aria-label="Indicaciones paso a paso">
-            <h3>Indicaciones del recorrido</h3>
-            <ol id="directions" aria-live="polite"></ol>
-          </section>
-        </section>
-
-        <section id="eventsPanel" class="panel-content hidden">
-          <div class="section-heading">
-            <div><span class="section-kicker">SEGURIDAD OPERATIVA</span><h2>Eventos cercanos</h2></div>
-          </div>
-          <div class="event-filters">
-            <label for="eventSeverity">Severidad<select id="eventSeverity"><option value="">Todas</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></label>
-            <label for="eventFrom">Desde<input id="eventFrom" type="date"></label>
-            <label for="eventTo">Hasta<input id="eventTo" type="date"></label>
-          </div>
-          <p id="eventsMessage" class="notice hidden" role="status"></p>
-          <div id="eventsList" class="events-list" aria-live="polite"></div>
-          <a class="text-link" href="/eventosEspeciales.html">Abrir monitoreo de eventos <span aria-hidden="true">→</span></a>
-        </section>
-      </aside>
-
-      <section class="map-section" aria-label="Mapa y recorrido">
-        <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
-          <div class="map-caption"><span class="map-legend"><i></i> Recorrido por calles</span><span>© OpenStreetMap · Enrutamiento seguro</span></div>
+        <!-- Fila "Inicio de ruta": centroRutas.js la coloca al principio de la lista de pedidos -->
+        <div id="originRow" class="origin-card" aria-label="Punto de inicio de la ruta">
+          <div class="origin-mark" aria-hidden="true">⚑</div>
+          <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
+          <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual (el GPS solo se pide al pulsar)">⌖</button>
         </div>
+        <button class="secondary-button tracking-button" id="trackRoute" type="button">Iniciar seguimiento en vivo</button>
+        <p id="trackingStatus" class="tracking-status" role="status">Seguimiento detenido.</p>
+
+        <!-- Guardar la ruta trazada (solo en borrador): la relocaliza dashboard.js -->
+        <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
+          <div class="save-route-copy">
+            <h3>Guardar esta ruta</h3>
+            <p class="privacy-note">Queda lista para asignarle conductor, guardias y vehículo.</p>
+          </div>
+          <div class="save-route-row">
+            <input id="saveRouteName" type="text" maxlength="80" aria-label="Nombre de la ruta" placeholder="Nombre de la ruta">
+            <button id="saveRouteBtn" class="primary-button" type="button">Guardar ruta</button>
+          </div>
+          <p id="saveRouteMsg" class="notice hidden" role="status"></p>
+        </section>
+
+        <div class="routes-layout">
+          <aside class="route-panel">
+            <section class="route-step route-tasks" aria-label="Pedidos de la ruta">
+              <p id="routeMessage" class="notice hidden" role="status"></p>
+              <p class="empty hidden" id="noRoute" role="alert">No fue posible calcular la ruta por calles. Revisa tu conexión e inténtalo de nuevo.</p>
+              <!-- centroRutas.js pinta aquí: buscar y filtrar, la fila de inicio y los pedidos numerados -->
+              <div id="taskList"></div>
+            </section>
+
+            <details class="route-step route-custom">
+              <summary>Ruta personalizada <small>(opcional · origen, paradas y destino a mano)</small></summary>
+              <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
+            </details>
+          </aside>
+
+          <section class="map-section" aria-label="Mapa y recorrido">
+            <div class="map-toolbar" role="toolbar" aria-label="Opciones del mapa">
+              <select id="mapStyle" aria-label="Estilo del mapa">
+                <option value="calles">Calles (OpenStreetMap)</option>
+                <option value="oscuro">Calles oscuro</option>
+              </select>
+              <label class="map-toggle"><input id="mapEventsToggle" type="checkbox" checked> Eventos de riesgo</label>
+              <button id="agentBtn" class="agent-btn" type="button" title="El agente revisa incidentes y zonas de riesgo entre el inicio y la última parada">🛡 Evaluar seguridad</button>
+              <label class="map-toggle" title="Usa el modelo de IA para razonar (requiere configuración en el servidor)"><input id="agentLlm" type="checkbox"> Con IA</label>
+              <form id="mapSearch" class="map-search" role="search">
+                <input id="mapSearchInput" type="search" maxlength="120" placeholder="Buscar dirección en el mapa…" aria-label="Buscar dirección en el mapa" autocomplete="off">
+                <button type="submit" aria-label="Buscar">⌕</button>
+              </form>
+              <div class="route-metrics-inline" aria-label="Métricas de la ruta">
+                <span>Distancia <strong id="mDist">–</strong></span>
+                <span>Tiempo <strong id="mEta">–</strong></span>
+                <span>Riesgo <strong id="mRisk">–</strong></span>
+              </div>
+            </div>
+            <p id="mapSearchMsg" class="notice hidden" role="status"></p>
+            <section id="agentPanel" class="agent-panel hidden" aria-live="polite" aria-label="Evaluación de seguridad de la ruta"></section>
+            <div id="routeOptions" class="route-options-bar" aria-live="polite"></div>
+            <div class="map-frame"><div id="map" role="application" aria-label="Mapa interactivo de OpenStreetMap"></div>
+              <div class="map-caption"><span class="map-legend"><i></i> Ruta planificada</span><span>© OpenStreetMap · <span id="providerLabel">Proveedor pendiente</span></span></div>
+            </div>
+          </section>
+        </div>
+        <span id="routeTitle" hidden></span>
+      </section>
+
+      <section id="ordersScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div id="panelPedidos" class="monitor-content"></div>
+      </section>
+
+      <!-- Riesgo de rutas: misma página que riesgo_rutas.html (ids rr-*, lógica en riesgoRutas.js), integrada aquí. -->
+      <section id="riskScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div class="rr-contenedor">
+          <form id="rr-form" class="rr-tarjeta" novalidate>
+            <h2>Monto, tipo de carga y riesgo</h2>
+            <div class="rr-campo">
+              <label for="rr-ruta">Ruta</label>
+              <select id="rr-ruta" aria-describedby="rr-err-ruta">
+                <option value="">Selecciona una ruta…</option>
+              </select>
+              <p class="rr-error" id="rr-err-ruta" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <label for="rr-monto">Monto (USD)</label>
+              <input id="rr-monto" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 25000.00" aria-describedby="rr-err-monto">
+              <p class="rr-error" id="rr-err-monto" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <label for="rr-tipo">Tipo de carga</label>
+              <select id="rr-tipo" aria-describedby="rr-err-tipo">
+                <option value="">Selecciona un tipo…</option>
+              </select>
+              <p class="rr-error" id="rr-err-tipo" role="alert"></p>
+            </div>
+            <div class="rr-campo">
+              <span class="rr-etiqueta">Nivel de riesgo (automático)</span>
+              <div id="rr-nivel" aria-live="polite">
+                <span class="rr-badge rr-badge--vacio">Se calculará al ingresar monto y tipo de carga</span>
+              </div>
+            </div>
+            <button type="submit" class="rr-boton">Guardar</button>
+            <p id="rr-estado" class="rr-estado" role="status"></p>
+          </form>
+
+          <section class="rr-tarjeta">
+            <h2>Rutas</h2>
+            <div class="rr-tabla-scroll">
+              <table class="rr-tabla">
+                <thead>
+                  <tr><th>Ruta</th><th>Monto</th><th>Tipo de carga</th><th>Riesgo</th><th></th></tr>
+                </thead>
+                <tbody id="rr-tbody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="rr-tarjeta" id="rr-detalle" hidden aria-live="polite"></section>
+        </div>
+      </section>
+
+      <section id="monitorScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div class="monitor-tabs" role="tablist" aria-label="Paneles de monitoreo">
+          <button type="button" role="tab" aria-selected="false" data-monitor-panel="notifications">Notificaciones <span class="tab-count hidden" id="notifCount" aria-label="notificaciones sin leer"></span></button>
+          <button type="button" role="tab" aria-selected="true" data-monitor-panel="events">Eventos especiales</button>
+          <button type="button" role="tab" aria-selected="false" data-monitor-panel="alerts">Alertas de seguridad</button>
+          <button type="button" role="tab" aria-selected="false" data-monitor-panel="incidents">Incidentes en curso <span class="tab-count hidden" id="incCount" aria-label="incidentes sin atender"></span></button>
+        </div>
+        <section id="monitorNotifs" class="monitor-content hidden" role="tabpanel">
+          <div id="panelNotificaciones"></div>
+        </section>
+        <section id="monitorEvents" class="monitor-content" role="tabpanel">
+          <div id="panelEventos" class="ev-shell"></div>
+        </section>
+        <section id="monitorAlerts" class="monitor-content hidden" role="tabpanel">
+          <div id="panelAlertas" class="as-shell"></div>
+        </section>
+                <section id="monitorIncidents" class="monitor-content hidden" role="tabpanel">
+          <div id="panelIncidentes"></div>
+        </section>
+      </section>
+      <section id="dailyScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div id="panelDisponibilidad" class="dsp-shell"></div>
       </section>
     </main>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="/assets/js/core/api.js"></script>
   <script src="/assets/js/appNavigation.js"></script>
+  <script src="/assets/js/eventosEspecialesJS.js"></script>
+  <script src="/assets/js/alertasSeguridad.js"></script>
+  <script src="/assets/js/VerificarConduJS.js"></script>
+  <script src="/assets/js/notificacionesJS.js"></script>
+  <script src="/assets/js/routePlanner.js"></script>
+  <script src="/assets/js/pedidosEnCurso.js"></script>
+  <script src="/assets/js/viajeRutas.js"></script>
+  <script src="/assets/js/centroRutas.js"></script>
+  <script src="/assets/js/riesgoRutas.js"></script>
   <script src="/assets/js/dashboard.js"></script>
+  <script src="/public/assets/js/incidentesViaje.js"></script>
 </body>
 </html>

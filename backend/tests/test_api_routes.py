@@ -25,6 +25,19 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/eventos/listar", {}),
             ("/alertas/listar", {}),
             ("/rutas/calcular", {"coordinates": [[13.7, -89.2], [13.71, -89.19]]}),
+            ("/disponibilidad/listar", {}),
+            ("/notificaciones/sincronizar", {}),
+            ("/notificaciones/listar", {}),
+            ("/rutas/geocodificar", {"query": "San Salvador"}),
+            ("/viajes/generar", {}),
+            ("/viajes/actualizar", {"id": "RT-1"}),
+            ("/agente/ruta-segura", {"origen": {"lat": 13.7, "lng": -89.2}, "destino": {"lat": 13.71, "lng": -89.19}}),
+            ("/rutas/guardar", {"nombre": "Ruta Centro", "pedidos": ["1"]}),
+            ("/rutas/listar", {}),
+            ("/rutas/actualizar", {"id": "R-1", "nombre": "Ruta Centro", "pedidos": ["1"]}),
+            ("/disponibilidad/desasignar", {"ruta": "R-1"}),
+            ("/notificaciones/leer", {"id": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}),
+            ("/disponibilidad/asignar", {"conductor": "E-1", "vehiculo": "V-1", "ruta": "R-1", "guardias": ["G-1"]}),
         )
         for path, payload in protected_requests:
             with self.subTest(path=path):
