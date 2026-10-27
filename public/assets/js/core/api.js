@@ -60,3 +60,20 @@
 
   global.Api = { session, post, get };
 })(window);
+
+export async function fetchViajesMonitoreo() {
+  try {
+    const response = await fetch('/api/viajes/monitoreo/en-vivo', {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Error en API: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (err) {
+    console.error("Fallo al obtener datos de monitoreo:", err);
+    return [];
+  }
+}
