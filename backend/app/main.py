@@ -1,10 +1,12 @@
 import logging
+import os
+import traceback
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
@@ -12,10 +14,18 @@ from supabase import create_client
 from supabase_auth.errors import AuthApiError
 
 from . import database
+from .agente_router import router as agente_router
 from .alertas_seguridad_router import router as alertas_router
+from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
 from .eventos_router import router as eventos_router
+from .geocodificacion_router import router as geocodificacion_router
+from .incidentes_router import router as incidentes_router
+from .notificaciones_router import router as notificaciones_router
+from .rutas_riesgo import router as rutas_riesgo_router
+from .rutas_calculo_router import router as rutas_calculo_router
 from .rutas_router import router as rutas_router
+from .viajes_router import router as viajes_router
 
 logger = logging.getLogger(__name__)
 
@@ -33,12 +43,42 @@ app.add_middleware(
 app.include_router(eventos_router)  # /eventos/listar · /eventos/revisar · /eventos/registrar (FCJ1-15)
 app.include_router(entregas_router)
 app.include_router(alertas_router)
-app.include_router(rutas_router)
-
+app.include_router(disponibilidad_router)
+app.include_router(notificaciones_router)
+app.include_router(rutas_riesgo_router)
+app.include_router(geocodificacion_router)
+app.include_router(rutas_calculo_router)
+app.include_router(rutas_router)  # /rutas/guardar
+app.include_router(viajes_router)  # /viajes/generar · /viajes/actualizar
+app.include_router(agente_router)  # /agente/ruta-segura (agente de IA, solo coordinador)
+app.include_router(incidentes_router)  # /incidentes/listar · /incidentes/registrar
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=256)
+
+
+def _donde_fallo(error: BaseException) -> str:
+    """Últimos 2 pasos del traceback como «archivo:línea (función)». Sin datos del usuario ni del mensaje."""
+    marcos = traceback.extract_tb(error.__traceback__)[-2:]
+    return " ← ".join(f"{Path(m.filename).name}:{m.lineno} ({m.name})" for m in reversed(marcos))
+
+
+@app.exception_handler(Exception)
+async def error_inesperado(request, error):
+    """Siempre JSON (el front lo lee). Indica tipo y lugar del fallo; el detalle completo va a los logs."""
+    logger.exception("Error no controlado en %s", request.url.path)
+    return JSONResponse(status_code=500, content={
+        "detail": f"Error interno del servidor ({type(error).__name__} en {_donde_fallo(error)}). Revise los logs del servicio en Render."})
+
+
+@app.get("/version", include_in_schema=False)
+def version():
+    """Qué commit y rama están desplegados (Render define estas variables en cada deploy)."""
+    return JSONResponse(
+        {"commit": (os.getenv("RENDER_GIT_COMMIT") or "desconocido")[:7], "rama": os.getenv("RENDER_GIT_BRANCH") or "desconocida"},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/login")
@@ -57,6 +97,12 @@ def login(credenciales: CredencialesEmpleado):
         raise HTTPException(
             status_code=502,
             detail="No fue posible consultar el empleado en Supabase. Revise la tabla y las políticas.",
+        ) from error
+    except Exception as error:  # p. ej. clave de Supabase mal pegada o formato de fila inesperado
+        logger.exception("Falló la conexión con Supabase al buscar el empleado.")
+        raise HTTPException(
+            status_code=503,
+            detail=f"No se pudo leer el empleado en Supabase ({type(error).__name__}: {str(error)[:120]}). Revise SUPABASE_URL, las claves y la tabla empleados.",
         ) from error
 
     if not empleado:
@@ -116,22 +162,28 @@ def login(credenciales: CredencialesEmpleado):
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
 PAGINAS = {
     "PaginaPrincipal.html",
-    "alertasSeguridad.html",
-    "entregasDia.html",
-    "eventosEspeciales.html",
-    "Verificar conductores.html",
+    "riesgo_rutas.html",
 }
 
-app.mount("/assets", StaticFiles(directory=PUBLIC_DIR / "assets"), name="assets")
+class ArchivosSinCache(StaticFiles):
+    """Los navegadores deben revalidar siempre: así, tras un deploy, nadie se queda con JS o CSS viejos."""
+
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        respuesta.headers["Cache-Control"] = "no-cache"
+        return respuesta
+
+
+app.mount("/assets", ArchivosSinCache(directory=PUBLIC_DIR / "assets"), name="assets")
 
 
 @app.get("/", include_in_schema=False)
 def pagina_inicio():
-    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html")
+    return FileResponse(PUBLIC_DIR / "pages" / "PaginaPrincipal.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/{pagina}", include_in_schema=False)
 def pagina_html(pagina: str):
     if pagina not in PAGINAS:
         raise HTTPException(status_code=404, detail="Not Found")
-    return FileResponse(PUBLIC_DIR / "pages" / pagina)
+    return FileResponse(PUBLIC_DIR / "pages" / pagina, headers={"Cache-Control": "no-cache"})

@@ -4,12 +4,11 @@
   const SESSION_KEY = "session";
   const LOGIN_URL = "/PaginaPrincipal.html";
   const LINKS = [
-    { id: "map", label: "Asignar rutas", detail: "Planificación", href: LOGIN_URL },
-    { id: "routes", label: "Alternativas de ruta", detail: "Recorridos por calles", href: LOGIN_URL + "#rutas" },
-    { id: "events", label: "Monitoreo operativo", detail: "Eventos y seguridad", href: "/eventosEspeciales.html" },
-    { id: "deliveries", label: "Entregas del día", detail: "Pedidos y destinos", href: "/entregasDia.html" },
-    { id: "drivers", label: "Empleados y vehículos", detail: "Disponibilidad", href: "/Verificar%20conductores.html" },
-    { id: "alerts", label: "Alertas de seguridad", detail: "Incidentes", href: "/alertasSeguridad.html", role: "coordinador_rutas" }
+    { id: "routes", label: "Tracking de rutas", detail: "Viajes, ruta óptima y seguimiento", icon: "↗" },
+    { id: "orders", label: "Pedidos en curso", detail: "Pendientes y en proceso", icon: "▤" },
+    { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
+    { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
+    { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠", rol: "coordinador_rutas" }
   ];
 
   function readSession() {
@@ -21,23 +20,34 @@
     }
   }
 
-  function createElement(tag, attrs, text) {
+  function createElement(tag, attrs, ...children) {
     const node = global.document.createElement(tag);
     Object.entries(attrs || {}).forEach(([key, value]) => {
       if (key === "class") node.className = value;
       else node.setAttribute(key, value);
     });
-    if (text !== undefined) node.textContent = text;
+    children.forEach(child => {
+      if (child == null) return;
+      node.append(typeof child === "string" ? global.document.createTextNode(child) : child);
+    });
     return node;
   }
+function activeSection() {
+    if (global.location.pathname.endsWith("/riesgo_rutas.html")) return "risk";
+    return global.location.hash === "#monitoreo" ? "monitor" :
+      global.location.hash === "#pedidos" ? "orders" :
+      global.location.hash === "#riesgo" ? "risk" :
+      global.location.hash === "#personal" ? "daily" : "routes";
+  }
 
-  function activeSection() {
-    const page = decodeURIComponent(global.location.pathname.split("/").pop() || "");
-    if (page === "entregasDia.html") return "deliveries";
-    if (page === "eventosEspeciales.html") return "events";
-    if (page === "alertasSeguridad.html") return "alerts";
-    if (page === "Verificar conductores.html") return "drivers";
-    return global.location.hash === "#rutas" ? "routes" : "map";
+
+  function setActive(section) {
+    global.document.querySelectorAll(".app-nav-links button").forEach(button => {
+      const active = button.dataset.section === section;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
   }
 
   function closeMenu() {
@@ -76,7 +86,7 @@
     const brand = createElement("div", { class: "app-nav-brand" });
     const logo = createElement("img", {
       class: "app-nav-logo",
-      src: "/assets/img/sersaprosa-logo.svg",
+      src: "/assets/img/sersaprosa_logo.png",
       alt: ""
     });
     const brandCopy = createElement("span", { class: "app-nav-brand-copy" });
@@ -88,18 +98,38 @@
     nav.append(brand, createElement("div", { class: "app-nav-section" }, "MENÚ PRINCIPAL"));
     const list = createElement("ul", { class: "app-nav-links" });
     const active = activeSection();
-    LINKS.forEach(item => {
-      if (item.role && session.role !== item.role) return;
-      const link = createElement("a", {
-        href: item.href,
-        class: item.id === active ? "active" : ""
+    LINKS.filter(item => !item.rol || item.rol === session.role).forEach(item => {
+      const link = createElement("button", {
+        type: "button",
+        class: item.id === active ? "active" : "",
+        "data-section": item.id
       });
       link.append(
-        createElement("span", { class: "app-nav-label" }, item.label),
-        createElement("small", {}, item.detail)
+        createElement("span", { class: "app-nav-icon", "aria-hidden": "true" }, item.icon),
+        createElement("span", { class: "app-nav-copy" },
+          createElement("span", { class: "app-nav-label" }, item.label),
+          createElement("small", {}, item.detail))
       );
-      if (item.id === active) link.setAttribute("aria-current", "page");
-      link.addEventListener("click", closeMenu);
+      if (item.id === active) {
+        link.setAttribute("aria-current", "page");
+        link.append(createElement("span", { class: "app-nav-arrow", "aria-hidden": "true" }, "›"));
+      }
+      link.addEventListener("click", () => {
+        // Enlace a otra página (ej. Riesgo de rutas)
+        if (item.href) {
+          global.location.assign(item.href);
+          return;
+        }
+        // Estamos fuera de la página principal: volver a ella
+        if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
+          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", daily: "#personal", risk: "#riesgo" };
+          global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
+          return;
+        }
+        setActive(item.id);
+        global.dispatchEvent(new CustomEvent("app:navigate", { detail: item.id }));
+        closeMenu();
+      });
       const listItem = createElement("li", {});
       listItem.append(link);
       list.append(listItem);
@@ -145,6 +175,7 @@
   global.AppNavigation = {
     mount,
     readSession,
+    setActive,
     handleUnauthorized() {
       try {
         global.sessionStorage.removeItem(SESSION_KEY);
