@@ -1,4 +1,4 @@
-"""Endpoints de pedidos y entregas del día (FCJ1-54 a FCJ1-61). Contrato = el de entregasDiaJS.js.
+"""Endpoints de pedidos y entregas del día (FCJ1-54 a FCJ1-61). Contrato = el de pedidosEnCurso.js.
 
 Tabla de Supabase que espera (crear antes de usar):
   entregas(id text pk, cliente text, direccion text, hora_programada timestamptz,

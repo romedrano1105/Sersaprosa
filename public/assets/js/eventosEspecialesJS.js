@@ -5,10 +5,9 @@
    (marchas, feriados, cierres viales y otros) para anticipar su impacto en las
    rutas planificadas.
 
-   Módulo independiente, igual que disponibilidad: no crea variables globales
-   (solo window.EventosEspeciales), no usa ids y todas sus clases CSS empiezan
-   con "ev-". Se puede abrir solo (eventosEspeciales.html) o incrustar en
-   PaginaPrincipal.html.
+   Módulo integrado en PaginaPrincipal.html: no crea variables globales
+   (solo window.EventosEspeciales), no usa ids propios y todas sus clases CSS
+   empiezan con "ev-".
 
    CÓMO INCRUSTARLO EN PaginaPrincipal.html:
      <link rel="stylesheet" href="/assets/css/eventosEspecialesCSS.css">
