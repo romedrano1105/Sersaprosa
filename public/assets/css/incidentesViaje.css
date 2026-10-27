@@ -1,0 +1,58 @@
+/* Alertas de incidentes de viajes en curso (FCJ1-10 / FCJ1-30). Todas las clases empiezan con iv-.
+ * Colores por severidad: alta = rojo, media = naranja, baja = amarillo (igual que las notificaciones). */
+.iv-sev-alta { --iv-color: #e5484d; }
+.iv-sev-media { --iv-color: #f5a524; }
+.iv-sev-baja { --iv-color: #f2c94c; }
+
+#panelIncidentes { display: grid; gap: 14px; color: #f2f3f5; font-family: "Inter", system-ui, sans-serif; }
+.iv-cabecera { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.iv-kicker { color: #5b8cff; font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+.iv-cabecera h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.iv-contador { display: flex; align-items: baseline; gap: 8px; }
+.iv-contador strong { min-width: 34px; padding: 3px 10px; text-align: center; background: #e5484d; border-radius: 999px; font: 700 18px "Barlow Condensed", sans-serif; }
+.iv-contador span { color: #9a9fa8; font-size: 12px; }
+
+.iv-error { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: #2a2216; border: 1px solid #64411e; border-radius: 6px; }
+.iv-error strong, .iv-error small { display: block; }
+.iv-error small { margin-top: 3px; color: #9a9fa8; font-size: 11px; }
+.iv-error button { flex: none; padding: 8px 14px; color: #f2f3f5; background: transparent; border: 1px solid #ffffff4d; border-radius: 4px; cursor: pointer; }
+.iv-error button:hover { border-color: #fff; }
+.iv-estado { margin: 0; padding: 18px; text-align: center; color: #9a9fa8; background: #1c1e21; border: 1px dashed #3d4047; border-radius: 6px; }
+
+.iv-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.iv-tarjeta { width: 100%; display: grid; gap: 4px; padding: 12px 14px; text-align: left; color: inherit; font: inherit; background: #1c1e21; border: 1px solid #33363c; border-left: 5px solid var(--iv-color, #9a9fa8); border-radius: 6px; cursor: pointer; }
+.iv-tarjeta:hover, .iv-tarjeta:focus-visible { border-color: var(--iv-color, #9a9fa8); outline: none; }
+.iv-tarjeta.iv-nueva { background: #2b1a1c; }
+.iv-tarjeta.iv-nueva strong { font-weight: 700; }
+.iv-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.iv-linea { color: #d9dce1; font-size: 13px; overflow-wrap: anywhere; }
+.iv-tarjeta small { color: #9a9fa8; font-size: 11px; }
+.iv-chip { padding: 1px 8px; font-size: 10px; font-weight: 700; color: #111; background: var(--iv-color, #9a9fa8); border-radius: 999px; }
+.iv-chip-nueva { color: #fff; background: #e5484d; }
+
+.iv-toasts { position: fixed; top: 16px; right: 16px; z-index: 9999; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); }
+.iv-toast { display: flex; align-items: stretch; color: #fff; background: #2b1a1c; border: 1px solid var(--iv-color, #3d4047); border-left: 6px solid var(--iv-color, #5b8cff); border-radius: 6px; box-shadow: 0 8px 24px #0009; }
+.iv-toast.iv-info { --iv-color: #5b8cff; background: #1c2230; }
+.iv-toast.iv-ok { --iv-color: #3fb27f; background: #16251f; }
+.iv-toast-cuerpo { flex: 1; display: grid; gap: 3px; padding: 12px 14px; text-align: left; color: inherit; font: inherit; background: none; border: 0; cursor: pointer; }
+.iv-toast-cuerpo strong { font-size: 13px; }
+.iv-toast-cuerpo span { color: #d9dce1; font-size: 12px; }
+.iv-toast-cerrar { padding: 0 12px; color: #d9dce1; font-size: 20px; background: none; border: 0; cursor: pointer; }
+
+.iv-fondo { position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center; padding: 12px; background: #000a; }
+.iv-modal { position: relative; width: min(640px, 100%); max-height: 92vh; overflow: auto; padding: 22px; color: #f2f3f5; background: #1c1e21; border: 1px solid #3d4047; border-top: 5px solid var(--iv-color, #5b8cff); border-radius: 8px; }
+.iv-modal h3 { margin: 0 28px 12px 0; font: 600 22px "Barlow Condensed", sans-serif; }
+.iv-modal h4 { margin: 14px 0 6px; font-size: 13px; color: #9a9fa8; }
+.iv-cerrar { position: absolute; top: 8px; right: 12px; color: #d9dce1; font-size: 26px; background: none; border: 0; cursor: pointer; }
+.iv-datos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.iv-datos dt { color: #9a9fa8; }
+.iv-datos dd { margin: 0; overflow-wrap: anywhere; }
+.iv-mapa { height: 250px; margin: 14px 0; background: #15171b; border-radius: 6px; font-size: 12px; color: #9a9fa8; }
+.iv-atencion { display: grid; gap: 8px; }
+.iv-atencion label { font-size: 12px; color: #9a9fa8; }
+.iv-atencion textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; color: #f2f3f5; font: inherit; background: #15171b; border: 1px solid #3d4047; border-radius: 4px; resize: vertical; }
+.iv-primario { justify-self: start; padding: 9px 16px; color: #fff; font-weight: 600; background: #007afc; border: 0; border-radius: 4px; cursor: pointer; }
+.iv-primario:disabled { opacity: .55; cursor: wait; }
+.iv-form-error { margin: 0; color: #ff8d90; font-size: 12px; }
+.iv-form-error[hidden] { display: none; }
+.iv-auditoria { margin: 0; padding-left: 18px; color: #d9dce1; font-size: 12px; }
