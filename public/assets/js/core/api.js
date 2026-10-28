@@ -61,7 +61,7 @@
   global.Api = { session, post, get };
 })(window);
 
-export async function fetchViajesMonitoreo() {
+async function fetchViajesMonitoreo() {
   try {
     const response = await fetch('/api/viajes/monitoreo/en-vivo', {
       headers: {
@@ -77,3 +77,5 @@ export async function fetchViajesMonitoreo() {
     return [];
   }
 }
+
+window.fetchViajesMonitoreo = fetchViajesMonitoreo;
