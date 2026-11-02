@@ -196,11 +196,7 @@ def actualizar_viaje(ruta_id, datos, *, usuario, cliente_usuario, cliente_servic
         cliente_servicio.table("rutas_planificadas").update({
             "origen_texto": limpio["origen"], "origen_lat": o["lat"], "origen_lng": o["lng"],
             "destino_texto": limpio["destino"], "destino_lat": d["lat"], "destino_lng": d["lng"],
-<<<<<<< HEAD
-            "hora_salida": limpio["horario"],
-=======
             "hora_salida": limpio["horario"], "estado_propuesta": "propuesta",
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
         }).eq("id", ruta_id).execute()
         riesgo = _registrar_riesgo(cliente_usuario, ruta_id, limpio, cliente_servicio)
     except ErrorViaje:
