@@ -6,23 +6,14 @@ from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
 from . import database, rpc_utils
+from .autenticacion import usuario_desde_autorizacion
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/disponibilidad", tags=["disponibilidad operativa"])
 
 
 def _coordinador(authorization: str | None):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    token = authorization.split(" ", 1)[1].strip()
-    if not token:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    try:
-        usuario = database.supabase.auth.get_user(token).user
-    except Exception:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if not usuario:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    token, usuario = usuario_desde_autorizacion(authorization)
     if (usuario.app_metadata or {}).get("role") != "coordinador_rutas":
         raise HTTPException(403, "Esta sección es solo para el coordinador de rutas.")
     nombre = (usuario.user_metadata or {}).get("name") or usuario.email or "Usuario"

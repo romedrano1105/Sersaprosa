@@ -133,7 +133,7 @@ class Endpoints(unittest.TestCase):
 
     def test_otro_rol_es_403_en_todos_los_endpoints(self):
         usuario = SimpleNamespace(id="u-2", app_metadata={"role": "conductor"}, user_metadata={}, email="x@y.z")
-        with mock.patch.object(notificaciones_router.database.supabase.auth, "get_user", return_value=SimpleNamespace(user=usuario)):
+        with mock.patch.object(notificaciones_router, "usuario_desde_autorizacion", return_value=("token", usuario)):
             cabecera = {"Authorization": "Bearer token"}
             for ruta, cuerpo in (("listar", {}), ("detalle", {"id": ID_1}), ("atender", {"id": ID_1, "comentario": "Atendida"})):
                 with self.subTest(ruta):

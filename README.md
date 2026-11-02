@@ -50,6 +50,15 @@ Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
 al código del navegador ni al repositorio.
 
+Las rutas protegidas validan localmente los access tokens de Supabase contra
+el JWKS del proyecto (ES256), con una caché de claves de cinco minutos. Si no
+se puede consultar JWKS y no hay una clave válida en caché, la API responde
+`503`; un token inválido o expirado responde `401`. Como el rol forma parte de
+los claims del token, el usuario debe iniciar sesión de nuevo después de
+cambiar `app_metadata.role`. El cliente de service role se reutiliza solo en
+el backend; los clientes con token de usuario se crean por petición para no
+compartir encabezados de autorización entre usuarios.
+
 ### Migraciones del flujo de rutas
 
 Prueba primero en un proyecto de staging. Estos archivos son SQL independientes:
