@@ -41,6 +41,18 @@ def cliente_autenticado(token: str):
     return cliente
 
 
+def consultar_todas_las_filas(consulta, tamano: int = 1000) -> list[dict]:
+    """Lee resultados PostgREST por páginas, evitando el límite predeterminado de 1000 filas."""
+    filas = []
+    inicio = 0
+    while True:
+        pagina = consulta.range(inicio, inicio + tamano - 1).execute().data or []
+        filas.extend(pagina)
+        if len(pagina) < tamano:
+            return filas
+        inicio += tamano
+
+
 class TokenInvalido(ValueError):
     pass
 

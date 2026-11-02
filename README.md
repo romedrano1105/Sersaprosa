@@ -85,6 +85,9 @@ sin probarlas y aprobar su resultado en staging.
 El navegador envía el login y las demás peticiones al mismo origen usando el
 token que Supabase Auth devuelve. En Render, FastAPI sirve también las páginas;
 en local, Node sirve los archivos y proxifica las llamadas API a FastAPI.
+`POST /entregas/listar` filtra en Supabase por el día solicitado (hoy si se
+omite) y recorre páginas de hasta 1000 filas, conservando el contrato actual
+del navegador.
 
 ## Navegación y mapa
 
