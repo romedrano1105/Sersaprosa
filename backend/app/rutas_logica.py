@@ -54,7 +54,18 @@ def rutas_de_hoy(filas, hoy: date) -> list[dict]:
             "fecha": iso,
             "entregas": int(fila.get("entregas") or 0),
             "conductor": fila.get("conductor") or None,
+<<<<<<< HEAD
         }
+=======
+            "orden_pedidos": fila.get("orden_pedidos") or [],
+            "version": int(fila.get("version") or 1),
+            "distancia_km": fila.get("distancia_km"),
+            "duracion_min": fila.get("duracion_min"),
+            "riesgo_ruta": fila.get("riesgo_ruta"),
+        }
+        if fila.get("estado_propuesta"):
+            ruta["estado_propuesta"] = fila["estado_propuesta"]
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
         if fila.get("destino_lat") is not None and fila.get("origen_lat") is not None:
             # Rutas creadas con «Generar ruta» (viajes_logica): origen, destino, horario, carga y riesgo.
             ruta["viaje"] = {

@@ -91,3 +91,23 @@ def puntos_de_desvio(poligono, holgura_m: float = 350.0) -> list[Punto]:
     """Cuatro puntos fuera del polígono (esquinas de su caja ampliada) para forzar rodearlo."""
     la0, lo0, la1, lo1 = bbox(list(poligono), holgura_m)
     return [(la0, lo0), (la0, lo1), (la1, lo0), (la1, lo1)]
+<<<<<<< HEAD
+=======
+
+
+def misma_ruta(a: list[Punto], b: list[Punto], tolerancia_m: float = 40.0, fraccion: float = 0.9) -> bool:
+    """¿Dos trazados son prácticamente el mismo recorrido?"""
+    if len(a) < 2 or len(b) < 2:
+        return False
+    largo_a = sum(haversine_m(p, q) for p, q in zip(a, a[1:]))
+    largo_b = sum(haversine_m(p, q) for p, q in zip(b, b[1:]))
+    if abs(largo_a - largo_b) > 0.03 * max(largo_a, largo_b):
+        return False
+
+    def cubre(origen: list[Punto], linea: list[Punto]) -> bool:
+        muestras = [p for p, _ in densificar(origen, 200.0)]
+        cerca = sum(1 for p in muestras if distancia_a_linea_m(p, linea) <= tolerancia_m)
+        return cerca >= fraccion * len(muestras)
+
+    return cubre(a, b) and cubre(b, a)
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
