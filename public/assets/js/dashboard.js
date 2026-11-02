@@ -26,6 +26,7 @@
   let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
   let incidentModule = null;
   let historyModule = null;
+  let reportsModule = null;    // reportes automáticos de viaje (reportesViaje.js)
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -867,7 +868,7 @@
   }
 
   function setScreen(name) {
-    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk"] : ["routes", "orders", "monitor", "metrics", "daily"];
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk", "reports"] : ["routes", "orders", "monitor", "metrics", "daily"];
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
@@ -876,13 +877,15 @@
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("metricsScreen").classList.toggle("hidden", screen !== "metrics");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
+    $("reportsScreen").classList.toggle("hidden", screen !== "reports");
     const headings = {
       routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
-      daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
+      daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."],
+      reports: ["HISTORIAL DE VIAJES", "Reportes de viaje", "Consulte el reporte que se genera automáticamente al completarse cada viaje."]
     };
     const [eyebrow, title, description] = headings[screen];
     $("pageEyebrow").textContent = eyebrow;
@@ -899,6 +902,8 @@
       setMonitorTab(monitorTab);
     } else if (screen === "metrics") {
       window.MetricasDashboard.init();
+    } else if (screen === "reports") {
+      if (!reportsModule && window.ReportesViaje) reportsModule = window.ReportesViaje.mount($("panelReportes"));
     } else {
       mountAvailabilityPanel();
     }
@@ -916,7 +921,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, incidentModule, historyModule, availabilityModule].forEach(module => {
+    [eventModule, alertModule, incidentModule, historyModule, availabilityModule, reportsModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -952,6 +957,8 @@
     $("login").classList.add("hidden");
     $("app").classList.remove("hidden");
     if (!window.AppNavigation.mount()) return;
+    // Reportes de viaje: se generan al completarse cada viaje (no depende del mapa).
+    if (window.ReportesViaje) window.ReportesViaje.iniciar();
     if (!window.L) {
       $("noRoute").textContent = "No se pudo cargar el mapa. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
@@ -1015,7 +1022,7 @@
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
     setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
-      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
+      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : location.hash === "#reportes" ? "reports" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();
