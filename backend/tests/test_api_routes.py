@@ -33,6 +33,8 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/rutas/guardar", {"nombre": "Ruta Centro", "pedidos": ["1"]}),
             ("/rutas/listar", {}),
             ("/rutas/actualizar", {"id": "R-1", "nombre": "Ruta Centro", "pedidos": ["1"]}),
+            ("/rutas/editar-orden", {"id": "R-1", "pedidos": ["1"], "version": 1, "distancia_km": 1, "duracion_min": 1, "riesgo_ruta": "bajo"}),
+            ("/rutas/historial-edicion", {"id": "R-1"}),
             ("/disponibilidad/desasignar", {"ruta": "R-1"}),
             ("/notificaciones/leer", {"id": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}),
             ("/disponibilidad/asignar", {"conductor": "E-1", "vehiculo": "V-1", "ruta": "R-1", "guardias": ["G-1"]}),

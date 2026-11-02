@@ -37,14 +37,19 @@ class RutasDeHoy(unittest.TestCase):
 
     def test_filtra_por_fecha_ordena_por_nombre_y_normaliza_campos(self):
         filas = [
-            {"id": "R-2", "nombre": "ruta oriente", "zona": "Soyapango", "fecha": "2026-10-20", "entregas": 2, "conductor": "Ana"},
+            {"id": "R-2", "nombre": "ruta oriente", "zona": "Soyapango", "fecha": "2026-10-20", "entregas": 2, "conductor": "Ana",
+             "orden_pedidos": ["P2", "P1"], "version": 3, "distancia_km": 14.5, "duracion_min": 42, "riesgo_ruta": "medio"},
             {"id": "R-1", "nombre": "Ruta Centro", "zona": None, "fecha": "2026-10-20", "entregas": None, "conductor": ""},
             {"id": "R-0", "nombre": "Ayer", "zona": "X", "fecha": "2026-10-19", "entregas": 1, "conductor": None},
         ]
         rutas = logica.rutas_de_hoy(filas, date(2026, 10, 20))
         self.assertEqual([r["id"] for r in rutas], ["R-1", "R-2"])
-        self.assertEqual(rutas[0], {"id": "R-1", "nombre": "Ruta Centro", "zona": "", "fecha": "2026-10-20", "entregas": 0, "conductor": None})
+        self.assertEqual(rutas[0], {"id": "R-1", "nombre": "Ruta Centro", "zona": "", "fecha": "2026-10-20", "entregas": 0,
+                                    "conductor": None, "orden_pedidos": [], "version": 1, "distancia_km": None,
+                                    "duracion_min": None, "riesgo_ruta": None})
         self.assertEqual(rutas[1]["conductor"], "Ana")
+        self.assertEqual(rutas[1]["orden_pedidos"], ["P2", "P1"])
+        self.assertEqual(rutas[1]["version"], 3)
 
     def test_sin_filas_devuelve_lista_vacia(self):
         self.assertEqual(logica.rutas_de_hoy(None, date(2026, 10, 20)), [])

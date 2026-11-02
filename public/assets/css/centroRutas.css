@@ -48,6 +48,7 @@
 .cc-ico { font-size: 15px; line-height: 1; }
 .cc-msg { margin: 0; padding: 10px 14px; border-left: 3px solid var(--route); background: #5b8cff10; font-size: 13px; }
 .cc-msg-error { border-left-color: var(--high); background: #e5484d10; color: #ffb3b6; }
+.cc-msg-error .cc-retry { margin-left: 10px; }
 .cc :focus-visible, .cc-backdrop :focus-visible, #taskList :focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
 
 /* Tarjetas de resumen */
@@ -97,10 +98,21 @@
 .cc-input { min-height: 38px; padding: 7px 11px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; }
 .cc-tools input { flex: 1; min-width: 0; }
 .cc-tools select { flex: 0 0 140px; min-width: 0; max-width: 45%; }
+.cc-edit-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-bottom: 10px; }
+.cc-edit-tools label { display: grid; flex: 1 1 220px; gap: 4px; color: var(--muted); font-size: 12px; }
+.cc-edit-tools .cc-input { width: 100%; }
+.cc-edit-tools small { color: var(--muted); font-size: 11px; }
 .cc-pick-tools { display: flex; gap: 14px; margin-bottom: 8px; }
 #taskList .origin-card { margin-bottom: 8px; background: var(--bg); }
 .cc-tasklist { margin: 0; padding: 0; list-style: none; }
 .cc-task { display: flex; align-items: stretch; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.cc-task.cc-editable { cursor: grab; }
+.cc-task.cc-editable:active { cursor: grabbing; }
+.cc-edit-row-actions { display: flex; flex: none; align-items: center; gap: 3px; padding: 4px; }
+.cc-edit-control { min-width: 30px; min-height: 30px; padding: 4px 6px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; }
+.cc-edit-control:disabled { opacity: .4; cursor: not-allowed; }
+.cc-edit-control:hover:not(:disabled) { color: var(--route); border-color: var(--route); }
+.cc-remove-stop { color: var(--high); }
 .cc-task.cc-late { border-color: #f5a52477; }
 .cc-task-btn { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .cc-task-btn:disabled { cursor: default; }

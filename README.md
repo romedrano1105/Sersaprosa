@@ -70,6 +70,12 @@ flujo de trabajo del día:
    (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
    `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
    `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
+   **«Editar orden»** permite mover, quitar y agregar pedidos pendientes desde esa misma lista
+   y previsualizar el cálculo en el mapa. Para habilitarlo, aplica
+   [`backend/database/edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
+   en Supabase después de `operaciones_rutas.sql` y `entregas_coordenadas.sql`.
+   El guardado es transaccional, controla versiones para evitar sobrescribir
+   cambios simultáneos y registra el antes/después, usuario y fecha en el historial.
    El botón **«+»** abre **Nuevo viaje** (`viajeRutas.js`): origen, destino, horario, tipo de carga y monto.
    **GENERAR RUTA** (`POST /viajes/generar`) valida (si falta algo, dice qué; fuera del horario de
    entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
