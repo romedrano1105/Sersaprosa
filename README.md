@@ -80,6 +80,22 @@ flujo de trabajo del día:
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
+6. **Dashboard de métricas**: porcentaje de rutas IA frente a rutas manuales, eventos explícitamente mitigados y tiempo promedio real entre inicio y finalización de entregas.
+
+El panel de métricas está disponible para usuarios autenticados. Para registrar
+una mitigación, cambiar el estado de un evento o corregir una discrepancia se
+requiere `app_metadata.role` igual a `coordinador_rutas`, `supervisor` o
+`administrador`; el backend vuelve a validar el rol y audita cada cambio.
+Eventos solo cuentan como evitados después de marcarlos explícitamente como
+mitigados antes del despacho; los eventos antiguos quedan sin confirmar.
+El porcentaje de rutas excluye los registros anteriores sin método conocido.
+El tiempo promedio usa entregas cuyo estado pasó de `en_proceso` a `completada`
+después de instalar la migración; no inventa tiempos para registros históricos.
+
+Antes de usar el panel, ejecuta
+[`backend/database/metricas_operativas.sql`](backend/database/metricas_operativas.sql)
+en Supabase, después de crear las tablas `rutas_planificadas`, `entregas` y
+`eventos_especiales`. El rango de consulta incluye como máximo 365 días.
 
 Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
 `window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,

@@ -134,6 +134,7 @@ def generar_viaje(datos, pedidos, *, usuario, cliente_usuario, cliente_servicio,
     try:
         cliente_servicio.table("rutas_planificadas").insert({
             "id": ruta_id, "nombre": nombre, "fecha": hoy.isoformat(), "entregas": len(ids),
+            "metodo_creacion": "ia",
             "origen_texto": limpio["origen"], "origen_lat": o["lat"], "origen_lng": o["lng"],
             "destino_texto": limpio["destino"], "destino_lat": d["lat"], "destino_lng": d["lng"],
             "hora_salida": limpio["horario"], "creado_por": usuario,
@@ -141,7 +142,11 @@ def generar_viaje(datos, pedidos, *, usuario, cliente_usuario, cliente_servicio,
         }).execute()
     except Exception as error:
         if _falta_sql(error):
-            raise ErrorViaje(503, "Falta aplicar backend/database/viajes_ruta.sql (y riesgo_rutas.sql) en Supabase.") from error
+            raise ErrorViaje(
+                503,
+                "Falta aplicar backend/database/viajes_ruta.sql, riesgo_rutas.sql "
+                "y metricas_operativas.sql en Supabase.",
+            ) from error
         raise ErrorViaje(503, "No se pudo guardar la ruta. Revisa Supabase.") from error
 
     def deshacer():

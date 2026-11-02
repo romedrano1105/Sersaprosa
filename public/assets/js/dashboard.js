@@ -822,19 +822,21 @@
   }
 
   function setScreen(name) {
-    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "daily", "risk"] : ["routes", "orders", "monitor", "daily"];
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk"] : ["routes", "orders", "monitor", "metrics", "daily"];
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
     $("ordersScreen").classList.toggle("hidden", screen !== "orders");
     $("riskScreen").classList.toggle("hidden", screen !== "risk");
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
+    $("metricsScreen").classList.toggle("hidden", screen !== "metrics");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
       routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
+      metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
     };
     const [eyebrow, title, description] = headings[screen];
@@ -850,6 +852,8 @@
       mountOrderModules();
     } else if (screen === "monitor") {
       setMonitorTab(monitorTab);
+    } else if (screen === "metrics") {
+      window.MetricasDashboard.init();
     } else {
       mountAvailabilityPanel();
     }
@@ -963,7 +967,7 @@
         $("locate").disabled = false;
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
-    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" :
+    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
       location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
