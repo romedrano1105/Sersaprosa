@@ -1,5 +1,10 @@
 # Sersaprosa
 
+Copyright (c) 2026 SERSAPROSA. Este proyecto se distribuye bajo la licencia
+[ISC](LICENSE). Los componentes y servicios de terceros conservan sus propios
+titulares de copyright y licencias; consulta
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
 SERSAPROSA es una **aplicación web** de operaciones con tres secciones:
 asignación y planificación de rutas, monitoreo de eventos y alertas, y
 disponibilidad de empleados y vehículos. Combina un frontend web con una API
@@ -158,3 +163,10 @@ servicio como se indica en la sección de Render.
 ```text
 pytest
 ```
+
+## Licencias y atribuciones de terceros
+
+Las dependencias, bibliotecas y servicios externos, junto con sus licencias y
+fuentes oficiales de copyright, se documentan en
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Los mapas muestran la
+atribución requerida a OpenStreetMap; sus datos están disponibles bajo ODbL.

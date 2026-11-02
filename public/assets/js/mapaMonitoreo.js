@@ -258,7 +258,7 @@
         h("div", { class: "mm-body" },
           h("aside", { class: "mm-side" }, h("div", { class: "mm-filtros" }, el.busca, el.chips), el.lista),
           h("section", { class: "mm-mapwrap" }, el.mapa, el.detalle)),
-        h("p", { class: "mm-foot" }, "La posición de cada unidad es estimada: se calcula con la hora de salida y la ruta por calles. © OpenStreetMap · OSRM")));
+        h("p", { class: "mm-foot" }, "La posición de cada unidad es estimada: se calcula con la hora de salida y la ruta por calles. © OpenStreetMap contributors · OSRM")));
     }
 
     function campo(etiqueta, nodo) {
@@ -297,7 +297,7 @@
       const L = global.L;
       S.map = L.map(el.mapa, { center: CENTRO, zoom: 12, zoomControl: false });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19
       }).addTo(S.map);
       L.control.zoom({ position: "topright" }).addTo(S.map);
       S.capaRuta = L.layerGroup().addTo(S.map);
