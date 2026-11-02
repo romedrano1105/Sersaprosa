@@ -201,7 +201,7 @@
       setTimeout(() => {
         if (!element.isConnected) return;
         state.map = global.L.map(element).setView([alerta.lat, alerta.lng], 15);
-        global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(state.map);
+        global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19 }).addTo(state.map);
         global.L.marker([alerta.lat, alerta.lng]).addTo(state.map);
         setTimeout(() => state.map && state.map.invalidateSize(), 60);
       }, 0);

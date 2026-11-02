@@ -269,7 +269,7 @@
 
     if (global.L && i.lat != null && i.lng != null) {
       state.mapa = global.L.map(mapa).setView([i.lat, i.lng], 15);
-      global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(state.mapa);
+      global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19 }).addTo(state.mapa);
       global.L.marker([i.lat, i.lng]).addTo(state.mapa);
       global.setTimeout(() => state.mapa && state.mapa.invalidateSize(), 60);
     } else {
