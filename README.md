@@ -50,6 +50,29 @@ Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
 al código del navegador ni al repositorio.
 
+### Migraciones del flujo de rutas
+
+Prueba primero en un proyecto de staging. Estos archivos son SQL independientes:
+ejecuta su contenido, en este orden, desde el SQL Editor de Supabase:
+
+1. [`empleados.sql`](backend/database/empleados.sql)
+2. [`operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
+3. [`entregas.sql`](backend/database/entregas.sql)
+4. [`viajes_ruta.sql`](backend/database/viajes_ruta.sql)
+5. [`metricas_operativas.sql`](backend/database/metricas_operativas.sql) (requiere `eventos_especiales`)
+6. [`viajes.sql`](backend/database/viajes.sql)
+7. [`rechazos_ruta.sql`](backend/database/rechazos_ruta.sql)
+8. [`edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
+9. [`rutas_operativas_seguras.sql`](backend/database/rutas_operativas_seguras.sql)
+
+Antes de ejecutar `rutas_operativas_seguras.sql`, revisa sus avisos de rutas
+duplicadas por fecha y nombre. Si detecta duplicados, detente y resuélvelos
+manualmente; no borres ni combines registros automáticamente. Aplica
+[`rol_coordinador_rutas.sql`](backend/database/rol_coordinador_rutas.sql)
+por separado, sustituyendo el correo de marcador solo por el de la cuenta
+autorizada que hayas confirmado. No ejecutes estas migraciones en producción
+sin probarlas y aprobar su resultado en staging.
+
 El navegador envía el login y las demás peticiones al mismo origen usando el
 token que Supabase Auth devuelve. En Render, FastAPI sirve también las páginas;
 en local, Node sirve los archivos y proxifica las llamadas API a FastAPI.
