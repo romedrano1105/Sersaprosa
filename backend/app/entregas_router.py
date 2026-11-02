@@ -15,24 +15,18 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from . import database, entregas_logica as logica
+from .autenticacion import usuario_desde_autorizacion
 
 router = APIRouter(prefix="/entregas", tags=["pedidos y entregas del dia"])
 
 
 def usuario_autorizado(authorization: str | None):
     """Valida el token y devuelve un cliente Supabase autenticado."""
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    try:
-        user = database.supabase.auth.get_user(authorization.split(" ", 1)[1]).user
-    except Exception:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if not user:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    token, user = usuario_desde_autorizacion(authorization)
     meta = user.app_metadata or {}
     if meta.get("role") not in logica.ROLES_PERMITIDOS:
         raise HTTPException(403, "No tiene permiso para ver los pedidos.")
-    return database.cliente_autenticado(authorization.split(" ", 1)[1].strip())
+    return database.cliente_autenticado(token)
 
 
 class Consulta(BaseModel):

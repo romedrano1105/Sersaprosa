@@ -17,21 +17,14 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from . import database, eventos_logica as logica
+from .autenticacion import usuario_desde_autorizacion
 
 router = APIRouter(prefix="/eventos", tags=["eventos especiales"])
 
 
 def usuario_coordinador(authorization: str | None):
     """Valida el token y devuelve un cliente Supabase autenticado y el nombre."""
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    try:
-        token = authorization.split(" ", 1)[1].strip()
-        user = database.supabase.auth.get_user(token).user
-    except Exception:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if not user:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    token, user = usuario_desde_autorizacion(authorization)
     meta = user.app_metadata or {}
     if meta.get("role") != logica.ROL_PERMITIDO:
         raise HTTPException(403, "Esta sección es solo para el coordinador de rutas.")

@@ -1,18 +1,15 @@
 """Cálculo de rutas por calles para usuarios autenticados."""
 import logging
-import threading
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
-from supabase import create_client
 
 from . import database, entregas_logica, eventos_logica, motor_rutas
+from .autenticacion import usuario_desde_autorizacion
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["rutas seguras"])
-_cliente_admin = None
-_cliente_admin_lock = threading.Lock()
 
 
 class SolicitudRuta(BaseModel):
@@ -28,17 +25,7 @@ class SolicitudRuta(BaseModel):
 
 
 def _usuario_autorizado(authorization):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    token = authorization.split(" ", 1)[1].strip()
-    if not token:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    try:
-        usuario = database.supabase.auth.get_user(token).user
-    except Exception as error:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.") from error
-    if not usuario:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    _, usuario = usuario_desde_autorizacion(authorization)
     if (usuario.app_metadata or {}).get("role") not in entregas_logica.ROLES_PERMITIDOS:
         raise HTTPException(403, "No tiene permiso para calcular rutas.")
 
@@ -55,14 +42,10 @@ def _leer_todas(fabrica):
 
 
 def _obtener_cliente_admin():
-    global _cliente_admin
-    if not database.SUPABASE_SERVICE_ROLE_KEY:
-        raise HTTPException(503, "Falta configurar SUPABASE_SERVICE_ROLE_KEY para cargar los eventos de seguridad.")
-    if _cliente_admin is None:
-        with _cliente_admin_lock:
-            if _cliente_admin is None:
-                _cliente_admin = create_client(database.SUPABASE_URL, database.SUPABASE_SERVICE_ROLE_KEY)
-    return _cliente_admin
+    try:
+        return database.cliente_servicio()
+    except database.AuthConfigurationError as error:
+        raise HTTPException(503, "Falta configurar SUPABASE_SERVICE_ROLE_KEY para cargar los eventos de seguridad.") from error
 
 
 def _normalizar_riesgos(eventos, alertas, hoy=None):

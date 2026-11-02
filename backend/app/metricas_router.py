@@ -7,6 +7,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from . import database, metricas_logica
+from .autenticacion import usuario_desde_autorizacion
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/metricas", tags=["métricas operativas"])
@@ -15,15 +16,7 @@ TAMANO_PAGINA = 1000
 
 
 def _usuario(authorization: str | None):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    token = authorization.split(" ", 1)[1].strip()
-    try:
-        user = database.supabase.auth.get_user(token).user
-    except Exception as error:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.") from error
-    if not user:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    _, user = usuario_desde_autorizacion(authorization)
     return user, (user.app_metadata or {}).get("role", "")
 
 

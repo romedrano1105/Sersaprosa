@@ -21,6 +21,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from . import database, notificaciones_logica as logica
+from .autenticacion import usuario_desde_autorizacion
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/notificaciones", tags=["notificaciones"])
@@ -32,17 +33,7 @@ MENSAJE_FALLO = "No se pudieron generar algunas notificaciones"
 
 def usuario_administrador(authorization: str | None):
     """Valida el token y el rol. Devuelve (cliente autenticado, id de usuario, nombre)."""
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    token = authorization.split(" ", 1)[1].strip()
-    if not token:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    try:
-        user = database.supabase.auth.get_user(token).user
-    except Exception:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
-    if not user:
-        raise HTTPException(401, "Sesión vencida. Inicie sesión de nuevo.")
+    token, user = usuario_desde_autorizacion(authorization)
     if (user.app_metadata or {}).get("role") != logica.ROL_PERMITIDO:
         raise HTTPException(403, "Esta sección es solo para el administrador de rutas.")
     nombre = (user.user_metadata or {}).get("name") or user.email or "Usuario"
