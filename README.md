@@ -83,6 +83,8 @@ flujo de trabajo del día:
    El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
    haya salido, es decir, sin conductor asignado. El formulario sugiere lugares que empiezan con lo escrito (lugares ya usados y del mapa; con `OPENROUTESERVICE_API_KEY` usa su autocompletado). Requiere aplicar
    [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
+   **«Revisar propuesta»** permite aceptar una ruta o rechazarla con motivo; si hay una alternativa segura, se presenta para revisión. Para guardar el estado y el historial de rechazos, aplica
+   [`backend/database/rechazos_ruta.sql`](backend/database/rechazos_ruta.sql) después de crear `rutas_planificadas`.
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).

@@ -236,9 +236,11 @@ class EditarTest(unittest.TestCase):
 
     def test_edita_destino_y_monto_antes_de_salir(self):
         rid, db = self.crear()
+        db["rutas_planificadas"][0]["estado_propuesta"] = "aceptada"
         r, db, cli = llamar(servicio.actualizar_viaje, rid, {**OK, "destino": "Santa Tecla", "monto": "99"}, db=db)
         fila = db["rutas_planificadas"][0]
         self.assertEqual(fila["destino_texto"], "Santa Tecla")
+        self.assertEqual(fila["estado_propuesta"], "propuesta")
         self.assertEqual(cli.llamadas[0][1]["p_monto"], "99")
 
     def test_no_edita_si_la_ruta_ya_salio(self):

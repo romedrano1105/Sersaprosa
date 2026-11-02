@@ -39,13 +39,15 @@ class RutasDeHoy(unittest.TestCase):
         filas = [
             {"id": "R-2", "nombre": "ruta oriente", "zona": "Soyapango", "fecha": "2026-10-20", "entregas": 2, "conductor": "Ana",
              "orden_pedidos": ["P2", "P1"], "version": 3, "distancia_km": 14.5, "duracion_min": 42, "riesgo_ruta": "medio"},
-            {"id": "R-1", "nombre": "Ruta Centro", "zona": None, "fecha": "2026-10-20", "entregas": None, "conductor": ""},
+            {"id": "R-1", "nombre": "Ruta Centro", "zona": None, "fecha": "2026-10-20", "entregas": None, "conductor": "",
+             "estado_propuesta": "rechazada"},
             {"id": "R-0", "nombre": "Ayer", "zona": "X", "fecha": "2026-10-19", "entregas": 1, "conductor": None},
         ]
         rutas = logica.rutas_de_hoy(filas, date(2026, 10, 20))
         self.assertEqual([r["id"] for r in rutas], ["R-1", "R-2"])
         self.assertEqual(rutas[0], {"id": "R-1", "nombre": "Ruta Centro", "zona": "", "fecha": "2026-10-20", "entregas": 0,
                                     "conductor": None, "orden_pedidos": [], "version": 1, "distancia_km": None,
+                                    "estado_propuesta": "rechazada",
                                     "duracion_min": None, "riesgo_ruta": None})
         self.assertEqual(rutas[1]["conductor"], "Ana")
         self.assertEqual(rutas[1]["orden_pedidos"], ["P2", "P1"])

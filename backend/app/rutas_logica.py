@@ -60,6 +60,8 @@ def rutas_de_hoy(filas, hoy: date) -> list[dict]:
             "duracion_min": fila.get("duracion_min"),
             "riesgo_ruta": fila.get("riesgo_ruta"),
         }
+        if fila.get("estado_propuesta"):
+            ruta["estado_propuesta"] = fila["estado_propuesta"]
         if fila.get("destino_lat") is not None and fila.get("origen_lat") is not None:
             # Rutas creadas con «Generar ruta» (viajes_logica): origen, destino, horario, carga y riesgo.
             ruta["viaje"] = {
