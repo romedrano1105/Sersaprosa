@@ -33,6 +33,7 @@
    Uso (ver dashboard.js):
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
+       onPreviewOrder(ids), onClearPreview(),
        onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), selection (Pedidos.store),
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
@@ -69,6 +70,22 @@
     const pos = new Map(ids.map((id, i) => [String(id), i]));
     const lugar = p => (pos.has(String(p.id)) ? pos.get(String(p.id)) : 1e9);
     return base.sort((a, b) => lugar(a) - lugar(b) || porHora(a, b));
+  }
+
+  function moverPedido(ids, id, destino) {
+    const orden = (ids || []).map(String);
+    const origen = orden.indexOf(String(id)), nuevo = orden.indexOf(String(destino));
+    if (origen < 0 || nuevo < 0 || origen === nuevo) return orden;
+    orden.splice(nuevo, 0, orden.splice(origen, 1)[0]);
+    return orden;
+  }
+
+  function mismoOrden(a, b) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((id, i) => String(id) === String(b[i]));
+  }
+
+  function nivelRiesgo(score) {
+    return score >= 4 ? "alto" : score >= 1.5 ? "medio" : "bajo";
   }
 
   function distanciaKm(a, b) {
@@ -190,7 +207,7 @@
       rutas: [], rutasError: "", disp: null, dispError: "",
       deliveries: [], orders: [], result: null, manual: false, originLabel: "", events: [], notifs: null,
       activeId: null, inicioMs: Date.now(), vista: [], retrasoMax: 0,
-      widgets: true, filtro: "todos", q: "", mensaje: null, ocupado: false
+      widgets: true, filtro: "todos", q: "", mensaje: null, ocupado: false, editing: null
     };
     try { S.widgets = global.localStorage.getItem(WIDGETS_KEY) !== "cerrado"; } catch (e) { /* por defecto abiertas */ }
     container.classList.add("cc");
@@ -314,6 +331,145 @@
       });
     }
 
+    function editarOrden() {
+      const ruta = activa();
+      if (!ruta) return;
+      if (asignacionDe(ruta) || ruta.conductor) {
+        aviso("error", "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar.");
+        return;
+      }
+      const ids = S.orders.filter(enCurso).map(p => String(p.id));
+      if (!ids.length) {
+        aviso("error", "No se puede dejar la ruta sin pedidos.");
+        return;
+      }
+      S.filtro = "todos";
+      S.q = "";
+      S.editing = { routeId: ruta.id, baseIds: ids.slice(), ids, error: "", retryIds: null, saving: false,
+        completedOrders: S.orders.filter(p => p.estado === "completada") };
+      render();
+      preview(ids);
+    }
+
+    function preview(ids) {
+      const editing = S.editing;
+      if (!editing) return;
+      if (!ids.length) {
+        editing.error = "No se puede dejar la ruta sin pedidos.";
+        editing.retryIds = null;
+        render();
+        return;
+      }
+      const requestId = (editing.previewRequest || 0) + 1;
+      editing.previewRequest = requestId;
+      editing.retryIds = ids.slice();
+      editing.calculating = true;
+      editing.retrySave = false;
+      editing.reloadNeeded = false;
+      editing.error = "";
+      render();
+      Promise.resolve(typeof opts.onPreviewOrder === "function" ? opts.onPreviewOrder(ids.slice()) : null)
+        .then(() => {
+          if (S.editing !== editing || editing.previewRequest !== requestId) return;
+          editing.ids = ids.slice();
+          S.orders = ids.map(id => S.deliveries.find(p => String(p.id) === id)).filter(Boolean)
+            .concat(editing.completedOrders);
+          editing.retryIds = null;
+          editing.calculating = false;
+          editing.error = "";
+          render();
+        })
+        .catch(error => {
+          if (S.editing !== editing || editing.previewRequest !== requestId) return;
+          editing.calculating = false;
+          editing.error = error.message || "No se pudo calcular la ruta nueva.";
+          render();
+        });
+    }
+
+    function cambiarOrden(ids) {
+      const editing = S.editing;
+      if (!editing || editing.saving) return;
+      const sinUbicacion = ids.map(id => S.deliveries.find(p => String(p.id) === id))
+        .find(p => p && !tieneUbicacion(p));
+      if (sinUbicacion) {
+        editing.error = "El pedido «" + (sinUbicacion.cliente || sinUbicacion.id) + "» no tiene ubicación y no se agregó.";
+        editing.retryIds = null;
+        render();
+        return;
+      }
+      preview(ids);
+    }
+
+    function cancelarEdicion() {
+      S.editing = null;
+      const ruta = activa();
+      S.orders = aplicarOrden(pedidosDeRuta(S.deliveries, ruta), ruta && ruta.orden_pedidos);
+      if (typeof opts.onClearPreview === "function") opts.onClearPreview();
+      render();
+    }
+
+    async function guardarOrden(reintentar) {
+      const editing = S.editing;
+      const ruta = activa();
+      if (!editing || !ruta || editing.saving) return;
+      if (reintentar && editing.retryIds) {
+        preview(editing.retryIds);
+        return;
+      }
+      if (mismoOrden(editing.ids, editing.baseIds)) {
+        editing.error = "No hay cambios que guardar.";
+        render();
+        return;
+      }
+      if (!editing.ids.length) {
+        editing.error = "No se puede dejar la ruta sin pedidos.";
+        render();
+        return;
+      }
+      const resultado = S.result;
+      if (!resultado) {
+        editing.error = "No hay un cálculo válido para guardar. Reintenta el cálculo.";
+        editing.retryIds = editing.ids.slice();
+        render();
+        return;
+      }
+      const riesgo = nivelRiesgo(resultado.riskScore);
+      if (riesgo === "alto" && !global.confirm("La ruta nueva pasa por una zona de riesgo alto. ¿Deseas continuar y guardar?")) return;
+      editing.saving = true;
+      editing.error = "";
+      render();
+      try {
+        await opts.post("/rutas/editar-orden", {
+          id: ruta.id,
+          pedidos: editing.ids,
+          version: ruta.version || 1,
+          distancia_km: resultado.distanceKm,
+          duracion_min: resultado.durationMin,
+          riesgo_ruta: riesgo
+        });
+        S.editing = null;
+        await tras({ seleccionar: ruta.id });
+        if (typeof opts.onClearPreview === "function") await opts.onClearPreview();
+        aviso("ok", "El orden de la ruta se guardó correctamente.");
+      } catch (error) {
+        if (S.editing !== editing) return;
+        editing.error = error.message || "No se pudo guardar la edición.";
+        editing.saving = false;
+        editing.reloadNeeded = /la ruta cambió|ya salió/i.test(editing.error);
+        editing.retrySave = !editing.reloadNeeded;
+        render();
+      }
+    }
+
+    async function reabrirRuta() {
+      const ruta = activa();
+      S.editing = null;
+      if (typeof opts.onClearPreview === "function") await opts.onClearPreview();
+      await tras({ seleccionar: ruta && ruta.id });
+      aviso("error", "La ruta cambió, vuelve a abrirla.");
+    }
+
     async function abrirAsignar() {
       const ruta = activa();
       if (!ruta) return;
@@ -396,10 +552,28 @@
       } catch (error) {
         aviso404 = "No se pudieron cargar las notificaciones de esta ruta.";
       }
+      try {
+        const respuesta = await opts.post("/rutas/historial-edicion", { id: ruta.id });
+        (respuesta.movimientos || []).forEach(movimiento => {
+          const antes = movimiento.antes || {};
+          const despues = movimiento.despues || {};
+          eventos.push({
+            fecha: movimiento.fecha,
+            texto: "Orden editado: " + (antes.pedidos || []).length + " → " + (despues.pedidos || []).length +
+              " pedidos · " + Number(despues.distancia_km || 0).toFixed(1) + " km · " +
+              Math.round(Number(despues.duracion_min || 0)) + " min · riesgo " + (despues.riesgo_ruta || "sin datos"),
+            detalle: (antes.pedidos || []).join(" → ") + "  ⟶  " + (despues.pedidos || []).join(" → "),
+            quien: movimiento.usuario
+          });
+        });
+      } catch (error) {
+        aviso404 = "No se pudo cargar el historial de movimientos de la ruta.";
+      }
       eventos.sort((x, y) => new Date(y.fecha) - new Date(x.fecha));
       cuerpo.replaceChildren(
         eventos.length
-          ? h("ol", { class: "cc-timeline" }, eventos.map(e => h("li", {}, h("small", {}, fechaHora(e.fecha)), h("strong", {}, e.texto), h("span", {}, e.quien || ""))))
+          ? h("ol", { class: "cc-timeline" }, eventos.map(e => h("li", {}, h("small", {}, fechaHora(e.fecha)), h("strong", {}, e.texto),
+            e.detalle ? h("span", {}, e.detalle) : null, h("span", {}, e.quien || ""))))
           : h("p", { class: "cc-hint" }, "Todavía no hay movimientos registrados para esta ruta."),
         aviso404 ? h("p", { class: "cc-modal-error" }, aviso404) : null);
     }
@@ -443,8 +617,13 @@
       const metricas = [];
       metricas.push(h("span", {}, S.orders.length + (S.orders.length === 1 ? " pedido" : " pedidos")));
       if (r) metricas.push(h("span", {}, r.distanceKm.toFixed(1) + " km, " + Math.round(r.durationMin) + " min"));
+      else if (ruta && ruta.distancia_km != null && ruta.duracion_min != null) {
+        metricas.push(h("span", {}, Number(ruta.distancia_km).toFixed(1) + " km, " + Math.round(Number(ruta.duracion_min)) + " min"));
+      }
       if (etaFinal) metricas.push(h("span", {}, "Llegada " + hora(etaFinal) + (restante != null ? " · faltan " + restante + " min" : "")));
-      if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
+      if (S.editing && r) metricas.push(h("span", {}, "Riesgo " + nivelRiesgo(r.riskScore)));
+      else if (ruta && ruta.riesgo_ruta) metricas.push(h("span", {}, "Riesgo " + ruta.riesgo_ruta));
+      else if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
       if (S.retrasoMax) metricas.push(h("span", { class: "cc-late-dot" }, "● " + S.retrasoMax + " min tarde"));
       const nodos = [];
       nodos.push(h("div", { class: "cc-head" },
@@ -462,17 +641,29 @@
           h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
           boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
+          boton("Editar orden", "↕", editarOrden, !ruta || !!a || !!(ruta && ruta.conductor) || !!S.editing,
+            a || ruta && ruta.conductor ? "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar." : "Cambiar manualmente el orden de los pedidos"),
+          S.editing ? boton("Guardar orden", "💾", () => guardarOrden(false), S.editing.saving ||
+            S.editing.calculating || !!S.editing.retryIds, "Guardar el nuevo orden", "cc-primary") : null,
+          S.editing ? boton("Cancelar edición", "×", cancelarEdicion, S.editing.saving, "Descartar los cambios") : null,
           ruta && ruta.viaje && opts.onEditTrip ? boton("Editar viaje", "✎", () => opts.onEditTrip(ruta), !!a,
             a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
           boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
           boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
-          boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita"),
-          boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio"),
+          !S.editing ? boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita") : null,
+          !S.editing ? boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio") : null,
           boton("Ver historial", "⟲", abrirHistorial, !ruta, ruta ? "" : "Guarda la ruta primero"),
           !ruta && !S.manual && typeof opts.onSave === "function"
             ? boton("Guardar ruta", "💾", () => opts.onSave(), S.orders.length === 0, "Guarda la ruta para asignarla", "cc-primary") : null) : null));
       if (selectorAbierto && coordinador) nodos.push(renderSelector());
       if (S.mensaje) nodos.push(h("p", { class: "cc-msg cc-msg-" + S.mensaje.tipo, role: "status" }, S.mensaje.texto));
+      if (S.editing && S.editing.error) nodos.push(h("div", { class: "cc-msg cc-msg-error", role: "alert" },
+        h("span", {}, S.editing.error),
+        S.editing.reloadNeeded ? h("button", { type: "button", class: "cc-btn cc-retry", onclick: reabrirRuta }, "Volver a abrir") :
+        S.editing.retrySave || S.editing.retryIds ? h("button", { type: "button", class: "cc-btn cc-retry",
+          disabled: S.editing.calculating || S.editing.saving,
+          onclick: () => guardarOrden(Boolean(S.editing.retryIds)) }, "Reintentar") : null));
+      else if (S.editing && S.editing.calculating) nodos.push(h("p", { class: "cc-msg", role: "status" }, "Calculando la ruta nueva…"));
       return nodos;
     }
 
@@ -552,13 +743,27 @@
       if (!taskBox) return;
       const store = opts.selection;
       taskBox.replaceChildren(...[
+        S.editing ? h("div", { class: "cc-edit-tools" },
+          h("label", {}, h("span", {}, "Agregar pedido pendiente"),
+            h("select", { class: "cc-input", "aria-label": "Agregar pedido pendiente",
+              disabled: S.editing.calculating || S.editing.saving,
+              onchange: e => {
+                const id = e.target.value;
+                e.target.value = "";
+                if (id) cambiarOrden(S.editing.ids.concat(id));
+              } },
+            h("option", { value: "" }, "Seleccionar pedido…"),
+            S.deliveries.filter(p => p.estado === "pendiente" && (!p.ruta || norm(p.ruta) === norm(activa().nombre)) &&
+              !S.editing.ids.includes(String(p.id))).map(p => h("option", { value: String(p.id) },
+              (p.cliente || p.id) + (tieneUbicacion(p) ? "" : " · Sin ubicación"))))),
+          h("small", {}, "Arrastra los pedidos para cambiar el orden o usa las flechas.")) :
         h("div", { class: "cc-tools" },
           h("input", { type: "search", class: "cc-input", placeholder: "Buscar pedido…", "aria-label": "Buscar pedido", value: S.q,
             oninput: e => { S.q = e.target.value; renderLista(); } }),
           h("select", { class: "cc-input", "aria-label": "Filtrar pedidos", onchange: e => { S.filtro = e.target.value; renderLista(); } },
             [["todos", "Filtro: todos"], ["pendiente", "Pendientes"], ["proceso", "En proceso"], ["completada", "Completados"], ["retraso", "Con retraso"], ["sin_ubicacion", "Sin coordenadas"]]
               .map(([v, t]) => h("option", { value: v, selected: S.filtro === v }, t)))),
-        esBorrador() ? h("div", { class: "cc-pick-tools" },
+        !S.editing && esBorrador() ? h("div", { class: "cc-pick-tools" },
           h("button", { type: "button", class: "cc-link", onclick: () => store.selectAll(S.deliveries) }, "Elegir todos"),
           h("button", { type: "button", class: "cc-link", onclick: () => store.clear() }, "Ninguno")) : null,
         opts.originNode || null,
@@ -580,6 +785,7 @@
       filas.forEach(v => {
         const p = v.p;
         const traza = v.i >= 0;
+        const editIndex = S.editing ? S.editing.ids.indexOf(String(p.id)) : -1;
         const hecho = p.estado === "completada";
         const caja = esBorrador()
           ? h("input", { type: "checkbox", class: "cc-pick", checked: v.sel, disabled: !tieneUbicacion(p) && !v.sel,
@@ -590,15 +796,48 @@
         else if (v.eta) derecha = [h("span", { class: v.tarde ? "cc-eta-late" : "cc-eta" }, (v.tarde ? "⏱ " : "") + "ETA " + hora(v.eta)),
           v.tarde ? h("small", { class: "cc-eta-late" }, "+" + v.tarde + " min") : null, p.hora ? h("small", {}, "Prog. " + p.hora) : null];
         else derecha = [p.hora ? h("span", {}, "Hoy, " + p.hora) : null, !tieneUbicacion(p) ? h("small", { class: "cc-eta-late" }, "Sin coordenadas") : null];
-        lista.append(h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") + (v.sel ? "" : " cc-off") },
+        const editarFila = S.editing && editIndex >= 0;
+        const fila = h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") + (v.sel ? "" : " cc-off") +
+          (editarFila ? " cc-editable" : ""),
+          draggable: editarFila && !S.editing.calculating && !S.editing.saving,
+          ondragstart: e => {
+            if (!editarFila) return;
+            e.dataTransfer.setData("text/plain", String(p.id));
+            e.dataTransfer.effectAllowed = "move";
+          },
+          ondragover: e => { if (S.editing) e.preventDefault(); },
+          ondrop: e => {
+            if (!S.editing) return;
+            e.preventDefault();
+            const fromId = e.dataTransfer.getData("text/plain");
+            const ids = moverPedido(S.editing.ids, fromId, String(p.id));
+            if (mismoOrden(ids, S.editing.ids)) return;
+            cambiarOrden(ids);
+          } },
           caja,
           h("button", { type: "button", class: "cc-task-btn", disabled: !traza, title: traza ? "Ver en el mapa" : "",
             onclick: () => opts.onFocusStop && opts.onFocusStop(v.i) },
-          h("span", { class: "cc-num" }, hecho ? "✓" : traza ? String(v.i + 1) : "–"),
+          h("span", { class: "cc-num" }, hecho ? "✓" : editarFila ? String(editIndex + 1) : traza ? String(v.i + 1) : "–"),
           h("span", { class: "cc-task-main" },
             h("strong", {}, p.direccion || p.cliente || "Sin dirección"),
             h("small", {}, [p.cliente, p.contacto, p.productos].filter(Boolean).join(" · ") || p.zona || "")),
-          h("span", { class: "cc-task-side" }, derecha.filter(Boolean)))));
+          h("span", { class: "cc-task-side" }, derecha.filter(Boolean))));
+        if (editarFila) {
+          const mover = (delta) => {
+            const nuevo = editIndex + delta;
+            if (nuevo < 0 || nuevo >= S.editing.ids.length) return;
+            const ids = moverPedido(S.editing.ids, p.id, S.editing.ids[nuevo]);
+            cambiarOrden(ids);
+          };
+          fila.append(h("div", { class: "cc-edit-row-actions" },
+            h("button", { type: "button", class: "cc-edit-control", disabled: editIndex === 0 || S.editing.calculating,
+              "aria-label": "Mover " + (p.cliente || p.id) + " arriba", onclick: () => mover(-1) }, "↑"),
+            h("button", { type: "button", class: "cc-edit-control", disabled: editIndex === S.editing.ids.length - 1 || S.editing.calculating,
+              "aria-label": "Mover " + (p.cliente || p.id) + " abajo", onclick: () => mover(1) }, "↓"),
+            h("button", { type: "button", class: "cc-edit-control cc-remove-stop", disabled: S.editing.calculating || S.editing.saving,
+              "aria-label": "Quitar " + (p.cliente || p.id), onclick: () => cambiarOrden(S.editing.ids.filter(id => id !== String(p.id))) }, "Quitar")));
+        }
+        lista.append(fila);
       });
     }
 
@@ -640,6 +879,7 @@
 
   global.CentroRutas = {
     mount,
-    util: { norm, pedidosDeRuta, aplicarOrden, ordenarVecinoCercano, resumenPedidos, estadoRuta, calcularEtas, minutosTarde, distanciaKm }
+    util: { norm, pedidosDeRuta, aplicarOrden, moverPedido, mismoOrden, nivelRiesgo,
+      ordenarVecinoCercano, resumenPedidos, estadoRuta, calcularEtas, minutosTarde, distanciaKm }
   };
 })(window);

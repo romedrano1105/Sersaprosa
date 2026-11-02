@@ -37,6 +37,8 @@
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
+  let routeOrderPreview = null;
+  let routePreviewVersion = 0;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -386,7 +388,12 @@
   function routeAllOrders() {
     const util = window.CentroRutas.util;
     const route = currentRoute();
-    return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(), readVisitOrder());
+    const savedOrder = route && Array.isArray(route.orden_pedidos) && route.orden_pedidos.length
+      ? route.orden_pedidos : null;
+    const previewOrder = route && routeOrderPreview && routeOrderPreview.routeId === route.id
+      ? routeOrderPreview.ids : null;
+    return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(),
+      previewOrder || savedOrder || readVisitOrder());
   }
 
   // Los que realmente se trazan: en curso y con coordenadas.
@@ -589,7 +596,8 @@
     button.disabled = false;
   }
 
-  async function calculateRoute() {
+  async function calculateRoute(options) {
+    options = options || {};
     clearAgent();
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
@@ -612,7 +620,9 @@
         $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
         $("routeMessage").classList.remove("hidden");
       }
-      routeChoices = await requestRoutes(stops);
+      const calculated = await requestRoutes(stops);
+      if (options.previewGeneration != null && options.previewGeneration !== routePreviewVersion) return false;
+      routeChoices = calculated;
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
@@ -620,14 +630,16 @@
       pushCentro();
       return true;
     } catch (error) {
-      routeChoices = [];
+      if (!options.preserveOnError) routeChoices = [];
       updateSaveRoute();
-      stopMarkers = [];
-      routeLayers.clearLayers();
-      pushCentro();
-      $("mDist").textContent = "–";
-      $("mEta").textContent = "–";
-      $("mRisk").textContent = "–";
+      if (!options.preserveOnError) {
+        stopMarkers = [];
+        routeLayers.clearLayers();
+        pushCentro();
+        $("mDist").textContent = "–";
+        $("mEta").textContent = "–";
+        $("mRisk").textContent = "–";
+      }
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
       return false;
@@ -708,6 +720,8 @@
   // Elegir una ruta guardada (o null = nueva ruta en borrador). Deja la ruta personalizada, si había una.
   function selectRoute(route) {
     manualStops = null;
+    routeOrderPreview = null;
+    routePreviewVersion++;
     centroModule.setActive(route ? route.id : null);
     $("originLabel").textContent = route && route.viaje ? route.viaje.origen.texto : "Centro de San Salvador";
     $("saveRouteName").value = "";
@@ -722,6 +736,37 @@
     const ordered = kind === "reverse" ? traced.slice().reverse() : util.ordenarVecinoCercano(routeOrigin(), traced);
     saveVisitOrder(ordered.map(order => String(order.id)));
     return recalcAndRemember();
+  }
+
+  async function previewRouteOrder(ids) {
+    const previous = routeOrderPreview;
+    const route = currentRoute();
+    if (!route) throw new Error("Selecciona una ruta guardada antes de editar el orden.");
+    const previousChoices = routeChoices.slice();
+    const previousSelected = selectedRoute;
+    const generation = ++routePreviewVersion;
+    routeOrderPreview = { routeId: route.id, ids: ids.slice() };
+    if (await calculateRoute({ preserveOnError: true, previewGeneration: generation })) {
+      if (generation !== routePreviewVersion) return null;
+      return routeChoices[selectedRoute] || null;
+    }
+    if (generation !== routePreviewVersion) return null;
+    const error = $("noRoute").textContent;
+    routeOrderPreview = previous;
+    routeChoices = previousChoices;
+    selectedRoute = previousSelected;
+    if (routeChoices.length) {
+      drawRoutes(dailyStops());
+      updateRouteMetrics(routeChoices[selectedRoute]);
+      pushCentro();
+    }
+    throw new Error(error || "No se pudo calcular la ruta nueva.");
+  }
+
+  async function clearRouteOrderPreview() {
+    routeOrderPreview = null;
+    routePreviewVersion++;
+    await recalcAndRemember();
   }
 
   function focusStop(index) {
@@ -920,6 +965,8 @@
       post,
       onSelectRoute: selectRoute,
       onReorder: reorderStops,
+      onPreviewOrder: previewRouteOrder,
+      onClearPreview: clearRouteOrderPreview,
       onFocusStop: focusStop,
       selection: window.Pedidos.store,
       originNode: $("originRow"),
