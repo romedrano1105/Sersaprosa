@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="../assets/css/conduccionVivo.css">
   <link rel="stylesheet" href="../assets/css/incidentesViaje.css">
   <link rel="stylesheet" href="../assets/css/historialIncidentes.css">
+  <link rel="stylesheet" href="../assets/css/metricas.css">
 </head>
 <body data-rr-manual>
   <section id="login" class="login-screen">
@@ -218,6 +219,54 @@
           <div id="panelHistorialIncidentes"></div>
         </section>
       </section>
+      <section id="metricsScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <section class="metrics-panel" aria-label="Filtros de métricas operativas">
+          <form id="metricsForm" class="metrics-filters" novalidate>
+            <label for="metricsStart">Desde
+              <input id="metricsStart" name="inicio" type="date" required>
+            </label>
+            <label for="metricsEnd">Hasta
+              <input id="metricsEnd" name="fin" type="date" required>
+            </label>
+            <button id="metricsApply" class="primary-button" type="submit">Aplicar filtro</button>
+          </form>
+          <p id="metricsMessage" class="metrics-message" role="status" aria-live="polite"></p>
+        </section>
+        <section id="metricsResults" class="metrics-results" aria-live="polite" aria-label="Resultados de métricas" hidden>
+          <div class="metrics-cards">
+            <article class="metrics-card">
+              <span>Rutas optimizadas por IA</span>
+              <strong id="metricsAiPercent">—</strong>
+              <small id="metricsRouteCounts">Sin datos</small>
+            </article>
+            <article class="metrics-card">
+              <span>Incidentes evitados</span>
+              <strong id="metricsAvoided">—</strong>
+              <small>Mitigaciones confirmadas antes del despacho</small>
+            </article>
+            <article class="metrics-card">
+              <span>Tiempo promedio de entrega</span>
+              <strong id="metricsDeliveryTime">—</strong>
+              <small id="metricsDeliveryCount">Se calcula con tiempos reales registrados</small>
+            </article>
+          </div>
+          <section class="metrics-panel">
+            <h2>Rutas por método de creación</h2>
+            <div id="metricsRouteChart" class="metrics-route-chart" role="img"></div>
+            <p id="metricsUnclassified" class="metrics-footnote"></p>
+          </section>
+          <section class="metrics-panel">
+            <h2>Eventos de riesgo y estado de mitigación</h2>
+            <p class="metrics-footnote">“Mitigado” solo cuenta cuando un supervisor o administrador lo confirma explícitamente.</p>
+            <div class="metrics-table-scroll">
+              <table class="metrics-table">
+                <thead><tr><th>Evento</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="metricsEvents"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
       <section id="dailyScreen" class="screen hidden" aria-labelledby="pageTitle">
         <div id="panelDisponibilidad" class="dsp-shell"></div>
       </section>
@@ -240,6 +289,7 @@
   <script src="../assets/js/noticiasRiesgo.js"></script>
   <script src="../assets/js/incidentesViaje.js"></script>
   <script src="../assets/js/historialIncidentes.js"></script>
+  <script src="../assets/js/metricasDashboard.js"></script>
   <script src="../assets/js/conduccionVivo.js"></script>
   <script src="../assets/js/dashboard.js"></script>
 </body>
