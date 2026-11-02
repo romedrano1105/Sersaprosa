@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="../assets/css/incidentesViaje.css">
   <link rel="stylesheet" href="../assets/css/historialIncidentes.css">
   <link rel="stylesheet" href="../assets/css/metricas.css">
+  <link rel="stylesheet" href="../assets/css/reportesViaje.css">
 </head>
 <body data-rr-manual>
   <section id="login" class="login-screen">
@@ -267,6 +268,10 @@
           </section>
         </section>
       </section>
+      <!-- Reportes automáticos de viaje (reportesViaje.js): historial de viajes completados y su reporte -->
+      <section id="reportsScreen" class="screen hidden" aria-labelledby="pageTitle">
+        <div id="panelReportes" class="monitor-content"></div>
+      </section>
       <section id="dailyScreen" class="screen hidden" aria-labelledby="pageTitle">
         <div id="panelDisponibilidad" class="dsp-shell"></div>
       </section>
@@ -291,6 +296,7 @@
   <script src="../assets/js/historialIncidentes.js"></script>
   <script src="../assets/js/metricasDashboard.js"></script>
   <script src="../assets/js/conduccionVivo.js"></script>
+  <script src="../assets/js/reportesViaje.js"></script>
   <script src="../assets/js/dashboard.js"></script>
 </body>
 </html>
