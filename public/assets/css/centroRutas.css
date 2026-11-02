@@ -189,3 +189,9 @@
 .vj-ac-item small { flex: none; color: var(--faint, #6c717a); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .vj-ac-item:hover, .vj-ac-item[aria-selected="true"] { background: #5b8cff22; }
 .vj-ac-estado { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.rj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rj-form { display: grid; gap: 12px; }
+.rj-chip { padding: 4px 10px; color: var(--muted, #9a9fa8); background: transparent; border: 1px solid var(--line, #33363c); border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer; }
+.rj-chip:hover { color: var(--text, #f2f3f5); border-color: var(--route, #5b8cff); }
+.cc-b-rechazada { color: var(--high, #e5484d); background: #e5484d14; border-color: #e5484d66; }

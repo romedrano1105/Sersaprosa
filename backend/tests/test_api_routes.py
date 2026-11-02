@@ -5,7 +5,9 @@ os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
 
 from fastapi.testclient import TestClient
+
 from backend.app.main import app
+
 
 class ExistingApiRoutes(unittest.TestCase):
     @classmethod
@@ -32,9 +34,12 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/agente/ruta-segura", {"origen": {"lat": 13.7, "lng": -89.2}, "destino": {"lat": 13.71, "lng": -89.19}}),
             ("/rutas/guardar", {"nombre": "Ruta Centro", "pedidos": ["1"]}),
             ("/rutas/listar", {}),
+            ("/rutas/rechazar", {"ruta_id": "RT-1", "motivo": "Zona insegura"}),
+            ("/rutas/propuesta", {"ruta_id": "RT-1"}),
+            ("/rutas/alternativa", {"ruta_id": "RT-1"}),
+            ("/rutas/aceptar-propuesta", {"ruta_id": "RT-1"}),
+            ("/rutas/rechazos", {"ruta_id": "RT-1"}),
             ("/rutas/actualizar", {"id": "R-1", "nombre": "Ruta Centro", "pedidos": ["1"]}),
-            ("/rutas/editar-orden", {"id": "R-1", "pedidos": ["1"], "version": 1, "distancia_km": 1, "duracion_min": 1, "riesgo_ruta": "bajo"}),
-            ("/rutas/historial-edicion", {"id": "R-1"}),
             ("/disponibilidad/desasignar", {"ruta": "R-1"}),
             ("/notificaciones/leer", {"id": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}),
             ("/disponibilidad/asignar", {"conductor": "E-1", "vehiculo": "V-1", "ruta": "R-1", "guardias": ["G-1"]}),

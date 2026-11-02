@@ -34,7 +34,7 @@
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
        onPreviewOrder(ids), onClearPreview(),
-       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), selection (Pedidos.store),
+       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), onReviewRoute(ruta), selection (Pedidos.store),
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
      centro.update({ deliveries, orders, result, manual, originLabel, events, notifications });
@@ -569,6 +569,18 @@
       } catch (error) {
         aviso404 = "No se pudo cargar el historial de movimientos de la ruta.";
       }
+      if (ruta.viaje) {
+        try {
+          const r = await opts.post("/rutas/rechazos", { ruta_id: ruta.id });
+          (r.rechazos || []).forEach(x => eventos.push({
+            fecha: x.fecha, quien: x.usuario,
+            texto: "Ruta rechazada: " + x.motivo + (x.comentario ? " (" + x.comentario + ")" : "") +
+              (x.resultado === "generada" ? " · se generó una alternativa" : x.resultado === "sin_alternativa" ? " · sin alternativa disponible" : "")
+          }));
+        } catch (error) {
+          aviso404 = aviso404 || "No se pudo cargar el historial de rechazos.";
+        }
+      }
       eventos.sort((x, y) => new Date(y.fecha) - new Date(x.fecha));
       cuerpo.replaceChildren(
         eventos.length
@@ -624,6 +636,7 @@
       if (S.editing && r) metricas.push(h("span", {}, "Riesgo " + nivelRiesgo(r.riskScore)));
       else if (ruta && ruta.riesgo_ruta) metricas.push(h("span", {}, "Riesgo " + ruta.riesgo_ruta));
       else if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
+      if (ruta && ruta.estado_propuesta === "rechazada") metricas.push(h("span", { class: "cc-badge cc-b-rechazada" }, "Ruta rechazada"));
       if (S.retrasoMax) metricas.push(h("span", { class: "cc-late-dot" }, "● " + S.retrasoMax + " min tarde"));
       const nodos = [];
       nodos.push(h("div", { class: "cc-head" },
@@ -648,6 +661,8 @@
           S.editing ? boton("Cancelar edición", "×", cancelarEdicion, S.editing.saving, "Descartar los cambios") : null,
           ruta && ruta.viaje && opts.onEditTrip ? boton("Editar viaje", "✎", () => opts.onEditTrip(ruta), !!a,
             a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
+          ruta && ruta.viaje && opts.onReviewRoute ? boton("Revisar propuesta", "⊘", () => opts.onReviewRoute(ruta), !!a,
+            a ? "La ruta ya tiene asignación: no se puede rechazar" : "Ver la ruta propuesta, aceptarla o rechazarla") : null,
           boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
           boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
           !S.editing ? boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita") : null,

@@ -145,8 +145,9 @@
   }
 
   // Dibuja la ruta óptima del agente (verde) y su justificación; sirve para el botón y para «Generar ruta».
-  function drawAgentReport(report) {
+  function drawAgentReport(report, options) {
     const chosen = report.ruta_elegida;
+    const titulo = options && options.title;
     agentLayer.clearLayers();
     const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
     if (points.length > 1) {
@@ -158,8 +159,158 @@
       (chosen.desvio ? " · desvío para evitar riesgo" : "");
     const warnings = (report.advertencias || []).slice();
     (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
-    showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA",
+    showAgent(risky ? "risk" : "", titulo || (risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA"),
       [resume, report.justificacion], warnings);
+  }
+
+  // ---- Rechazo de rutas (rechazoRutas.js): revisar, aceptar o rechazar una propuesta ----
+  let proposal = null;
+
+  function trayectoLevel(chosen) {
+    return chosen.vetada ? "Alto" : (chosen.hallazgos || []).length ? "Medio" : "Bajo";
+  }
+
+  function reviewButton(text, kind, handler) {
+    const button = element("button", "agent-btn" + (kind ? " is-" + kind : ""), text);
+    button.type = "button";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try { await handler(); } finally { button.disabled = false; }
+    });
+    return button;
+  }
+
+  function showProposal(route, report, title, risk) {
+    proposal = { route, report };
+    drawAgentReport(report, { title });
+    const panel = $("agentPanel");
+    const chosen = report.ruta_elegida;
+    const levels = element("div", "agent-review");
+    const carga = element("span", "", "Riesgo de la carga: ");
+    carga.append(element("b", "", (risk && risk.carga) || "sin especificar"));
+    const trayecto = element("span", "", "Riesgo del trayecto: ");
+    trayecto.append(element("b", "", (risk && risk.trayecto) || trayectoLevel(chosen)));
+    levels.append(carga, trayecto);
+    panel.append(levels);
+    if (session.role !== "coordinador_rutas") return;
+    if (route.conductor) {
+      panel.append(element("p", "", "La ruta ya tiene conductor asignado: ya no se puede rechazar."));
+      return;
+    }
+    if (route.estado_propuesta === "aceptada") {
+      panel.append(element("p", "", "Esta propuesta ya fue aceptada."));
+      return;
+    }
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Aceptar ruta", "primary", () => acceptProposal(route)));
+    actions.append(reviewButton("Rechazar ruta", "danger", () => rejectProposal()));
+    panel.append(actions);
+  }
+
+  function showNoAlternative(route, error) {
+    proposal = { route, report: null };
+    if (agentLayer) agentLayer.clearLayers();
+    showAgent("error", "No fue posible generar una alternativa", [
+      error && error.mensaje || "No fue posible encontrar una ruta alternativa.",
+      "La ruta quedó marcada como rechazada y el error quedó registrado para su revisión."
+    ]);
+    if (session.role !== "coordinador_rutas") return;
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Reintentar", "primary", () => retryAlternative(route)));
+    if (route.viaje) actions.append(reviewButton("Editar viaje", "", () => openTrip("editar", route)));
+    $("agentPanel").append(actions);
+  }
+
+  function showProposalUnavailable(route, error) {
+    if (agentLayer) agentLayer.clearLayers();
+    showAgent("error", "No fue posible obtener una propuesta", [
+      error && error.mensaje || "No hay una ruta disponible en este momento.",
+      "La ruta todavía no se ha rechazado. Puedes volver a intentarlo o editar el viaje."
+    ]);
+    if (session.role !== "coordinador_rutas") return;
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Reintentar", "primary", () => reviewRoute(route)));
+    if (route.viaje) actions.append(reviewButton("Editar viaje", "", () => openTrip("editar", route)));
+    $("agentPanel").append(actions);
+  }
+
+  async function showReviewResult(route, result) {
+    const fresh = Object.assign({}, route, {
+      estado_propuesta: result.alternativa ? "propuesta" : "rechazada"
+    });
+    let refreshError = null;
+    try {
+      await centroModule.refresh();
+      Object.assign(fresh, centroModule.findRoute(String(route.id)) || {});
+    } catch (error) {
+      refreshError = error;
+    }
+    if (result.alternativa) {
+      const alt = result.alternativa;
+      showProposal(fresh, alt.evaluacion, "Ruta alternativa", { carga: alt.nivel_riesgo, trayecto: alt.nivel_riesgo_trayecto });
+    } else {
+      showNoAlternative(fresh, result.error || { mensaje: "No fue posible generar una alternativa." });
+    }
+    if (refreshError) {
+      $("agentPanel").append(element("p", "", "El resultado quedó registrado, pero no se pudo actualizar la lista de rutas: " +
+        (refreshError.message || "inténtalo con «Actualizar ahora».")));
+    }
+  }
+
+  function rejectProposal() {
+    if (!proposal || !proposal.report) return;
+    window.Rechazos.abrir({
+      ruta: proposal.route,
+      propuesta: proposal.report.ruta_elegida,
+      post,
+      onResult: result => showReviewResult(proposal.route, result)
+    });
+  }
+
+  async function retryAlternative(route) {
+    try {
+      showReviewResult(route, await post("/rutas/alternativa", { ruta_id: route.id }));
+    } catch (error) {
+      showAgent("error", "No se pudo reintentar", [error.message || "Inténtalo de nuevo."]);
+    }
+  }
+
+  async function acceptProposal(route) {
+    try {
+      await post("/rutas/aceptar-propuesta", { ruta_id: route.id });
+    } catch (error) {
+      showAgent("error", "No se pudo aceptar la ruta", [error.message || "Inténtalo de nuevo."]);
+      return;
+    }
+    try {
+      await centroModule.refresh();
+      showAgent("", "Ruta aceptada", ["Ya puedes asignarle conductor y vehículo en «Empleados y Vehículos»."]);
+    } catch (error) {
+      showAgent("", "Ruta aceptada", [
+        "Ya puedes asignarle conductor y vehículo en «Empleados y Vehículos».",
+        "No se pudo actualizar la lista de rutas: " + (error.message || "usa «Actualizar ahora».")
+      ]);
+    }
+  }
+
+  async function reviewRoute(route) {
+    if (!route || !route.viaje) return;
+    if (route.estado_propuesta === "rechazada") {
+      showNoAlternative(route, { mensaje: "Esta ruta fue rechazada y todavía no tiene alternativa." });
+      return;
+    }
+    showAgent("", "Cargando la ruta propuesta…", ["Consultando al agente de rutas."]);
+    try {
+      const result = await post("/rutas/propuesta", { ruta_id: route.id });
+      if (result.propuesta) {
+        showProposal(route, result.propuesta.evaluacion, "Ruta propuesta",
+          { carga: result.propuesta.nivel_riesgo, trayecto: result.propuesta.nivel_riesgo_trayecto });
+      } else {
+        showProposalUnavailable(route, result.error);
+      }
+    } catch (error) {
+      showAgent("error", "No se pudo cargar la ruta propuesta", [error.message || "Inténtalo de nuevo."]);
+    }
   }
 
   async function evaluateSafety() {
@@ -797,7 +948,10 @@
     await centroModule.refresh();
     const saved = centroModule.findRoute(String(result.ruta.id));
     if (saved) await selectRoute(saved);
-    if (result.evaluacion && result.evaluacion.ruta_elegida) drawAgentReport(result.evaluacion);
+    if (result.evaluacion && result.evaluacion.ruta_elegida) {
+      if (saved) showProposal(saved, result.evaluacion, "Ruta propuesta", { carga: result.viaje && result.viaje.nivel_riesgo });
+      else drawAgentReport(result.evaluacion);
+    }
     $("noRoute").classList.add("hidden");
   }
 
@@ -980,6 +1134,7 @@
       onSave: focusSaveRoute,
       onNewTrip: () => openTrip("nuevo"),
       onEditTrip: route => openTrip("editar", route),
+      onReviewRoute: reviewRoute,
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });

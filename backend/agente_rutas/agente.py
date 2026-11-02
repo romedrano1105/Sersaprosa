@@ -19,6 +19,11 @@ from .fuentes import FuenteIncidentes, FuenteTrafico, FuenteZonas
 from .modelos import Punto
 from .puntuacion import Pesos
 
+
+class SinAlternativa(RuntimeError):
+    """Se pidió una alternativa excluyendo rutas rechazadas y el motor no tiene otra ruta que ofrecer."""
+
+
 MODELO_POR_DEFECTO = os.getenv("AGENTE_MODELO", "claude-sonnet-5-5")
 MAX_ITERACIONES = 10
 
@@ -36,14 +41,20 @@ class AgenteRutaSegura:
         self.fuentes = (incidentes, trafico, zonas)
         self.enrutador, self.pesos, self.cliente, self.modelo = enrutador, pesos or Pesos(), cliente, modelo
 
-    def _sesion(self, origen: Punto, destino: Punto, ahora: datetime | None) -> h.Sesion:
+    def _sesion(self, origen: Punto, destino: Punto, ahora: datetime | None, excluir: list | None = None) -> h.Sesion:  # NUEVO: excluir
         return h.Sesion(origen=origen, destino=destino, ahora=ahora or datetime.now(timezone.utc),
+                        excluir=list(excluir or []),  # NUEVO
                         incidentes_src=self.fuentes[0], trafico_src=self.fuentes[1], zonas_src=self.fuentes[2],
                         enrutador=self.enrutador, pesos=self.pesos)
 
-    def decidir(self, origen: Punto, destino: Punto, ahora: datetime | None = None, usar_llm: bool | None = None) -> dict:
-        """Devuelve el reporte estructurado. `usar_llm=None` usa el LLM solo si hay cliente o ANTHROPIC_API_KEY."""
-        s = self._sesion(origen, destino, ahora)
+    def decidir(self, origen: Punto, destino: Punto, ahora: datetime | None = None, usar_llm: bool | None = None,
+                excluir: list | None = None) -> dict:  # NUEVO: excluir
+        """Devuelve el reporte estructurado. `usar_llm=None` usa el LLM solo si hay cliente o ANTHROPIC_API_KEY.
+
+        `excluir`: trazados (listas de (lat, lng)) de rutas rechazadas; nunca se proponen. Si no queda ninguna
+        ruta, lanza `SinAlternativa`.
+        """
+        s = self._sesion(origen, destino, ahora, excluir)  # NUEVO: excluir
         if usar_llm is None:
             usar_llm = self.cliente is not None or bool(os.getenv("ANTHROPIC_API_KEY"))
         modo, advertencias = "determinista", []
@@ -53,7 +64,7 @@ class AgenteRutaSegura:
                 modo = "llm"
             except Exception as e:  # sin red, sin SDK, cuota... el sistema sigue funcionando
                 advertencias.append(f"El modelo no estuvo disponible ({type(e).__name__}); se usó el modo determinista.")
-                s = self._sesion(origen, destino, ahora)
+                s = self._sesion(origen, destino, ahora, excluir)  # NUEVO: excluir
         if s.eleccion is None:
             self._ciclo_determinista(s)
         return self._reporte(s, modo, advertencias)
@@ -68,6 +79,8 @@ class AgenteRutaSegura:
             h.obtener_rutas_candidatas(s, rodear_zonas_criticas=True)
         h.evaluar_rutas(s)
         if not s.evaluaciones:
+            if s.hubo_exclusion:  # NUEVO
+                raise SinAlternativa("No hay otra ruta disponible además de las rechazadas.")  # NUEVO
             raise RuntimeError("No se obtuvieron rutas candidatas del motor de rutas.")
         s.eleccion = {"ruta_id": puntuacion.mejor(s.evaluaciones).ruta.id, "justificacion_modelo": "",
                       "corregida_por_validacion": False}
