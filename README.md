@@ -1,5 +1,10 @@
 # Sersaprosa
 
+Copyright (c) 2026 SERSAPROSA. Este proyecto se distribuye bajo la licencia
+[ISC](LICENSE). Los componentes y servicios de terceros conservan sus propios
+titulares de copyright y licencias; consulta
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
 SERSAPROSA es una **aplicación web** de operaciones con tres secciones:
 asignación y planificación de rutas, monitoreo de eventos y alertas, y
 disponibilidad de empleados y vehículos. Combina un frontend web con una API
@@ -36,8 +41,10 @@ Para conservar el acceso con código de empleado, aplica
 Después, completa `empleados.email` con el email de una cuenta existente y
 confirmada en Supabase Auth para cada empleado activo. La contraseña ingresada
 se valida contra esa cuenta de Auth; no se consulta `empleados.password`.
-El servicio usa la clave service role exclusivamente para resolver el código
-de empleado a su email, y devuelve a la web el access token real de Supabase.
+El servicio usa la clave service role en el backend para resolver el código de
+empleado a su email, devolver el access token real de Supabase y, cuando se
+requiere, realizar operaciones administrativas de rutas, viajes y datos de
+seguridad. Nunca expone esa clave al navegador.
 
 Configura `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` como secretos de
 entorno del servicio FastAPI. No copies la service role key a `.env.example`,
@@ -73,6 +80,22 @@ flujo de trabajo del día:
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
+6. **Dashboard de métricas**: porcentaje de rutas IA frente a rutas manuales, eventos explícitamente mitigados y tiempo promedio real entre inicio y finalización de entregas.
+
+El panel de métricas está disponible para usuarios autenticados. Para registrar
+una mitigación, cambiar el estado de un evento o corregir una discrepancia se
+requiere `app_metadata.role` igual a `coordinador_rutas`, `supervisor` o
+`administrador`; el backend vuelve a validar el rol y audita cada cambio.
+Eventos solo cuentan como evitados después de marcarlos explícitamente como
+mitigados antes del despacho; los eventos antiguos quedan sin confirmar.
+El porcentaje de rutas excluye los registros anteriores sin método conocido.
+El tiempo promedio usa entregas cuyo estado pasó de `en_proceso` a `completada`
+después de instalar la migración; no inventa tiempos para registros históricos.
+
+Antes de usar el panel, ejecuta
+[`backend/database/metricas_operativas.sql`](backend/database/metricas_operativas.sql)
+en Supabase, después de crear las tablas `rutas_planificadas`, `entregas` y
+`eventos_especiales`. El rango de consulta incluye como máximo 365 días.
 
 Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
 `window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,
@@ -81,19 +104,12 @@ Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al back
 lógica del front corren con `npm test` (`tests/js`) y las del backend con `pytest`.
 
 La página principal consulta destinos y eventos mediante `/entregas/listar` y
-`/eventos/listar`. El mapa usa teselas de OpenStreetMap; el backend calcula las
-rutas con OpenRouteService y usa OSRM como respaldo. El endpoint autenticado
-`/rutas/calcular` carga eventos especiales vigentes y alertas altas/medias de
-los últimos 90 días con la clave service role del servidor. Excluye zonas con
-coordenadas de las alternativas y rechaza el cálculo si el respaldo no encuentra
-una ruta que las evite. Los eventos sin coordenadas se indican en la página, ya
-que no pueden excluirse espacialmente. La caché del backend conserva rutas
-válidas durante seis horas. Los destinos y eventos se vuelven a consultar cada
-dos minutos y el recorrido se recalcula cuando cambian sus coordenadas, el
-origen o los riesgos. **Actualizar ahora** permite forzar la consulta. El GPS es
-opcional: solo se solicita al pulsar el botón de ubicación o iniciar el
-seguimiento en vivo, que actualiza la ruta tras detectar un desvío superior a
-60 metros.
+`/eventos/listar`. El mapa usa teselas de OpenStreetMap y los recorridos se
+calculan con OSRM sobre la red vial. Los destinos y eventos se vuelven a
+consultar cada dos minutos y el recorrido se recalcula cuando cambian sus
+coordenadas, el origen o los eventos que afectan al riesgo. **Actualizar ahora**
+permite forzar la consulta. El GPS del navegador es opcional, solo se solicita
+tras pulsar el botón de ubicación y se usa como origen para el cálculo de ruta.
 
 Para habilitar la asignación y disponibilidad reales, aplica
 [`backend/database/operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
@@ -109,15 +125,16 @@ Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
 en Supabase y guarda coordenadas verificadas en `entregas.lat` y
 `entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
-direcciones a un geocodificador externo.
+direcciones a un geocodificador externo. El número y disponibilidad de rutas
+alternativas depende de las opciones devueltas por OSRM.
 
 Las funciones `listar_disponibilidad_operativa` y `asignar_ruta_operativa`
 validan el rol del usuario dentro de PostgreSQL y se ejecutan con el token
 autenticado; la consulta de empleados devuelve solo los campos necesarios. No se
 expone la clave `service_role` al navegador ni se concede acceso a `anon`.
 Los mapas, las teselas y el cálculo de rutas dependen de servicios públicos
-externos (OpenStreetMap, OpenRouteService y OSRM), que pueden limitar solicitudes
-o dejar de responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
+externos (OpenStreetMap y OSRM), que pueden limitar solicitudes o dejar de
+responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
 vehículos; por eso el monitoreo muestra eventos/incidentes reales disponibles
 en la API y no simula cámaras ni posiciones de unidades.
 
@@ -132,9 +149,9 @@ en la API y no simula cámaras ni posiciones de unidades.
 5. Aplica `backend/database/entregas_coordenadas.sql` en Supabase y completa
    coordenadas verificadas en las entregas que deban incluirse en el mapa.
 
-No agregues secretos a Git ni al código del navegador. El backend usa la clave
-`service_role` para resolver el código de empleado y consultar los eventos y
-alertas necesarios para el cálculo seguro de rutas; no la expone al navegador.
+No agregues secretos a Git ni al código del navegador. No se requiere
+`service_role` para OSRM ni para las teselas del mapa; el backend la usa solo
+en los flujos administrativos descritos arriba.
 
 ## Ejecutar localmente
 
@@ -162,3 +179,10 @@ servicio como se indica en la sección de Render.
 ```text
 pytest
 ```
+
+## Licencias y atribuciones de terceros
+
+Las dependencias, bibliotecas y servicios externos, junto con sus licencias y
+fuentes oficiales de copyright, se documentan en
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md). Los mapas muestran la
+atribución requerida a OpenStreetMap; sus datos están disponibles bajo ODbL.

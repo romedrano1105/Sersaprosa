@@ -1,9 +1,10 @@
 """Monto, tipo de carga y nivel de riesgo de las rutas."""
 
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Query
 
 router = APIRouter(prefix="/rutas-riesgo", tags=["riesgo de rutas"])
 
@@ -304,3 +305,39 @@ async def detalle(
         raise _error(404, "La ruta no existe.")
 
     return filas[0]
+
+
+@router.get("/{ruta_id}/noticias")
+async def noticias_riesgo(
+    ruta_id: str,
+    pagina: int = Query(1, ge=1),
+    limite: int = Query(10, ge=1, le=100),
+    fuente: str | None = None,
+    fecha: date | None = None,
+    authorization: str | None = Header(None),
+):
+    token = _token(authorization)
+
+    ruta_id = _validar_ruta_id(ruta_id)
+
+    payload = {
+        "p_ruta_id": ruta_id,
+        "p_pagina": pagina,
+        "p_limite": limite,
+        "p_fuente": fuente,
+        "p_fecha": fecha.isoformat() if fecha else None,
+    }
+
+    resultado = await _rpc(
+        "listar_noticias_riesgo",
+        token,
+        payload,
+    )
+
+    if not isinstance(resultado, dict):
+        raise _error(
+            502,
+            "Supabase devolvió una respuesta no válida.",
+        )
+
+    return resultado

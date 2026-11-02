@@ -5,9 +5,7 @@ os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
 
 from fastapi.testclient import TestClient
-
 from backend.app.main import app
-
 
 class ExistingApiRoutes(unittest.TestCase):
     @classmethod

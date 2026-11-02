@@ -2,9 +2,8 @@
   "use strict";
 
   const CENTER = [13.6929, -89.2182];
+  const OSRM_URL = "https://router.project-osrm.org/route/v1/driving/";
   const COLORS = { alta: "#e5484d", media: "#f5a524", baja: "#5b8cff" };
-  const REROUTE_DISTANCE_METERS = 60;
-  const REROUTE_COOLDOWN_MS = 30000;
   const $ = id => document.getElementById(id);
   const sessionKey = "session";
   let session = null;
@@ -12,7 +11,6 @@
   let origin = CENTER.slice();
   let routeLayers = null;
   let eventLayers = null;
-  let liveLayers = null;
   let agentLayer = null;     // ruta que recomienda el agente de seguridad
   let deliveries = [];
   let manualStops = null; // paradas del planificador multi-paradas; null = ruta del día
@@ -25,6 +23,9 @@
   let eventModule = null;
   let alertModule = null;
   let notificationsModule = null;
+  let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
+  let incidentModule = null;
+  let historyModule = null;
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -36,12 +37,6 @@
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
-  let liveWatchId = null;
-  let liveMarker = null;
-  let livePosition = null;
-  let lastRerouteAt = 0;
-  let rerouting = false;
-  let firstLivePosition = false;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -87,12 +82,11 @@
   function initMap() {
     map = L.map("map").setView(CENTER, 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
       maxZoom: 19
     }).addTo(map);
     routeLayers = L.layerGroup().addTo(map);
     eventLayers = L.layerGroup().addTo(map);
-    liveLayers = L.layerGroup().addTo(map);
     agentLayer = L.layerGroup().addTo(map);
   }
 
@@ -325,7 +319,7 @@
 
   function normalizeRoutes(rawRoutes) {
     if (!Array.isArray(rawRoutes) || rawRoutes.length === 0) {
-      throw new Error("No se encontró una ruta por calles entre las paradas.");
+      throw new Error("OSRM no encontró una ruta por calles entre las paradas.");
     }
     const candidates = rawRoutes.filter(route =>
       route.geometry && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 1 &&
@@ -340,8 +334,7 @@
         durationMin: route.duration / 60,
         riskScore: risk.score,
         riskEvents: risk.events,
-        geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
-        steps: Array.isArray(route.steps) ? route.steps : []
+        geometry: route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
       };
     }).sort((first, second) =>
       (first.riskScore * 250 + first.durationMin + first.distanceKm) -
@@ -358,7 +351,6 @@
 
   // Las rutas generadas con «Nuevo viaje» traen su propio origen y destino.
   function routeOrigin() {
-    if (liveWatchId !== null && livePosition) return livePosition;
     const trip = (currentRoute() || {}).viaje;
     return trip && !manualStops ? [Number(trip.origen.lat), Number(trip.origen.lng)] : origin;
   }
@@ -426,7 +418,7 @@
   }
 
   function routeInputSignature() {
-    return JSON.stringify([liveWatchId !== null ? "live" : routeOrigin(), manualStops || dailyStops()]);
+    return JSON.stringify([routeOrigin(), manualStops || dailyStops()]);
   }
 
   function riskInputSignature() {
@@ -436,25 +428,22 @@
   }
 
   async function requestRoutes(stops) {
-    const data = await post("/rutas/calcular", {
-      coordinates: [routeOrigin(), ...stops.map(stop => [stop.lat, stop.lng])]
+    const coordinates = [routeOrigin(), ...stops.map(stop => [stop.lat, stop.lng])]
+      .map(([lat, lng]) => lng + "," + lat).join(";");
+    const query = new URLSearchParams({
+      overview: "full",
+      geometries: "geojson",
+      alternatives: "true",
+      steps: "true"
     });
-    if (!data || !Array.isArray(data.routes)) {
-      throw new Error("El servicio de rutas devolvió una respuesta no válida.");
-    }
-    $("providerLabel").textContent = data.provider || "Proveedor de rutas";
-    if (data.cached) $("providerLabel").textContent += " · caché";
-    const warnings = [];
-    if (!$("routeMessage").classList.contains("hidden")) warnings.push($("routeMessage").textContent);
-    if (data.hazards_missing_location) {
-      warnings.push(data.hazards_missing_location + " evento(s) de riesgo no tienen coordenadas y no pueden evitarse.");
-    }
-    $("routeMessage").textContent = warnings.filter(Boolean).join(" ");
-    $("routeMessage").classList.toggle("hidden", warnings.length === 0);
+    const response = await fetch(OSRM_URL + coordinates + "?" + query.toString());
+    if (!response.ok) throw new Error("El servicio público de rutas respondió con HTTP " + response.status + ".");
+    const data = await response.json();
+    if (data.code !== "Ok") throw new Error(data.message || "OSRM no pudo calcular la ruta (" + data.code + ").");
     return normalizeRoutes(data.routes);
   }
 
-  function drawRoutes(stops, fitMap = true) {
+  function drawRoutes(stops) {
     routeLayers.clearLayers();
     stopMarkers = [];
     const options = $("routeOptions");
@@ -504,10 +493,8 @@
       marker.bindPopup(popup);
       stopMarkers.push({ marker, lat: stop.lat, lng: stop.lng });
     });
-    if (fitMap) {
-      const combined = bounds.reduce((result, bound) => result.extend(bound), L.latLngBounds([]));
-      if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
-    }
+    const combined = bounds.reduce((result, bound) => result.extend(bound), L.latLngBounds([]));
+    if (combined.isValid()) map.fitBounds(combined, { padding: [35, 35], maxZoom: 15 });
   }
 
   async function geocodePoint(point) {
@@ -602,7 +589,7 @@
     button.disabled = false;
   }
 
-  async function calculateRoute(options = {}) {
+  async function calculateRoute() {
     clearAgent();
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
@@ -628,7 +615,7 @@
       routeChoices = await requestRoutes(stops);
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
-      drawRoutes(stops, options.fitMap !== false);
+      drawRoutes(stops);
       updateSaveRoute();
       pushCentro();
       return true;
@@ -647,98 +634,6 @@
     }
   }
 
-  function distanceToCurrentRoute(position, route) {
-    if (!route || route.geometry.length < 2) return Infinity;
-    const point = [position[1], position[0]];
-    let closest = Infinity;
-    for (let index = 1; index < route.geometry.length; index += 1) {
-      const start = [route.geometry[index - 1][1], route.geometry[index - 1][0]];
-      const end = [route.geometry[index][1], route.geometry[index][0]];
-      closest = Math.min(closest, pointSegmentDistanceMeters(point, start, end));
-    }
-    return closest;
-  }
-
-  async function onLivePosition(position) {
-    livePosition = [position.coords.latitude, position.coords.longitude];
-    if (!liveMarker) {
-      liveMarker = L.circleMarker(livePosition, {
-        radius: 8, color: "#ffffff", weight: 2, fillColor: "#2688ff", fillOpacity: 1
-      }).addTo(liveLayers);
-    } else {
-      liveMarker.setLatLng(livePosition);
-    }
-    if (position.coords.accuracy > 150) {
-      $("trackingStatus").textContent = "GPS impreciso (" +
-        Math.round(position.coords.accuracy) + " m); esperando una ubicación más precisa.";
-      return;
-    }
-    if (!firstLivePosition) {
-      firstLivePosition = true;
-      $("originLabel").textContent = "Ubicación en vivo";
-      lastRerouteAt = Date.now();
-      rerouting = true;
-      $("trackingStatus").textContent = "Ubicación recibida. Calculando ruta desde tu posición…";
-      const ok = await calculateRoute({ fitMap: false });
-      rerouting = false;
-      $("trackingStatus").textContent = ok ?
-        "Seguimiento activo. La ruta se recalculará si te desvías." :
-        "Seguimiento activo, pero no se pudo calcular la ruta.";
-      return;
-    }
-    const distance = distanceToCurrentRoute(livePosition, routeChoices[selectedRoute]);
-    if (distance > REROUTE_DISTANCE_METERS &&
-        Date.now() - lastRerouteAt >= REROUTE_COOLDOWN_MS && !rerouting) {
-      lastRerouteAt = Date.now();
-      rerouting = true;
-      $("trackingStatus").textContent = "Desvío de " + Math.round(distance) +
-        " m detectado. Recalculando la ruta…";
-      const ok = await calculateRoute({ fitMap: false });
-      rerouting = false;
-      $("trackingStatus").textContent = ok ?
-        "Ruta actualizada. Seguimiento activo." :
-        "Se detectó un desvío, pero no se pudo calcular una ruta segura.";
-    }
-  }
-
-  function stopLiveTracking(status = "Seguimiento detenido.") {
-    if (liveWatchId !== null) navigator.geolocation.clearWatch(liveWatchId);
-    if (livePosition) origin = livePosition.slice();
-    liveWatchId = null;
-    firstLivePosition = false;
-    $("trackRoute").textContent = "Iniciar seguimiento en vivo";
-    $("trackingStatus").textContent = status;
-  }
-
-  function startLiveTracking() {
-    if (!navigator.geolocation) {
-      $("trackingStatus").textContent = "Este navegador no permite obtener la ubicación actual.";
-      return;
-    }
-    $("trackRoute").disabled = true;
-    try {
-      liveWatchId = navigator.geolocation.watchPosition(position => {
-        $("trackRoute").disabled = false;
-        onLivePosition(position).catch(error => {
-          console.error(error);
-          $("trackingStatus").textContent = "No se pudo actualizar la ruta: " + error.message;
-        });
-      }, error => {
-        $("trackRoute").disabled = false;
-        const message = error.code === error.PERMISSION_DENIED ?
-          "No se concedió permiso para usar la ubicación." :
-          "No se pudo obtener la ubicación. Revisa los permisos y vuelve a intentarlo.";
-        if (error.code === error.PERMISSION_DENIED) stopLiveTracking(message);
-        else $("trackingStatus").textContent = message;
-      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
-      $("trackRoute").textContent = "Detener seguimiento";
-      $("trackingStatus").textContent = "Esperando ubicación GPS…";
-    } catch (error) {
-      $("trackRoute").disabled = false;
-      $("trackingStatus").textContent = "No se pudo iniciar el GPS: " + error.message;
-    }
-  }
-
   function mountEventPanel() {
     if (eventModule) return;
     eventModule = window.EventosEspeciales.mount($("panelEventos"), {
@@ -747,6 +642,22 @@
       CREATE: "/eventos/registrar",
       onUnauthorized: () => window.AppNavigation.handleUnauthorized()
     });
+  }
+
+  function mountDrivingPanel() {
+    if (drivingMounted) return;
+    drivingMounted = true;
+    window.ConduccionVivo.mount($("panelConduccion"));
+  }
+
+  function mountIncidentsPanel() {
+    if (incidentModule) return;
+    incidentModule = window.IncidentesViaje.mount($("panelIncidentes"));
+  }
+
+  function mountHistoryPanel() {
+    if (historyModule) return;
+    historyModule = window.HistorialIncidentes.mount($("panelHistorialIncidentes"));
   }
 
   function mountAlertPanel() {
@@ -878,33 +789,54 @@
   }
 
   function setMonitorTab(name) {
-    monitorTab = ["alerts", "notifications"].includes(name) ? name : "events";
-    if (monitorTab === "incidents") mountIncidentsPanel();
-    else if (monitorTab === "notifications") mountNotificationsPanel();
+    const tabs = ["alerts", "notifications", "driving", "incidents", "history"];
+    monitorTab = tabs.includes(name) ? name : "events";
+
+    $("monitorNotifs").classList.toggle("hidden", monitorTab !== "notifications");
     $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
-    monitorTab = ["alerts", "notifications", "incidents"].includes(name) ? name : "events";
-    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
-    button.setAttribute("aria-selected", String(button.dataset.monitorPanel === monitorTab));
+    $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
+    $("monitorDriving").classList.toggle("hidden", monitorTab !== "driving");
+    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");
+    $("monitorHistory").classList.toggle("hidden", monitorTab !== "history");
+
+    document.querySelectorAll("[data-monitor-panel]").forEach(button => {
+      button.setAttribute(
+        "aria-selected",
+        String(button.dataset.monitorPanel === monitorTab)
+      );
     });
-    if (monitorTab === "notifications") mountNotificationsPanel();
-    else if (monitorTab === "events") mountEventPanel();
-    else mountAlertPanel();
+
+    if (monitorTab === "notifications") {
+      mountNotificationsPanel();
+    } else if (monitorTab === "events") {
+      mountEventPanel();
+    } else if (monitorTab === "driving") {
+      mountDrivingPanel();
+    } else if (monitorTab === "incidents") {
+      mountIncidentsPanel();
+    } else if (monitorTab === "history") {
+      mountHistoryPanel();
+    } else {
+      mountAlertPanel();
+    }
   }
 
   function setScreen(name) {
-    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "daily", "risk"] : ["routes", "orders", "monitor", "daily"];
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk"] : ["routes", "orders", "monitor", "metrics", "daily"];
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
     $("ordersScreen").classList.toggle("hidden", screen !== "orders");
     $("riskScreen").classList.toggle("hidden", screen !== "risk");
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
+    $("metricsScreen").classList.toggle("hidden", screen !== "metrics");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
     const headings = {
       routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
+      metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
     };
     const [eyebrow, title, description] = headings[screen];
@@ -920,6 +852,8 @@
       mountOrderModules();
     } else if (screen === "monitor") {
       setMonitorTab(monitorTab);
+    } else if (screen === "metrics") {
+      window.MetricasDashboard.init();
     } else {
       mountAvailabilityPanel();
     }
@@ -937,7 +871,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, availabilityModule].forEach(module => {
+    [eventModule, alertModule, incidentModule, historyModule, availabilityModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -998,6 +932,13 @@
     mountMapToolbar();
     mountOrderModules();
     mountNotificationsPanel();
+    window.IncidentesViaje.iniciar({
+      onCount: count => {
+        const badge = $("incCount");
+        badge.textContent = count > 99 ? "99+" : String(count);
+        badge.classList.toggle("hidden", count === 0);
+      }
+    });
     window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     window.addEventListener("app:navigate", event => setScreen(event.detail));
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {
@@ -1005,10 +946,6 @@
     });
     $("refresh").addEventListener("click", refreshDashboard);
     $("saveRouteBtn").addEventListener("click", saveRoute);
-    $("trackRoute").addEventListener("click", () => {
-      if (liveWatchId !== null) stopLiveTracking();
-      else startLiveTracking();
-    });
     $("locate").addEventListener("click", () => {
       if (!navigator.geolocation) {
         $("routeMessage").textContent = "Este navegador no permite obtener la ubicación actual.";
@@ -1030,7 +967,7 @@
         $("locate").disabled = false;
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
-    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#personal" ? "daily" :
+    setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
       location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
     await refreshDashboard();
     window.setInterval(() => {

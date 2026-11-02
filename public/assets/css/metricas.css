@@ -1,0 +1,207 @@
+.metrics-panel {
+  margin: 18px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel, #15171b);
+}
+
+.metrics-filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.metrics-filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted, #a0aaba);
+  font-size: 13px;
+}
+
+.metrics-filters input {
+  min-height: 42px;
+  padding: 8px 10px;
+  color: var(--text, #fff);
+  border: 1px solid var(--line, #333943);
+  border-radius: 6px;
+  background: var(--surface, #1c1f24);
+  color-scheme: dark;
+}
+
+.metrics-filters input.is-invalid {
+  border-color: #e5484d;
+  box-shadow: 0 0 0 2px #e5484d33;
+}
+
+.metrics-message {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+  color: var(--muted, #a0aaba);
+}
+
+.metrics-message.is-error {
+  color: #ff9ca1;
+}
+
+.metrics-results[hidden] {
+  display: none;
+}
+
+.metrics-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metrics-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 130px;
+  padding: 20px;
+  border: 1px solid var(--line, #333943);
+  border-radius: 10px;
+  background: var(--panel, #15171b);
+}
+
+.metrics-card > span {
+  color: var(--muted, #a0aaba);
+  font-size: 13px;
+}
+
+.metrics-card > strong {
+  color: var(--text, #fff);
+  font: 700 34px/1.1 "Barlow Condensed", sans-serif;
+}
+
+.metrics-card > small,
+.metrics-footnote {
+  color: var(--muted, #a0aaba);
+  font-size: 12px;
+}
+
+.metrics-panel h2 {
+  margin: 0 0 14px;
+  color: var(--text, #fff);
+  font: 600 21px/1.2 "Barlow Condensed", sans-serif;
+}
+
+.metrics-route-chart {
+  display: grid;
+  gap: 12px;
+  max-width: 720px;
+}
+
+.metrics-bar-row {
+  display: grid;
+  grid-template-columns: 90px minmax(80px, 1fr) 42px;
+  align-items: center;
+  gap: 12px;
+}
+
+.metrics-bar-label,
+.metrics-bar-value {
+  color: var(--text, #fff);
+  font-size: 13px;
+}
+
+.metrics-bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--line, #333943);
+}
+
+.metrics-bar {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+}
+
+.metrics-bar-ia {
+  background: #228a56;
+}
+
+.metrics-bar-manual {
+  background: #007afc;
+}
+
+.metrics-table-scroll {
+  overflow-x: auto;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 11px 9px;
+  border-bottom: 1px solid var(--line, #333943);
+  color: var(--text, #fff);
+  vertical-align: middle;
+}
+
+.metrics-table th {
+  color: var(--muted, #a0aaba);
+  font-size: 12px;
+}
+
+.metrics-status {
+  font-size: 13px;
+}
+
+.metrics-status-mitigado {
+  color: #64d99b !important;
+}
+
+.metrics-status-ocurrido {
+  color: #ff9ca1 !important;
+}
+
+.metrics-status-sin_confirmar {
+  color: #f5a524 !important;
+}
+
+.metrics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.metrics-state-button {
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.metrics-state-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.metrics-permission-note {
+  color: #ff9ca1;
+}
+
+.metrics-empty td {
+  color: var(--muted, #a0aaba);
+}
+
+@media (max-width: 760px) {
+  .metrics-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-panel {
+    padding: 15px;
+  }
+
+  .metrics-table th,
+  .metrics-table td {
+    min-width: 110px;
+  }
+}

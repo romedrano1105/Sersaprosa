@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 
 from . import database, rutas_admin, rutas_logica
 from .eventos_router import usuario_coordinador
-from .rutas_calculo_router import _normalizar_riesgos
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rutas", tags=["rutas planificadas"])
