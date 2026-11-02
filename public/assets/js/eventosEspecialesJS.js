@@ -470,7 +470,7 @@
       if (!global.L) { el.append(h("p", { class: "ev-meta" }, "El mapa no está disponible (no se cargó Leaflet).")); return; }
       const map = global.L.map(el).setView(CENTER, 12);
       maps.push(map);
-      global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 19 }).addTo(map);
+      global.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19 }).addTo(map);
       const shapes = [];
       events.filter(hasCoords).forEach(e => {
         const c = global.L.circle([e.lat, e.lng], { radius: e.radius_m || 400, color: COLOR[e.impacto] || COLOR.bajo, fillColor: COLOR[e.impacto] || COLOR.bajo, fillOpacity: .25, weight: 2 }).addTo(map);
