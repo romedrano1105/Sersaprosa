@@ -7,9 +7,18 @@
     { id: "routes", label: "Tracking de rutas", detail: "Viajes, ruta óptima y seguimiento", icon: "↗" },
     { id: "orders", label: "Pedidos en curso", detail: "Pendientes y en proceso", icon: "▤" },
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
+    { id: "metrics", label: "Dashboard de métricas", detail: "Eficiencia y mitigación", icon: "▥" },
     { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
     { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠", rol: "coordinador_rutas" }
   ];
+  const SECTION_HASHES = {
+    routes: "",
+    orders: "#pedidos",
+    monitor: "#monitoreo",
+    metrics: "#metricas",
+    daily: "#personal",
+    risk: "#riesgo"
+  };
 
   function readSession() {
     try {
@@ -36,6 +45,7 @@ function activeSection() {
     if (global.location.pathname.endsWith("/riesgo_rutas.html")) return "risk";
     return global.location.hash === "#monitoreo" ? "monitor" :
       global.location.hash === "#pedidos" ? "orders" :
+      global.location.hash === "#metricas" ? "metrics" :
       global.location.hash === "#riesgo" ? "risk" :
       global.location.hash === "#personal" ? "daily" : "routes";
   }
@@ -122,11 +132,15 @@ function activeSection() {
         }
         // Estamos fuera de la página principal: volver a ella
         if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
-          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", daily: "#personal", risk: "#riesgo" };
+          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", metrics: "#metricas", daily: "#personal", risk: "#riesgo" };
           global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
           return;
         }
         setActive(item.id);
+        const hash = SECTION_HASHES[item.id];
+        if (hash !== undefined && global.location.hash !== hash) {
+          global.history.replaceState(null, "", global.location.pathname + global.location.search + hash);
+        }
         global.dispatchEvent(new CustomEvent("app:navigate", { detail: item.id }));
         closeMenu();
       });

@@ -51,6 +51,7 @@ class RutasProtegidas(unittest.TestCase):
             ("put", "/rutas-riesgo/R-1", cuerpo),
             ("get", "/rutas-riesgo", None),
             ("get", "/rutas-riesgo/R-1", None),
+            ("get", "/rutas-riesgo/R-1/noticias", None),
         ):
             with self.subTest(metodo=metodo, path=path):
                 r = self.client.request(metodo, path, json=payload)
@@ -86,6 +87,32 @@ class RutasProtegidas(unittest.TestCase):
         with patch("backend.app.rutas_riesgo._rpc", new=AsyncMock(return_value=[])):
             r = self.client.get("/rutas-riesgo/R-99", headers=AUTH)
         self.assertEqual(r.status_code, 404)
+
+    def test_noticias_sin_resultados_devuelve_lista_vacia_valida(self):
+        resultado = {"riesgo": "alto", "total": 0, "items": []}
+        with patch(
+            "backend.app.rutas_riesgo._rpc",
+            new=AsyncMock(return_value=resultado),
+        ) as rpc:
+            respuesta = self.client.get(
+                "/rutas-riesgo/R-1/noticias",
+                headers=AUTH,
+            )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertEqual(respuesta.json(), resultado)
+        rpc.assert_awaited_once_with(
+            "listar_noticias_riesgo",
+            "token-de-prueba",
+            {
+                "p_ruta_id": "R-1",
+                "p_pagina": 1,
+                "p_limite": 10,
+                "p_fuente": None,
+                "p_fecha": None,
+            },
+        )
+
     def test_guardar_invalido_no_llama_a_supabase(self):
         with patch("backend.app.rutas_riesgo._rpc", new=AsyncMock()) as rpc:
             for cuerpo in ({}, {"monto": "-5", "tipo_carga_id": 1}, {"monto": 100}):

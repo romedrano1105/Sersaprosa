@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import httpx
 
 from backend.app import motor_rutas
-from backend.app import rutas_router
+from backend.app import rutas_calculo_router
 
 
 class ZonasDeRiesgo(unittest.TestCase):
@@ -52,7 +52,7 @@ class RiesgosDesdeLaBase(unittest.TestCase):
             {"impacto": "bajo", "inicio": hoy.isoformat(), "lat": 13.9, "lng": -89.0},
         ]
         alertas = [{"severidad": "media", "lat": 13.6, "lng": -89.3}]
-        riesgos = rutas_router._normalizar_riesgos(eventos, alertas, hoy)
+        riesgos = rutas_calculo_router._normalizar_riesgos(eventos, alertas, hoy)
         self.assertEqual([riesgo["severidad"] for riesgo in riesgos], ["alta", "media"])
         self.assertEqual(riesgos[1]["radius_m"], 250)
 
