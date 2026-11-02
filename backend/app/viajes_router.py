@@ -5,8 +5,10 @@ Lógica en viajes_servicio.py / viajes_logica.py; el agente de IA es el mismo de
 """
 import logging
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException
+from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
 from . import database, lugares, viajes_servicio
@@ -111,64 +113,72 @@ def tipos_carga(authorization: str | None = Header(default=None)):
         return viajes_servicio.listar_tipos_carga(cliente, servicio)
     except viajes_servicio.ErrorViaje as error:
         raise _responder(error) from error
-    
-
-from typing import Any
-
 @router.get("/monitoreo/en-vivo", response_model=list[dict[str, Any]])
-def obtener_viajes_monitoreo_en_vivo():
+def obtener_viajes_monitoreo_en_vivo(authorization: str | None = Header(default=None)):
+    usuario_coordinador(authorization)
     try:
         supabase = database.cliente_servicio()
-    except Exception as error:
-        raise HTTPException(status_code=500, detail="Error de conexión con Supabase") from error
+    except database.AuthConfigurationError as error:
+        raise HTTPException(status_code=503, detail="El monitoreo no está configurado en el servidor.") from error
 
-    viajes_resp = (
-        supabase.table("viajes")
-        .select("id, estado, vehiculo_id, conductor_id, fecha_inicio, ruta_id, vehiculos(placa, modelo), empleados(nombre)")
-        .in_("estado", ["en_curso", "asignado", "en_transito"])
-        .execute()
-    )
-    
-    viajes = viajes_resp.data or []
-    resultado = []
-
-    for v in viajes:
-        viaje_id = v.get("id")
-        
-        entregas_resp = (
-            supabase.table("entregas")
-            .select("id, orden, direccion, lat, lng, estado, nivel_riesgo")
-            .eq("viaje_id", viaje_id)
-            .order("orden")
+    try:
+        viajes = (
+            supabase.table("viajes")
+            .select(
+                "id,estado,vehiculo_id,conductor_id,fecha_inicio,ruta_id,"
+                "vehiculos(placa,tipo),empleados(nombre),"
+                "entregas(id,orden,direccion,lat,lng,estado,nivel_riesgo)"
+            )
+            .in_("estado", ["en_curso", "asignado", "en_transito"])
             .execute()
+            .data
+            or []
         )
-        puntos = entregas_resp.data or []
+    except APIError as error:
+        logger.exception("No se pudieron cargar los viajes del monitoreo.")
+        raise HTTPException(status_code=503, detail="No se pudieron cargar los viajes del monitoreo.") from error
 
+    def relacion_unica(valor):
+        if isinstance(valor, list):
+            return valor[0] if valor and isinstance(valor[0], dict) else {}
+        return valor if isinstance(valor, dict) else {}
+
+    resultado = []
+    for viaje in viajes:
+        entregas = viaje.get("entregas") or []
+        puntos = sorted(
+            entregas,
+            key=lambda punto: (
+                punto.get("orden") is None,
+                int(punto.get("orden") or 0) if str(punto.get("orden") or "").isdigit() else 0,
+            ),
+        )
         tramos = []
-        for p in puntos:
-            lat = p.get("lat") or p.get("latitud")
-            lng = p.get("lng") or p.get("longitud")
-            if lat is not None and lng is not None:
-                tramos.append({
-                    "lat": float(lat),
-                    "lng": float(lng),
-                    "riesgo": p.get("nivel_riesgo") or "low",
-                    "direccion": p.get("direccion", "Punto de entrega"),
-                    "estado": p.get("estado", "pendiente")
-                })
+        for punto in puntos:
+            lat, lng = punto.get("lat"), punto.get("lng")
+            if lat is None or lng is None:
+                continue
+            lat, lng = float(lat), float(lng)
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                continue
+            tramos.append({
+                "lat": lat,
+                "lng": lng,
+                "riesgo": punto.get("nivel_riesgo"),
+                "direccion": punto.get("direccion"),
+                "estado": punto.get("estado"),
+            })
 
-        pos_actual = tramos[0] if tramos else {"lat": 13.6850, "lng": -89.2500, "riesgo": "low", "direccion": "Base"}
-        vehiculo_info = v.get("vehiculos") or {}
-        empleado_info = v.get("empleados") or {}
-
+        vehiculo = relacion_unica(viaje.get("vehiculos"))
+        empleado = relacion_unica(viaje.get("empleados"))
         resultado.append({
-            "viaje_id": viaje_id,
-            "estado": v.get("estado"),
-            "unidad": vehiculo_info.get("placa", f"Blindado #{viaje_id}"),
-            "modelo": vehiculo_info.get("modelo", "Blindado Pesado"),
-            "conductor": empleado_info.get("nombre", "Conductor Asignado"),
-            "posicion_actual": pos_actual,
-            "tramos": tramos
+            "viaje_id": viaje.get("id"),
+            "estado": viaje.get("estado"),
+            "unidad": vehiculo.get("placa"),
+            "modelo": vehiculo.get("tipo"),
+            "conductor": empleado.get("nombre"),
+            "posicion_actual": None,
+            "tramos": tramos,
         })
 
     return resultado

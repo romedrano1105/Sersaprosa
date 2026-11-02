@@ -80,7 +80,20 @@ def revisar(req: Revision, authorization: str | None = Header(default=None)):
     if filas[0].get("estado") == "revisado":
         raise HTTPException(409, f"El evento ya fue revisado por {filas[0].get('revisado_por')}.")
     ahora = datetime.now(timezone.utc).isoformat()
-    t.update({"estado": "revisado", "nota": req.nota.strip(), "revisado_por": usuario, "revisado_en": ahora}).eq("id", req.id).execute()
+    actualizados = (
+        t.update({
+            "estado": "revisado", "nota": req.nota.strip(),
+            "revisado_por": usuario, "revisado_en": ahora,
+        })
+        .eq("id", req.id)
+        .eq("estado", "pendiente")
+        .select("id")
+        .execute()
+        .data
+        or []
+    )
+    if not actualizados:
+        raise HTTPException(409, "Otro usuario ya revisó el evento.")
     cliente.table("eventos_auditoria").insert(
         {"evento": req.id, "accion": "revision", "usuario": usuario, "fecha": ahora, "nota": req.nota.strip()}).execute()
     return {"id": req.id, "estado": "revisado", "revisado_por": usuario, "revisado_en": ahora}

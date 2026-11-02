@@ -91,8 +91,9 @@ flujo de trabajo del día:
    mapa. Una ruta nueva se **guarda** con `POST /rutas/guardar`; también existen
    `POST /rutas/listar`, `POST /rutas/actualizar` y `POST /disponibilidad/desasignar`
    (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
-   `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
-   `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
+   `desasignar_ruta_operativa`; requieren la migración
+   [`backend/database/rutas_operativas_seguras.sql`](backend/database/rutas_operativas_seguras.sql)
+   y no hacen escrituras de respaldo con la clave de servicio).
    **«Editar orden»** permite mover, quitar y agregar pedidos pendientes desde esa misma lista
    y previsualizar el cálculo en el mapa. Para habilitarlo, aplica
    [`backend/database/edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
@@ -102,7 +103,8 @@ flujo de trabajo del día:
    El botón **«+»** abre **Nuevo viaje** (`viajeRutas.js`): origen, destino, horario, tipo de carga y monto.
    **GENERAR RUTA** (`POST /viajes/generar`) valida (si falta algo, dice qué; fuera del horario de
    entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
-   genera), ubica las direcciones, calcula la ruta óptima con el agente de IA y crea la ruta del día.
+   genera), ubica las direcciones, calcula la ruta óptima con el agente de IA y crea la ruta del día
+   junto con el vínculo atómico de pedidos por `ruta_id`.
    El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
    haya salido, es decir, sin conductor asignado. El formulario sugiere lugares que empiezan con lo escrito (lugares ya usados y del mapa; con `OPENROUTESERVICE_API_KEY` usa su autocompletado). Requiere aplicar
    [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
