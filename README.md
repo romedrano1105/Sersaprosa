@@ -70,15 +70,12 @@ flujo de trabajo del día:
    (funciones SQL `guardar_ruta_operativa`, `actualizar_ruta_operativa` y
    `desasignar_ruta_operativa`; si Supabase aún no las tiene, el backend escribe con
    `SUPABASE_SERVICE_ROLE_KEY`, ver `backend/app/rutas_admin.py`).
-<<<<<<< HEAD
-=======
    **«Editar orden»** permite mover, quitar y agregar pedidos pendientes desde esa misma lista
    y previsualizar el cálculo en el mapa. Para habilitarlo, aplica
    [`backend/database/edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
    en Supabase después de `operaciones_rutas.sql` y `entregas_coordenadas.sql`.
    El guardado es transaccional, controla versiones para evitar sobrescribir
    cambios simultáneos y registra el antes/después, usuario y fecha en el historial.
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
    El botón **«+»** abre **Nuevo viaje** (`viajeRutas.js`): origen, destino, horario, tipo de carga y monto.
    **GENERAR RUTA** (`POST /viajes/generar`) valida (si falta algo, dice qué; fuera del horario de
    entregas —por defecto 06:00–20:00, variables `ENTREGAS_HORA_INICIO` y `ENTREGAS_HORA_FIN`— no
@@ -86,11 +83,8 @@ flujo de trabajo del día:
    El viaje se puede corregir con **Editar viaje** (`POST /viajes/actualizar`) solo mientras la ruta no
    haya salido, es decir, sin conductor asignado. El formulario sugiere lugares que empiezan con lo escrito (lugares ya usados y del mapa; con `OPENROUTESERVICE_API_KEY` usa su autocompletado). Requiere aplicar
    [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
-<<<<<<< HEAD
-=======
    **«Revisar propuesta»** permite aceptar una ruta o rechazarla con motivo; si hay una alternativa segura, se presenta para revisión. Para guardar el estado y el historial de rechazos, aplica
    [`backend/database/rechazos_ruta.sql`](backend/database/rechazos_ruta.sql) después de crear `rutas_planificadas`.
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
 4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).

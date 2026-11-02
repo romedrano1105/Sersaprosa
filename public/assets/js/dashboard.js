@@ -26,10 +26,7 @@
   let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
   let incidentModule = null;
   let historyModule = null;
-<<<<<<< HEAD
-=======
   let reportsModule = null;    // reportes automáticos de viaje (reportesViaje.js)
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -41,11 +38,8 @@
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
-<<<<<<< HEAD
-=======
   let routeOrderPreview = null;
   let routePreviewVersion = 0;
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -151,14 +145,9 @@
   }
 
   // Dibuja la ruta óptima del agente (verde) y su justificación; sirve para el botón y para «Generar ruta».
-<<<<<<< HEAD
-  function drawAgentReport(report) {
-    const chosen = report.ruta_elegida;
-=======
   function drawAgentReport(report, options) {
     const chosen = report.ruta_elegida;
     const titulo = options && options.title;
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     agentLayer.clearLayers();
     const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
     if (points.length > 1) {
@@ -170,12 +159,6 @@
       (chosen.desvio ? " · desvío para evitar riesgo" : "");
     const warnings = (report.advertencias || []).slice();
     (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
-<<<<<<< HEAD
-    showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA",
-      [resume, report.justificacion], warnings);
-  }
-
-=======
     showAgent(risky ? "risk" : "", titulo || (risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA"),
       [resume, report.justificacion], warnings);
   }
@@ -330,7 +313,6 @@
     }
   }
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   async function evaluateSafety() {
     const stops = manualStops || dailyStops();
     if (!stops.length) {
@@ -558,16 +540,12 @@
   function routeAllOrders() {
     const util = window.CentroRutas.util;
     const route = currentRoute();
-<<<<<<< HEAD
-    return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(), readVisitOrder());
-=======
     const savedOrder = route && Array.isArray(route.orden_pedidos) && route.orden_pedidos.length
       ? route.orden_pedidos : null;
     const previewOrder = route && routeOrderPreview && routeOrderPreview.routeId === route.id
       ? routeOrderPreview.ids : null;
     return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(),
       previewOrder || savedOrder || readVisitOrder());
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   }
 
   // Los que realmente se trazan: en curso y con coordenadas.
@@ -770,12 +748,8 @@
     button.disabled = false;
   }
 
-<<<<<<< HEAD
-  async function calculateRoute() {
-=======
   async function calculateRoute(options) {
     options = options || {};
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     clearAgent();
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
@@ -798,13 +772,9 @@
         $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
         $("routeMessage").classList.remove("hidden");
       }
-<<<<<<< HEAD
-      routeChoices = await requestRoutes(stops);
-=======
       const calculated = await requestRoutes(stops);
       if (options.previewGeneration != null && options.previewGeneration !== routePreviewVersion) return false;
       routeChoices = calculated;
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
@@ -812,16 +782,6 @@
       pushCentro();
       return true;
     } catch (error) {
-<<<<<<< HEAD
-      routeChoices = [];
-      updateSaveRoute();
-      stopMarkers = [];
-      routeLayers.clearLayers();
-      pushCentro();
-      $("mDist").textContent = "–";
-      $("mEta").textContent = "–";
-      $("mRisk").textContent = "–";
-=======
       if (!options.preserveOnError) routeChoices = [];
       updateSaveRoute();
       if (!options.preserveOnError) {
@@ -832,7 +792,6 @@
         $("mEta").textContent = "–";
         $("mRisk").textContent = "–";
       }
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
       return false;
@@ -913,11 +872,8 @@
   // Elegir una ruta guardada (o null = nueva ruta en borrador). Deja la ruta personalizada, si había una.
   function selectRoute(route) {
     manualStops = null;
-<<<<<<< HEAD
-=======
     routeOrderPreview = null;
     routePreviewVersion++;
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     centroModule.setActive(route ? route.id : null);
     $("originLabel").textContent = route && route.viaje ? route.viaje.origen.texto : "Centro de San Salvador";
     $("saveRouteName").value = "";
@@ -934,8 +890,6 @@
     return recalcAndRemember();
   }
 
-<<<<<<< HEAD
-=======
   async function previewRouteOrder(ids) {
     const previous = routeOrderPreview;
     const route = currentRoute();
@@ -967,7 +921,6 @@
     await recalcAndRemember();
   }
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   function focusStop(index) {
     const stop = stopMarkers[index];
     if (!stop) return;
@@ -995,14 +948,10 @@
     await centroModule.refresh();
     const saved = centroModule.findRoute(String(result.ruta.id));
     if (saved) await selectRoute(saved);
-<<<<<<< HEAD
-    if (result.evaluacion && result.evaluacion.ruta_elegida) drawAgentReport(result.evaluacion);
-=======
     if (result.evaluacion && result.evaluacion.ruta_elegida) {
       if (saved) showProposal(saved, result.evaluacion, "Ruta propuesta", { carga: result.viaje && result.viaje.nivel_riesgo });
       else drawAgentReport(result.evaluacion);
     }
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     $("noRoute").classList.add("hidden");
   }
 
@@ -1073,11 +1022,7 @@
   }
 
   function setScreen(name) {
-<<<<<<< HEAD
-    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk"] : ["routes", "orders", "monitor", "metrics", "daily"];
-=======
     const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk", "reports"] : ["routes", "orders", "monitor", "metrics", "daily"];
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
@@ -1093,12 +1038,8 @@
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
-<<<<<<< HEAD
-      daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
-=======
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."],
       reports: ["HISTORIAL DE VIAJES", "Reportes de viaje", "Consulte el reporte que se genera automáticamente al completarse cada viaje."]
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     };
     const [eyebrow, title, description] = headings[screen];
     $("pageEyebrow").textContent = eyebrow;
@@ -1115,11 +1056,8 @@
       setMonitorTab(monitorTab);
     } else if (screen === "metrics") {
       window.MetricasDashboard.init();
-<<<<<<< HEAD
-=======
     } else if (screen === "reports") {
       if (!reportsModule && window.ReportesViaje) reportsModule = window.ReportesViaje.mount($("panelReportes"));
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     } else {
       mountAvailabilityPanel();
     }
@@ -1137,11 +1075,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-<<<<<<< HEAD
-    [eventModule, alertModule, incidentModule, historyModule, availabilityModule].forEach(module => {
-=======
     [eventModule, alertModule, incidentModule, historyModule, availabilityModule, reportsModule].forEach(module => {
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -1192,21 +1126,15 @@
       post,
       onSelectRoute: selectRoute,
       onReorder: reorderStops,
-<<<<<<< HEAD
-=======
       onPreviewOrder: previewRouteOrder,
       onClearPreview: clearRouteOrderPreview,
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       onFocusStop: focusStop,
       selection: window.Pedidos.store,
       originNode: $("originRow"),
       onSave: focusSaveRoute,
       onNewTrip: () => openTrip("nuevo"),
       onEditTrip: route => openTrip("editar", route),
-<<<<<<< HEAD
-=======
       onReviewRoute: reviewRoute,
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });
@@ -1249,11 +1177,7 @@
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
     setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
-<<<<<<< HEAD
-      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
-=======
       location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : location.hash === "#reportes" ? "reports" : "routes");
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();

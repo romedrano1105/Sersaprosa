@@ -57,10 +57,7 @@ app.include_router(agente_router)
 app.include_router(incidentes_router)
 app.include_router(metricas_router)
 app.include_router(historial_incidentes_router)
-<<<<<<< HEAD
-=======
-app.include_router(rechazos_router)    
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
+app.include_router(rechazos_router)
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)

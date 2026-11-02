@@ -32,8 +32,6 @@ test("orden de visita: el guardado manda y lo demás va por hora", () => {
   assert.deepEqual(u.aplicarOrden(pedidos, [5, 1]).map(p => p.id), [5, 1, 3, 2, 4]);
 });
 
-<<<<<<< HEAD
-=======
 test("mover pedidos conserva el orden y no modifica la lista original", () => {
   const u = cargar();
   const original = ["1", "2", "3"];
@@ -51,7 +49,6 @@ test("nivel de riesgo usa los mismos umbrales de la vista del mapa", () => {
   assert.equal(u.nivelRiesgo(4), "alto");
 });
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 test("optimizar: vecino más cercano desde el inicio y sin coordenadas al final", () => {
   const u = cargar();
   const orden = u.ordenarVecinoCercano([13.69, -89.19], pedidos).map(p => p.id);

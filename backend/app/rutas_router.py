@@ -72,8 +72,6 @@ class RutaEditada(RutaNueva):
     id: str = Field(min_length=1, max_length=100)
 
 
-<<<<<<< HEAD
-=======
 class OrdenRutaEditada(BaseModel):
     id: str = Field(min_length=1, max_length=100)
     pedidos: list[str] = Field(min_length=1, max_length=rutas_logica.MAX_PEDIDOS)
@@ -87,7 +85,6 @@ class HistorialRuta(BaseModel):
     id: str = Field(min_length=1, max_length=100)
 
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 @router.post("/listar")
 def listar(authorization: str | None = Header(default=None)):
     cliente, _ = usuario_coordinador(authorization)
@@ -102,8 +99,6 @@ def listar(authorization: str | None = Header(default=None)):
     return {"fecha": hoy.isoformat(), "rutas": rutas_logica.rutas_de_hoy(filas, hoy)}
 
 
-<<<<<<< HEAD
-=======
 @router.post("/editar-orden")
 def editar_orden(req: OrdenRutaEditada, authorization: str | None = Header(default=None)):
     cliente, usuario = usuario_coordinador(authorization)
@@ -151,7 +146,6 @@ def historial_edicion(req: HistorialRuta, authorization: str | None = Header(def
     return {"movimientos": filas}
 
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 @router.post("/actualizar")
 def actualizar(req: RutaEditada, authorization: str | None = Header(default=None)):
     cliente, usuario = usuario_coordinador(authorization)

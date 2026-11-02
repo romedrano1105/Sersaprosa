@@ -32,14 +32,11 @@ class ExistingApiRoutes(unittest.TestCase):
             ("/agente/ruta-segura", {"origen": {"lat": 13.7, "lng": -89.2}, "destino": {"lat": 13.71, "lng": -89.19}}),
             ("/rutas/guardar", {"nombre": "Ruta Centro", "pedidos": ["1"]}),
             ("/rutas/listar", {}),
-<<<<<<< HEAD
-=======
             ("/rutas/rechazar", {"ruta_id": "RT-1", "motivo": "Zona insegura"}),
             ("/rutas/propuesta", {"ruta_id": "RT-1"}),
             ("/rutas/alternativa", {"ruta_id": "RT-1"}),
             ("/rutas/aceptar-propuesta", {"ruta_id": "RT-1"}),
             ("/rutas/rechazos", {"ruta_id": "RT-1"}),
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
             ("/rutas/actualizar", {"id": "R-1", "nombre": "Ruta Centro", "pedidos": ["1"]}),
             ("/disponibilidad/desasignar", {"ruta": "R-1"}),
             ("/notificaciones/leer", {"id": "6f9619ff-8b86-d011-b42d-00c04fc964ff"}),

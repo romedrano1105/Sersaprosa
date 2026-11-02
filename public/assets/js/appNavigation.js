@@ -9,12 +9,8 @@
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
     { id: "metrics", label: "Dashboard de métricas", detail: "Eficiencia y mitigación", icon: "▥" },
     { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
-<<<<<<< HEAD
-    { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠", rol: "coordinador_rutas" }
-=======
     { id: "risk", label: "Riesgo de rutas", detail: "Monto y tipo de carga", icon: "⚠", rol: "coordinador_rutas" },
     { id: "reports", label: "Reportes de viaje", detail: "Historial de viajes completados", icon: "▧", rol: "coordinador_rutas" }
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   ];
   const SECTION_HASHES = {
     routes: "",
@@ -22,12 +18,8 @@
     monitor: "#monitoreo",
     metrics: "#metricas",
     daily: "#personal",
-<<<<<<< HEAD
-    risk: "#riesgo"
-=======
     risk: "#riesgo",
     reports: "#reportes"
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   };
 
   function readSession() {
@@ -57,10 +49,7 @@ function activeSection() {
       global.location.hash === "#pedidos" ? "orders" :
       global.location.hash === "#metricas" ? "metrics" :
       global.location.hash === "#riesgo" ? "risk" :
-<<<<<<< HEAD
-=======
       global.location.hash === "#reportes" ? "reports" :
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       global.location.hash === "#personal" ? "daily" : "routes";
   }
 
@@ -146,11 +135,7 @@ function activeSection() {
         }
         // Estamos fuera de la página principal: volver a ella
         if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
-<<<<<<< HEAD
-          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", metrics: "#metricas", daily: "#personal", risk: "#riesgo" };
-=======
           const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", metrics: "#metricas", daily: "#personal", risk: "#riesgo", reports: "#reportes" };
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
           global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
           return;
         }

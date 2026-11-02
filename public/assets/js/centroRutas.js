@@ -33,12 +33,8 @@
    Uso (ver dashboard.js):
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
-<<<<<<< HEAD
-       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), selection (Pedidos.store),
-=======
        onPreviewOrder(ids), onClearPreview(),
        onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), onReviewRoute(ruta), selection (Pedidos.store),
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
      centro.update({ deliveries, orders, result, manual, originLabel, events, notifications });
@@ -76,8 +72,6 @@
     return base.sort((a, b) => lugar(a) - lugar(b) || porHora(a, b));
   }
 
-<<<<<<< HEAD
-=======
   function moverPedido(ids, id, destino) {
     const orden = (ids || []).map(String);
     const origen = orden.indexOf(String(id)), nuevo = orden.indexOf(String(destino));
@@ -94,7 +88,6 @@
     return score >= 4 ? "alto" : score >= 1.5 ? "medio" : "bajo";
   }
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   function distanciaKm(a, b) {
     const rad = x => x * Math.PI / 180;
     const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
@@ -214,11 +207,7 @@
       rutas: [], rutasError: "", disp: null, dispError: "",
       deliveries: [], orders: [], result: null, manual: false, originLabel: "", events: [], notifs: null,
       activeId: null, inicioMs: Date.now(), vista: [], retrasoMax: 0,
-<<<<<<< HEAD
-      widgets: true, filtro: "todos", q: "", mensaje: null, ocupado: false
-=======
       widgets: true, filtro: "todos", q: "", mensaje: null, ocupado: false, editing: null
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     };
     try { S.widgets = global.localStorage.getItem(WIDGETS_KEY) !== "cerrado"; } catch (e) { /* por defecto abiertas */ }
     container.classList.add("cc");
@@ -342,8 +331,6 @@
       });
     }
 
-<<<<<<< HEAD
-=======
     function editarOrden() {
       const ruta = activa();
       if (!ruta) return;
@@ -483,7 +470,6 @@
       aviso("error", "La ruta cambió, vuelve a abrirla.");
     }
 
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     async function abrirAsignar() {
       const ruta = activa();
       if (!ruta) return;
@@ -566,12 +552,6 @@
       } catch (error) {
         aviso404 = "No se pudieron cargar las notificaciones de esta ruta.";
       }
-<<<<<<< HEAD
-      eventos.sort((x, y) => new Date(y.fecha) - new Date(x.fecha));
-      cuerpo.replaceChildren(
-        eventos.length
-          ? h("ol", { class: "cc-timeline" }, eventos.map(e => h("li", {}, h("small", {}, fechaHora(e.fecha)), h("strong", {}, e.texto), h("span", {}, e.quien || ""))))
-=======
       try {
         const respuesta = await opts.post("/rutas/historial-edicion", { id: ruta.id });
         (respuesta.movimientos || []).forEach(movimiento => {
@@ -606,7 +586,6 @@
         eventos.length
           ? h("ol", { class: "cc-timeline" }, eventos.map(e => h("li", {}, h("small", {}, fechaHora(e.fecha)), h("strong", {}, e.texto),
             e.detalle ? h("span", {}, e.detalle) : null, h("span", {}, e.quien || ""))))
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
           : h("p", { class: "cc-hint" }, "Todavía no hay movimientos registrados para esta ruta."),
         aviso404 ? h("p", { class: "cc-modal-error" }, aviso404) : null);
     }
@@ -650,10 +629,6 @@
       const metricas = [];
       metricas.push(h("span", {}, S.orders.length + (S.orders.length === 1 ? " pedido" : " pedidos")));
       if (r) metricas.push(h("span", {}, r.distanceKm.toFixed(1) + " km, " + Math.round(r.durationMin) + " min"));
-<<<<<<< HEAD
-      if (etaFinal) metricas.push(h("span", {}, "Llegada " + hora(etaFinal) + (restante != null ? " · faltan " + restante + " min" : "")));
-      if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
-=======
       else if (ruta && ruta.distancia_km != null && ruta.duracion_min != null) {
         metricas.push(h("span", {}, Number(ruta.distancia_km).toFixed(1) + " km, " + Math.round(Number(ruta.duracion_min)) + " min"));
       }
@@ -662,7 +637,6 @@
       else if (ruta && ruta.riesgo_ruta) metricas.push(h("span", {}, "Riesgo " + ruta.riesgo_ruta));
       else if (ruta && ruta.viaje && ruta.viaje.nivel_riesgo) metricas.push(h("span", {}, "Riesgo " + ruta.viaje.nivel_riesgo));
       if (ruta && ruta.estado_propuesta === "rechazada") metricas.push(h("span", { class: "cc-badge cc-b-rechazada" }, "Ruta rechazada"));
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       if (S.retrasoMax) metricas.push(h("span", { class: "cc-late-dot" }, "● " + S.retrasoMax + " min tarde"));
       const nodos = [];
       nodos.push(h("div", { class: "cc-head" },
@@ -680,14 +654,6 @@
           h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
           boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
-<<<<<<< HEAD
-          ruta && ruta.viaje && opts.onEditTrip ? boton("Editar viaje", "✎", () => opts.onEditTrip(ruta), !!a,
-            a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
-          boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
-          boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
-          boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita"),
-          boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio"),
-=======
           boton("Editar orden", "↕", editarOrden, !ruta || !!a || !!(ruta && ruta.conductor) || !!S.editing,
             a || ruta && ruta.conductor ? "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar." : "Cambiar manualmente el orden de los pedidos"),
           S.editing ? boton("Guardar orden", "💾", () => guardarOrden(false), S.editing.saving ||
@@ -701,14 +667,11 @@
           boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
           !S.editing ? boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita") : null,
           !S.editing ? boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio") : null,
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
           boton("Ver historial", "⟲", abrirHistorial, !ruta, ruta ? "" : "Guarda la ruta primero"),
           !ruta && !S.manual && typeof opts.onSave === "function"
             ? boton("Guardar ruta", "💾", () => opts.onSave(), S.orders.length === 0, "Guarda la ruta para asignarla", "cc-primary") : null) : null));
       if (selectorAbierto && coordinador) nodos.push(renderSelector());
       if (S.mensaje) nodos.push(h("p", { class: "cc-msg cc-msg-" + S.mensaje.tipo, role: "status" }, S.mensaje.texto));
-<<<<<<< HEAD
-=======
       if (S.editing && S.editing.error) nodos.push(h("div", { class: "cc-msg cc-msg-error", role: "alert" },
         h("span", {}, S.editing.error),
         S.editing.reloadNeeded ? h("button", { type: "button", class: "cc-btn cc-retry", onclick: reabrirRuta }, "Volver a abrir") :
@@ -716,7 +679,6 @@
           disabled: S.editing.calculating || S.editing.saving,
           onclick: () => guardarOrden(Boolean(S.editing.retryIds)) }, "Reintentar") : null));
       else if (S.editing && S.editing.calculating) nodos.push(h("p", { class: "cc-msg", role: "status" }, "Calculando la ruta nueva…"));
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       return nodos;
     }
 
@@ -796,8 +758,6 @@
       if (!taskBox) return;
       const store = opts.selection;
       taskBox.replaceChildren(...[
-<<<<<<< HEAD
-=======
         S.editing ? h("div", { class: "cc-edit-tools" },
           h("label", {}, h("span", {}, "Agregar pedido pendiente"),
             h("select", { class: "cc-input", "aria-label": "Agregar pedido pendiente",
@@ -812,18 +772,13 @@
               !S.editing.ids.includes(String(p.id))).map(p => h("option", { value: String(p.id) },
               (p.cliente || p.id) + (tieneUbicacion(p) ? "" : " · Sin ubicación"))))),
           h("small", {}, "Arrastra los pedidos para cambiar el orden o usa las flechas.")) :
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
         h("div", { class: "cc-tools" },
           h("input", { type: "search", class: "cc-input", placeholder: "Buscar pedido…", "aria-label": "Buscar pedido", value: S.q,
             oninput: e => { S.q = e.target.value; renderLista(); } }),
           h("select", { class: "cc-input", "aria-label": "Filtrar pedidos", onchange: e => { S.filtro = e.target.value; renderLista(); } },
             [["todos", "Filtro: todos"], ["pendiente", "Pendientes"], ["proceso", "En proceso"], ["completada", "Completados"], ["retraso", "Con retraso"], ["sin_ubicacion", "Sin coordenadas"]]
               .map(([v, t]) => h("option", { value: v, selected: S.filtro === v }, t)))),
-<<<<<<< HEAD
-        esBorrador() ? h("div", { class: "cc-pick-tools" },
-=======
         !S.editing && esBorrador() ? h("div", { class: "cc-pick-tools" },
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
           h("button", { type: "button", class: "cc-link", onclick: () => store.selectAll(S.deliveries) }, "Elegir todos"),
           h("button", { type: "button", class: "cc-link", onclick: () => store.clear() }, "Ninguno")) : null,
         opts.originNode || null,
@@ -845,10 +800,7 @@
       filas.forEach(v => {
         const p = v.p;
         const traza = v.i >= 0;
-<<<<<<< HEAD
-=======
         const editIndex = S.editing ? S.editing.ids.indexOf(String(p.id)) : -1;
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
         const hecho = p.estado === "completada";
         const caja = esBorrador()
           ? h("input", { type: "checkbox", class: "cc-pick", checked: v.sel, disabled: !tieneUbicacion(p) && !v.sel,
@@ -859,17 +811,6 @@
         else if (v.eta) derecha = [h("span", { class: v.tarde ? "cc-eta-late" : "cc-eta" }, (v.tarde ? "⏱ " : "") + "ETA " + hora(v.eta)),
           v.tarde ? h("small", { class: "cc-eta-late" }, "+" + v.tarde + " min") : null, p.hora ? h("small", {}, "Prog. " + p.hora) : null];
         else derecha = [p.hora ? h("span", {}, "Hoy, " + p.hora) : null, !tieneUbicacion(p) ? h("small", { class: "cc-eta-late" }, "Sin coordenadas") : null];
-<<<<<<< HEAD
-        lista.append(h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") + (v.sel ? "" : " cc-off") },
-          caja,
-          h("button", { type: "button", class: "cc-task-btn", disabled: !traza, title: traza ? "Ver en el mapa" : "",
-            onclick: () => opts.onFocusStop && opts.onFocusStop(v.i) },
-          h("span", { class: "cc-num" }, hecho ? "✓" : traza ? String(v.i + 1) : "–"),
-          h("span", { class: "cc-task-main" },
-            h("strong", {}, p.direccion || p.cliente || "Sin dirección"),
-            h("small", {}, [p.cliente, p.contacto, p.productos].filter(Boolean).join(" · ") || p.zona || "")),
-          h("span", { class: "cc-task-side" }, derecha.filter(Boolean)))));
-=======
         const editarFila = S.editing && editIndex >= 0;
         const fila = h("li", { class: "cc-task cc-s-" + p.estado + (v.tarde ? " cc-late" : "") + (v.sel ? "" : " cc-off") +
           (editarFila ? " cc-editable" : ""),
@@ -912,7 +853,6 @@
               "aria-label": "Quitar " + (p.cliente || p.id), onclick: () => cambiarOrden(S.editing.ids.filter(id => id !== String(p.id))) }, "Quitar")));
         }
         lista.append(fila);
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       });
     }
 
@@ -954,11 +894,7 @@
 
   global.CentroRutas = {
     mount,
-<<<<<<< HEAD
-    util: { norm, pedidosDeRuta, aplicarOrden, ordenarVecinoCercano, resumenPedidos, estadoRuta, calcularEtas, minutosTarde, distanciaKm }
-=======
     util: { norm, pedidosDeRuta, aplicarOrden, moverPedido, mismoOrden, nivelRiesgo,
       ordenarVecinoCercano, resumenPedidos, estadoRuta, calcularEtas, minutosTarde, distanciaKm }
->>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   };
 })(window);
