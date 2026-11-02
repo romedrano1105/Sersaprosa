@@ -35,6 +35,11 @@ class Sesion:
     evaluaciones: list[Evaluacion] = field(default_factory=list)
     eleccion: dict | None = None
     consultadas: set = field(default_factory=set)  # fuentes ya consultadas (se refrescan si cambia el corredor)
+<<<<<<< HEAD
+=======
+    excluir: list = field(default_factory=list)    # NUEVO: trazados de rutas rechazadas: no se vuelven a proponer
+    hubo_exclusion: bool = False                   # NUEVO: True si se descartó alguna candidata por estar en `excluir`
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 
     def caja(self, margen_m: float = MARGEN_POR_DEFECTO_M):
         pts = [self.origen, self.destino] + [p for r in self.rutas for p in r.puntos]
@@ -74,6 +79,13 @@ def obtener_rutas_candidatas(s: Sesion, rodear_zonas_criticas: bool = True) -> d
     """Pide rutas al motor (OSRM). Con `rodear_zonas_criticas` agrega desvíos que esquivan zonas de nivel alto."""
     criticas = [z for z in s.zonas if z.nivel >= s.pesos.veto_zona_nivel] if rodear_zonas_criticas else []
     s.rutas = candidatas(s.enrutador, s.origen, s.destino, criticas)
+<<<<<<< HEAD
+=======
+    if s.excluir:  # NUEVO: rutas ya rechazadas por el coordinador
+        antes = len(s.rutas)
+        s.rutas = [r for r in s.rutas if not any(geo.misma_ruta(r.puntos, e) for e in s.excluir)]
+        s.hubo_exclusion = s.hubo_exclusion or len(s.rutas) < antes
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     s.evaluaciones = []
     # Los desvíos amplían el corredor: se vuelven a consultar las fuentes que ya se habían usado,
     # para que las rutas nuevas se evalúen contra TODO lo que hay a su alrededor.
@@ -144,4 +156,8 @@ def ejecutar(s: Sesion, nombre: str, argumentos: dict | None) -> dict:
     except TypeError as e:
         return {"error": f"Argumentos inválidos: {e}"}
     except Exception as e:  # fuente caída, OSRM sin respuesta, etc.
+<<<<<<< HEAD
         return {"error": f"{type(e).__name__}: {e}"}
+=======
+        return {"error": f"{type(e).__name__}: {e}"}
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2

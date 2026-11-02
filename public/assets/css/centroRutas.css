@@ -48,6 +48,10 @@
 .cc-ico { font-size: 15px; line-height: 1; }
 .cc-msg { margin: 0; padding: 10px 14px; border-left: 3px solid var(--route); background: #5b8cff10; font-size: 13px; }
 .cc-msg-error { border-left-color: var(--high); background: #e5484d10; color: #ffb3b6; }
+<<<<<<< HEAD
+=======
+.cc-msg-error .cc-retry { margin-left: 10px; }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 .cc :focus-visible, .cc-backdrop :focus-visible, #taskList :focus-visible { outline: 2px solid var(--route); outline-offset: 2px; }
 
 /* Tarjetas de resumen */
@@ -97,10 +101,27 @@
 .cc-input { min-height: 38px; padding: 7px 11px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px; }
 .cc-tools input { flex: 1; min-width: 0; }
 .cc-tools select { flex: 0 0 140px; min-width: 0; max-width: 45%; }
+<<<<<<< HEAD
+=======
+.cc-edit-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 14px; margin-bottom: 10px; }
+.cc-edit-tools label { display: grid; flex: 1 1 220px; gap: 4px; color: var(--muted); font-size: 12px; }
+.cc-edit-tools .cc-input { width: 100%; }
+.cc-edit-tools small { color: var(--muted); font-size: 11px; }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 .cc-pick-tools { display: flex; gap: 14px; margin-bottom: 8px; }
 #taskList .origin-card { margin-bottom: 8px; background: var(--bg); }
 .cc-tasklist { margin: 0; padding: 0; list-style: none; }
 .cc-task { display: flex; align-items: stretch; margin-bottom: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+<<<<<<< HEAD
+=======
+.cc-task.cc-editable { cursor: grab; }
+.cc-task.cc-editable:active { cursor: grabbing; }
+.cc-edit-row-actions { display: flex; flex: none; align-items: center; gap: 3px; padding: 4px; }
+.cc-edit-control { min-width: 30px; min-height: 30px; padding: 4px 6px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; font: inherit; font-size: 12px; cursor: pointer; }
+.cc-edit-control:disabled { opacity: .4; cursor: not-allowed; }
+.cc-edit-control:hover:not(:disabled) { color: var(--route); border-color: var(--route); }
+.cc-remove-stop { color: var(--high); }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 .cc-task.cc-late { border-color: #f5a52477; }
 .cc-task-btn { flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .cc-task-btn:disabled { cursor: default; }
@@ -177,3 +198,12 @@
 .vj-ac-item small { flex: none; color: var(--faint, #6c717a); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 .vj-ac-item:hover, .vj-ac-item[aria-selected="true"] { background: #5b8cff22; }
 .vj-ac-estado { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+<<<<<<< HEAD
+=======
+
+.rj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rj-form { display: grid; gap: 12px; }
+.rj-chip { padding: 4px 10px; color: var(--muted, #9a9fa8); background: transparent; border: 1px solid var(--line, #33363c); border-radius: 999px; font: inherit; font-size: 12px; cursor: pointer; }
+.rj-chip:hover { color: var(--text, #f2f3f5); border-color: var(--route, #5b8cff); }
+.cc-b-rechazada { color: var(--high, #e5484d); background: #e5484d14; border-color: #e5484d66; }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2

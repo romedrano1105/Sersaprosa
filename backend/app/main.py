@@ -12,6 +12,7 @@ from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 from supabase import create_client
 from supabase_auth.errors import AuthApiError
+from .rechazos_router import router as rechazos_router   
 
 from . import database
 from .agente_router import router as agente_router
@@ -56,6 +57,10 @@ app.include_router(agente_router)
 app.include_router(incidentes_router)
 app.include_router(metricas_router)
 app.include_router(historial_incidentes_router)
+<<<<<<< HEAD
+=======
+app.include_router(rechazos_router)    
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)

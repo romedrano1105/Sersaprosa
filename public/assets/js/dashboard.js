@@ -26,6 +26,10 @@
   let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
   let incidentModule = null;
   let historyModule = null;
+<<<<<<< HEAD
+=======
+  let reportsModule = null;    // reportes automáticos de viaje (reportesViaje.js)
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   let availabilityModule = null;
   let ordersModule = null;
   let recalcTimer = null;
@@ -37,6 +41,11 @@
   let lastRefreshAt = 0;
   let lastRouteInput = null;
   let lastRiskInput = null;
+<<<<<<< HEAD
+=======
+  let routeOrderPreview = null;
+  let routePreviewVersion = 0;
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -142,8 +151,14 @@
   }
 
   // Dibuja la ruta óptima del agente (verde) y su justificación; sirve para el botón y para «Generar ruta».
+<<<<<<< HEAD
   function drawAgentReport(report) {
     const chosen = report.ruta_elegida;
+=======
+  function drawAgentReport(report, options) {
+    const chosen = report.ruta_elegida;
+    const titulo = options && options.title;
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     agentLayer.clearLayers();
     const points = (chosen.geometria || []).map(point => [point[0], point[1]]);
     if (points.length > 1) {
@@ -155,10 +170,167 @@
       (chosen.desvio ? " · desvío para evitar riesgo" : "");
     const warnings = (report.advertencias || []).slice();
     (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
+<<<<<<< HEAD
     showAgent(risky ? "risk" : "", risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA",
       [resume, report.justificacion], warnings);
   }
 
+=======
+    showAgent(risky ? "risk" : "", titulo || (risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA"),
+      [resume, report.justificacion], warnings);
+  }
+
+  // ---- Rechazo de rutas (rechazoRutas.js): revisar, aceptar o rechazar una propuesta ----
+  let proposal = null;
+
+  function trayectoLevel(chosen) {
+    return chosen.vetada ? "Alto" : (chosen.hallazgos || []).length ? "Medio" : "Bajo";
+  }
+
+  function reviewButton(text, kind, handler) {
+    const button = element("button", "agent-btn" + (kind ? " is-" + kind : ""), text);
+    button.type = "button";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try { await handler(); } finally { button.disabled = false; }
+    });
+    return button;
+  }
+
+  function showProposal(route, report, title, risk) {
+    proposal = { route, report };
+    drawAgentReport(report, { title });
+    const panel = $("agentPanel");
+    const chosen = report.ruta_elegida;
+    const levels = element("div", "agent-review");
+    const carga = element("span", "", "Riesgo de la carga: ");
+    carga.append(element("b", "", (risk && risk.carga) || "sin especificar"));
+    const trayecto = element("span", "", "Riesgo del trayecto: ");
+    trayecto.append(element("b", "", (risk && risk.trayecto) || trayectoLevel(chosen)));
+    levels.append(carga, trayecto);
+    panel.append(levels);
+    if (session.role !== "coordinador_rutas") return;
+    if (route.conductor) {
+      panel.append(element("p", "", "La ruta ya tiene conductor asignado: ya no se puede rechazar."));
+      return;
+    }
+    if (route.estado_propuesta === "aceptada") {
+      panel.append(element("p", "", "Esta propuesta ya fue aceptada."));
+      return;
+    }
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Aceptar ruta", "primary", () => acceptProposal(route)));
+    actions.append(reviewButton("Rechazar ruta", "danger", () => rejectProposal()));
+    panel.append(actions);
+  }
+
+  function showNoAlternative(route, error) {
+    proposal = { route, report: null };
+    if (agentLayer) agentLayer.clearLayers();
+    showAgent("error", "No fue posible generar una alternativa", [
+      error && error.mensaje || "No fue posible encontrar una ruta alternativa.",
+      "La ruta quedó marcada como rechazada y el error quedó registrado para su revisión."
+    ]);
+    if (session.role !== "coordinador_rutas") return;
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Reintentar", "primary", () => retryAlternative(route)));
+    if (route.viaje) actions.append(reviewButton("Editar viaje", "", () => openTrip("editar", route)));
+    $("agentPanel").append(actions);
+  }
+
+  function showProposalUnavailable(route, error) {
+    if (agentLayer) agentLayer.clearLayers();
+    showAgent("error", "No fue posible obtener una propuesta", [
+      error && error.mensaje || "No hay una ruta disponible en este momento.",
+      "La ruta todavía no se ha rechazado. Puedes volver a intentarlo o editar el viaje."
+    ]);
+    if (session.role !== "coordinador_rutas") return;
+    const actions = element("div", "agent-actions");
+    actions.append(reviewButton("Reintentar", "primary", () => reviewRoute(route)));
+    if (route.viaje) actions.append(reviewButton("Editar viaje", "", () => openTrip("editar", route)));
+    $("agentPanel").append(actions);
+  }
+
+  async function showReviewResult(route, result) {
+    const fresh = Object.assign({}, route, {
+      estado_propuesta: result.alternativa ? "propuesta" : "rechazada"
+    });
+    let refreshError = null;
+    try {
+      await centroModule.refresh();
+      Object.assign(fresh, centroModule.findRoute(String(route.id)) || {});
+    } catch (error) {
+      refreshError = error;
+    }
+    if (result.alternativa) {
+      const alt = result.alternativa;
+      showProposal(fresh, alt.evaluacion, "Ruta alternativa", { carga: alt.nivel_riesgo, trayecto: alt.nivel_riesgo_trayecto });
+    } else {
+      showNoAlternative(fresh, result.error || { mensaje: "No fue posible generar una alternativa." });
+    }
+    if (refreshError) {
+      $("agentPanel").append(element("p", "", "El resultado quedó registrado, pero no se pudo actualizar la lista de rutas: " +
+        (refreshError.message || "inténtalo con «Actualizar ahora».")));
+    }
+  }
+
+  function rejectProposal() {
+    if (!proposal || !proposal.report) return;
+    window.Rechazos.abrir({
+      ruta: proposal.route,
+      propuesta: proposal.report.ruta_elegida,
+      post,
+      onResult: result => showReviewResult(proposal.route, result)
+    });
+  }
+
+  async function retryAlternative(route) {
+    try {
+      showReviewResult(route, await post("/rutas/alternativa", { ruta_id: route.id }));
+    } catch (error) {
+      showAgent("error", "No se pudo reintentar", [error.message || "Inténtalo de nuevo."]);
+    }
+  }
+
+  async function acceptProposal(route) {
+    try {
+      await post("/rutas/aceptar-propuesta", { ruta_id: route.id });
+    } catch (error) {
+      showAgent("error", "No se pudo aceptar la ruta", [error.message || "Inténtalo de nuevo."]);
+      return;
+    }
+    try {
+      await centroModule.refresh();
+      showAgent("", "Ruta aceptada", ["Ya puedes asignarle conductor y vehículo en «Empleados y Vehículos»."]);
+    } catch (error) {
+      showAgent("", "Ruta aceptada", [
+        "Ya puedes asignarle conductor y vehículo en «Empleados y Vehículos».",
+        "No se pudo actualizar la lista de rutas: " + (error.message || "usa «Actualizar ahora».")
+      ]);
+    }
+  }
+
+  async function reviewRoute(route) {
+    if (!route || !route.viaje) return;
+    if (route.estado_propuesta === "rechazada") {
+      showNoAlternative(route, { mensaje: "Esta ruta fue rechazada y todavía no tiene alternativa." });
+      return;
+    }
+    showAgent("", "Cargando la ruta propuesta…", ["Consultando al agente de rutas."]);
+    try {
+      const result = await post("/rutas/propuesta", { ruta_id: route.id });
+      if (result.propuesta) {
+        showProposal(route, result.propuesta.evaluacion, "Ruta propuesta",
+          { carga: result.propuesta.nivel_riesgo, trayecto: result.propuesta.nivel_riesgo_trayecto });
+      } else {
+        showProposalUnavailable(route, result.error);
+      }
+    } catch (error) {
+      showAgent("error", "No se pudo cargar la ruta propuesta", [error.message || "Inténtalo de nuevo."]);
+    }
+  }
+
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   async function evaluateSafety() {
     const stops = manualStops || dailyStops();
     if (!stops.length) {
@@ -386,7 +558,16 @@
   function routeAllOrders() {
     const util = window.CentroRutas.util;
     const route = currentRoute();
+<<<<<<< HEAD
     return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(), readVisitOrder());
+=======
+    const savedOrder = route && Array.isArray(route.orden_pedidos) && route.orden_pedidos.length
+      ? route.orden_pedidos : null;
+    const previewOrder = route && routeOrderPreview && routeOrderPreview.routeId === route.id
+      ? routeOrderPreview.ids : null;
+    return util.aplicarOrden(route ? util.pedidosDeRuta(deliveries, route) : selectedOrders(),
+      previewOrder || savedOrder || readVisitOrder());
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   }
 
   // Los que realmente se trazan: en curso y con coordenadas.
@@ -589,7 +770,12 @@
     button.disabled = false;
   }
 
+<<<<<<< HEAD
   async function calculateRoute() {
+=======
+  async function calculateRoute(options) {
+    options = options || {};
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     clearAgent();
     $("noRoute").classList.add("hidden");
     $("routeMessage").classList.add("hidden");
@@ -612,7 +798,13 @@
         $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
         $("routeMessage").classList.remove("hidden");
       }
+<<<<<<< HEAD
       routeChoices = await requestRoutes(stops);
+=======
+      const calculated = await requestRoutes(stops);
+      if (options.previewGeneration != null && options.previewGeneration !== routePreviewVersion) return false;
+      routeChoices = calculated;
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       selectedRoute = 0;
       updateRouteMetrics(routeChoices[selectedRoute]);
       drawRoutes(stops);
@@ -620,6 +812,7 @@
       pushCentro();
       return true;
     } catch (error) {
+<<<<<<< HEAD
       routeChoices = [];
       updateSaveRoute();
       stopMarkers = [];
@@ -628,6 +821,18 @@
       $("mDist").textContent = "–";
       $("mEta").textContent = "–";
       $("mRisk").textContent = "–";
+=======
+      if (!options.preserveOnError) routeChoices = [];
+      updateSaveRoute();
+      if (!options.preserveOnError) {
+        stopMarkers = [];
+        routeLayers.clearLayers();
+        pushCentro();
+        $("mDist").textContent = "–";
+        $("mEta").textContent = "–";
+        $("mRisk").textContent = "–";
+      }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
       return false;
@@ -708,6 +913,11 @@
   // Elegir una ruta guardada (o null = nueva ruta en borrador). Deja la ruta personalizada, si había una.
   function selectRoute(route) {
     manualStops = null;
+<<<<<<< HEAD
+=======
+    routeOrderPreview = null;
+    routePreviewVersion++;
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     centroModule.setActive(route ? route.id : null);
     $("originLabel").textContent = route && route.viaje ? route.viaje.origen.texto : "Centro de San Salvador";
     $("saveRouteName").value = "";
@@ -724,6 +934,40 @@
     return recalcAndRemember();
   }
 
+<<<<<<< HEAD
+=======
+  async function previewRouteOrder(ids) {
+    const previous = routeOrderPreview;
+    const route = currentRoute();
+    if (!route) throw new Error("Selecciona una ruta guardada antes de editar el orden.");
+    const previousChoices = routeChoices.slice();
+    const previousSelected = selectedRoute;
+    const generation = ++routePreviewVersion;
+    routeOrderPreview = { routeId: route.id, ids: ids.slice() };
+    if (await calculateRoute({ preserveOnError: true, previewGeneration: generation })) {
+      if (generation !== routePreviewVersion) return null;
+      return routeChoices[selectedRoute] || null;
+    }
+    if (generation !== routePreviewVersion) return null;
+    const error = $("noRoute").textContent;
+    routeOrderPreview = previous;
+    routeChoices = previousChoices;
+    selectedRoute = previousSelected;
+    if (routeChoices.length) {
+      drawRoutes(dailyStops());
+      updateRouteMetrics(routeChoices[selectedRoute]);
+      pushCentro();
+    }
+    throw new Error(error || "No se pudo calcular la ruta nueva.");
+  }
+
+  async function clearRouteOrderPreview() {
+    routeOrderPreview = null;
+    routePreviewVersion++;
+    await recalcAndRemember();
+  }
+
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
   function focusStop(index) {
     const stop = stopMarkers[index];
     if (!stop) return;
@@ -751,7 +995,14 @@
     await centroModule.refresh();
     const saved = centroModule.findRoute(String(result.ruta.id));
     if (saved) await selectRoute(saved);
+<<<<<<< HEAD
     if (result.evaluacion && result.evaluacion.ruta_elegida) drawAgentReport(result.evaluacion);
+=======
+    if (result.evaluacion && result.evaluacion.ruta_elegida) {
+      if (saved) showProposal(saved, result.evaluacion, "Ruta propuesta", { carga: result.viaje && result.viaje.nivel_riesgo });
+      else drawAgentReport(result.evaluacion);
+    }
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     $("noRoute").classList.add("hidden");
   }
 
@@ -822,7 +1073,11 @@
   }
 
   function setScreen(name) {
+<<<<<<< HEAD
     const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk"] : ["routes", "orders", "monitor", "metrics", "daily"];
+=======
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk", "reports"] : ["routes", "orders", "monitor", "metrics", "daily"];
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
@@ -831,13 +1086,19 @@
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("metricsScreen").classList.toggle("hidden", screen !== "metrics");
     $("dailyScreen").classList.toggle("hidden", screen !== "daily");
+    $("reportsScreen").classList.toggle("hidden", screen !== "reports");
     const headings = {
       routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
       orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
       monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
       metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
+<<<<<<< HEAD
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."]
+=======
+      daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."],
+      reports: ["HISTORIAL DE VIAJES", "Reportes de viaje", "Consulte el reporte que se genera automáticamente al completarse cada viaje."]
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     };
     const [eyebrow, title, description] = headings[screen];
     $("pageEyebrow").textContent = eyebrow;
@@ -854,6 +1115,11 @@
       setMonitorTab(monitorTab);
     } else if (screen === "metrics") {
       window.MetricasDashboard.init();
+<<<<<<< HEAD
+=======
+    } else if (screen === "reports") {
+      if (!reportsModule && window.ReportesViaje) reportsModule = window.ReportesViaje.mount($("panelReportes"));
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     } else {
       mountAvailabilityPanel();
     }
@@ -871,7 +1137,11 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
+<<<<<<< HEAD
     [eventModule, alertModule, incidentModule, historyModule, availabilityModule].forEach(module => {
+=======
+    [eventModule, alertModule, incidentModule, historyModule, availabilityModule, reportsModule].forEach(module => {
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -907,6 +1177,8 @@
     $("login").classList.add("hidden");
     $("app").classList.remove("hidden");
     if (!window.AppNavigation.mount()) return;
+    // Reportes de viaje: se generan al completarse cada viaje (no depende del mapa).
+    if (window.ReportesViaje) window.ReportesViaje.iniciar();
     if (!window.L) {
       $("noRoute").textContent = "No se pudo cargar el mapa. Revisa tu conexión e inténtalo de nuevo.";
       $("noRoute").classList.remove("hidden");
@@ -920,12 +1192,21 @@
       post,
       onSelectRoute: selectRoute,
       onReorder: reorderStops,
+<<<<<<< HEAD
+=======
+      onPreviewOrder: previewRouteOrder,
+      onClearPreview: clearRouteOrderPreview,
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       onFocusStop: focusStop,
       selection: window.Pedidos.store,
       originNode: $("originRow"),
       onSave: focusSaveRoute,
       onNewTrip: () => openTrip("nuevo"),
       onEditTrip: route => openTrip("editar", route),
+<<<<<<< HEAD
+=======
+      onReviewRoute: reviewRoute,
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });
@@ -968,7 +1249,11 @@
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
     setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
+<<<<<<< HEAD
       location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : "routes");
+=======
+      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : location.hash === "#reportes" ? "reports" : "routes");
+>>>>>>> 19a6c3aec2f740ab135dbf713048069dc337c4b2
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();
