@@ -46,3 +46,7 @@ class ExistingApiRoutes(unittest.TestCase):
             with self.subTest(path=path):
                 response = self.client.post(path, json=payload)
                 self.assertEqual(response.status_code, 401)
+
+    def test_live_trip_monitor_requires_a_bearer_token(self):
+        response = self.client.get("/viajes/monitoreo/en-vivo")
+        self.assertEqual(response.status_code, 401)

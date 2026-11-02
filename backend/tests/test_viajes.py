@@ -93,18 +93,50 @@ def SimpleNamespace_error(code, msg):
 
 
 class Cliente:
-    def __init__(self, db, rpc_falla=False, sin_columnas=False, sin_funciones=False):
-        self.db, self.rpc_falla, self.sin_columnas, self.sin_funciones, self.llamadas = db, rpc_falla, sin_columnas, sin_funciones, []
+    def __init__(self, db, rpc_falla=False, sin_columnas=False, sin_funciones=False, rpc_error=None):
+        self.db, self.rpc_falla, self.sin_columnas, self.sin_funciones, self.rpc_error, self.llamadas = (
+            db, rpc_falla, sin_columnas, sin_funciones, rpc_error, []
+        )
 
     def table(self, t): return Consulta(self.db, t, falla_insert=self.sin_columnas and t == "rutas_planificadas")
 
     def rpc(self, nombre, params):
         self.llamadas.append((nombre, params))
         def ejecutar():
+            if self.sin_columnas:
+                raise SimpleNamespace_error("PGRST204", "column origen_texto does not exist")
             if self.sin_funciones:
                 raise SimpleNamespace_error("PGRST202", "function not found")
+            if self.rpc_error:
+                raise SimpleNamespace_error(*self.rpc_error)
             if self.rpc_falla:
                 raise RuntimeError("rpc caído")
+            if nombre == "guardar_viaje_operativo":
+                tipo = next(
+                    (fila for fila in self.db.get("tipos_carga", [])
+                     if fila.get("id") == params["p_tipo_carga_id"] and fila.get("activo", True)),
+                    None,
+                )
+                if not tipo:
+                    raise SimpleNamespace_error("22023", "tipo inexistente")
+                nivel = logica.nivel_de_riesgo(params["p_monto"], tipo["sensibilidad"])
+                ruta = {
+                    "id": "RT-TEST", "nombre": params["p_nombre"], "fecha": HOY.isoformat(),
+                    "entregas": len(params["p_pedidos"]), "nivel_riesgo": nivel,
+                    "origen_texto": params["p_origen"], "origen_lat": params["p_origen_lat"],
+                    "origen_lng": params["p_origen_lng"], "destino_texto": params["p_destino"],
+                    "destino_lat": params["p_destino_lat"], "destino_lng": params["p_destino_lng"],
+                    "hora_salida": params["p_hora_salida"], "monto": params["p_monto"],
+                    "tipo_carga_id": params["p_tipo_carga_id"],
+                }
+                self.db.setdefault("rutas_planificadas", []).append(ruta)
+                for pedido in self.db.setdefault("entregas", []):
+                    if pedido["id"] in params["p_pedidos"]:
+                        pedido.update({"ruta_id": ruta["id"], "ruta": ruta["nombre"]})
+                return Resp({
+                    "id": ruta["id"], "nombre": ruta["nombre"], "fecha": ruta["fecha"],
+                    "entregas": ruta["entregas"], "nivel_riesgo": ruta["nivel_riesgo"],
+                })
             return Resp({"ruta_id": params["p_ruta_id"], "nivel_riesgo": "Medio"})
         return SimpleNamespace(execute=ejecutar)
 
@@ -120,12 +152,21 @@ def evaluar(o, d):
 
 
 def base():
-    return {"entregas": [{"id": "P1", "ruta": None, "estado": "pendiente"}], "rutas_planificadas": [], "asignaciones_ruta": []}
+    return {
+        "entregas": [{"id": "P1", "ruta": None, "estado": "pendiente"}],
+        "rutas_planificadas": [],
+        "asignaciones_ruta": [],
+        "tipos_carga": [{"id": 3, "sensibilidad": 1, "activo": True}],
+    }
 
 
 def llamar(f, *args, db=None, usuario_cli=None, **kw):
     db = base() if db is None else db
-    servicio_cli, usuario_cli = Cliente(db, sin_columnas=kw.pop("sin_columnas", False)), usuario_cli or Cliente(db)
+    sin_columnas = kw.pop("sin_columnas", False)
+    servicio_cli, usuario_cli = (
+        Cliente(db, sin_columnas=sin_columnas),
+        usuario_cli or Cliente(db, sin_columnas=sin_columnas),
+    )
     return f(*args, usuario="Ana", cliente_usuario=usuario_cli, cliente_servicio=servicio_cli, geocodificar=geo,
              evaluar=kw.pop("evaluar", evaluar), hoy=HOY, **kw), db, usuario_cli
 
@@ -137,8 +178,9 @@ class GenerarTest(unittest.TestCase):
         self.assertEqual((fila["destino_texto"], fila["hora_salida"], fila["monto"], fila["tipo_carga_id"]),
                          ("Metrocentro", "09:30", "1500.50", 3))
         self.assertEqual(db["entregas"][0]["ruta"], r["ruta"]["nombre"])
-        self.assertEqual(cli.llamadas[0][0], "especificar_riesgo_ruta")
-        self.assertEqual(r["viaje"]["nivel_riesgo"], "Medio")
+        self.assertEqual(db["entregas"][0]["ruta_id"], r["ruta"]["id"])
+        self.assertEqual(cli.llamadas[0][0], "guardar_viaje_operativo")
+        self.assertEqual(r["viaje"]["nivel_riesgo"], "Bajo")
         self.assertEqual(r["evaluacion"]["ruta_elegida"]["ruta_id"], "R1")
 
     def test_campos_faltantes_no_generan_ruta(self):
@@ -169,17 +211,18 @@ class GenerarTest(unittest.TestCase):
         self.assertEqual(cm.exception.estado, 502)
         self.assertEqual((db["rutas_planificadas"], db["entregas"][0]["ruta"]), ([], None))
 
-    def test_si_falla_el_riesgo_se_deshace_la_ruta(self):
+    def test_si_falla_el_guardado_no_se_crea_ruta_ni_se_asignan_pedidos(self):
         db = base()
         with self.assertRaises(servicio.ErrorViaje) as cm:
             llamar(servicio.generar_viaje, OK, ["P1"], db=db, usuario_cli=Cliente(db, rpc_falla=True))
         self.assertEqual(cm.exception.estado, 503)
         self.assertEqual((db["rutas_planificadas"], db["entregas"][0]["ruta"]), ([], None))
+        self.assertIsNone(db["entregas"][0].get("ruta_id"))
 
     def test_falta_el_sql_da_mensaje_claro(self):
         with self.assertRaises(servicio.ErrorViaje) as cm:
             llamar(servicio.generar_viaje, OK, [], sin_columnas=True)
-        self.assertIn("viajes_ruta.sql", cm.exception.mensaje)
+        self.assertIn("migraciones de viajes", cm.exception.mensaje)
 
 
 class TiposYRiesgoTest(unittest.TestCase):
@@ -204,19 +247,14 @@ class TiposYRiesgoTest(unittest.TestCase):
         self.assertEqual(len(tipos), 6)
         self.assertIn("Electrónicos", [t["nombre"] for t in tipos])
 
-    def test_si_la_funcion_de_riesgo_no_existe_se_calcula_en_el_servidor(self):
+    def test_tipo_inexistente_no_deja_ruta_parcial(self):
         db = base()
-        db["tipos_carga"] = [{"id": 3, "sensibilidad": 1}]
-        r, db, cli = llamar(servicio.generar_viaje, OK, [], db=db, usuario_cli=Cliente(db, sin_funciones=True))
-        self.assertEqual(r["viaje"]["nivel_riesgo"], "Bajo")            # monto 1500.50 (0) + sensibilidad 1 = 1 → Bajo
-        self.assertEqual(db["rutas_planificadas"][0]["nivel_riesgo"], "Bajo")
-
-    def test_tipo_inexistente_deshace_la_ruta(self):
-        db = base()
-        db["tipos_carga"] = []
         with self.assertRaises(servicio.ErrorViaje) as cm:
-            llamar(servicio.generar_viaje, OK, [], db=db, usuario_cli=Cliente(db, sin_funciones=True))
-        self.assertEqual(cm.exception.estado, 422)
+            llamar(
+                servicio.generar_viaje, OK, [], db=db,
+                usuario_cli=Cliente(db, rpc_error=("22023", "tipo inexistente")),
+            )
+        self.assertEqual(cm.exception.estado, 409)
         self.assertEqual(db["rutas_planificadas"], [])
 
     def test_coordenadas_elegidas_evitan_geocodificar(self):
@@ -241,7 +279,8 @@ class EditarTest(unittest.TestCase):
         fila = db["rutas_planificadas"][0]
         self.assertEqual(fila["destino_texto"], "Santa Tecla")
         self.assertEqual(fila["estado_propuesta"], "propuesta")
-        self.assertEqual(cli.llamadas[0][1]["p_monto"], "99")
+        parametros = next(params for nombre, params in cli.llamadas if nombre == "especificar_riesgo_ruta")
+        self.assertEqual(parametros["p_monto"], "99")
 
     def test_no_edita_si_la_ruta_ya_salio(self):
         rid, db = self.crear()

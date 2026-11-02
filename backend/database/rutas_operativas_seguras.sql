@@ -121,6 +121,94 @@ begin
 end;
 $$;
 
+create or replace function public.guardar_viaje_operativo(
+  p_nombre text,
+  p_pedidos text[],
+  p_origen text,
+  p_origen_lat double precision,
+  p_origen_lng double precision,
+  p_destino text,
+  p_destino_lat double precision,
+  p_destino_lng double precision,
+  p_hora_salida time,
+  p_monto numeric,
+  p_tipo_carga_id smallint,
+  p_usuario text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_hoy date := timezone('America/El_Salvador', now())::date;
+  v_id text := 'RT-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
+  v_usuario text := coalesce(auth.jwt() ->> 'email', auth.uid()::text, 'Usuario');
+  v_sensibilidad smallint;
+  v_puntaje integer;
+  v_nivel text;
+  v_afectados integer;
+begin
+  if (auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'coordinador_rutas' then
+    raise exception 'Solo el coordinador de rutas puede guardar viajes.' using errcode = '42501';
+  end if;
+  if nullif(btrim(p_nombre), '') is null
+      or p_pedidos is null
+      or cardinality(p_pedidos) > 50
+      or cardinality(p_pedidos) <> (select count(distinct pedido) from unnest(p_pedidos) as x(pedido))
+      or nullif(btrim(p_origen), '') is null
+      or nullif(btrim(p_destino), '') is null
+      or p_hora_salida is null
+      or p_monto is null or p_monto <= 0
+      or p_tipo_carga_id is null
+      or p_origen_lat is null or p_origen_lat not between -90 and 90
+      or p_origen_lng is null or p_origen_lng not between -180 and 180
+      or p_destino_lat is null or p_destino_lat not between -90 and 90
+      or p_destino_lng is null or p_destino_lng not between -180 and 180 then
+    raise exception 'Los datos del viaje no son válidos.' using errcode = '22023';
+  end if;
+
+  select sensibilidad into v_sensibilidad
+  from public.tipos_carga
+  where id = p_tipo_carga_id and activo;
+  if not found then
+    raise exception 'El tipo de carga no está disponible.' using errcode = '22023';
+  end if;
+
+  v_puntaje := case when p_monto < 10000 then 0 when p_monto < 100000 then 1 else 2 end
+    + v_sensibilidad;
+  v_nivel := case when v_puntaje <= 1 then 'Bajo' when v_puntaje = 2 then 'Medio' else 'Alto' end;
+
+  insert into public.rutas_planificadas (
+    id, nombre, fecha, entregas, creado_por, orden_pedidos, metodo_creacion,
+    origen_texto, origen_lat, origen_lng, destino_texto, destino_lat, destino_lng,
+    hora_salida, monto, tipo_carga_id, nivel_riesgo
+  ) values (
+    v_id, btrim(p_nombre), v_hoy, cardinality(p_pedidos), v_usuario, p_pedidos, 'ia',
+    btrim(p_origen), p_origen_lat, p_origen_lng, btrim(p_destino), p_destino_lat, p_destino_lng,
+    p_hora_salida, p_monto, p_tipo_carga_id, v_nivel
+  );
+
+  update public.entregas
+  set ruta_id = v_id, ruta = btrim(p_nombre)
+  where id = any(p_pedidos)
+    and ruta_id is null
+    and coalesce(nullif(btrim(ruta), ''), '') = ''
+    and coalesce(estado, 'pendiente') = 'pendiente'
+    and (hora_programada at time zone 'America/El_Salvador')::date = v_hoy;
+  get diagnostics v_afectados = row_count;
+
+  if v_afectados <> cardinality(p_pedidos) then
+    raise exception 'Hay pedidos que ya no están disponibles o no son de hoy.' using errcode = 'P0001';
+  end if;
+
+  return jsonb_build_object(
+    'id', v_id, 'nombre', btrim(p_nombre), 'fecha', v_hoy,
+    'entregas', cardinality(p_pedidos), 'nivel_riesgo', v_nivel, 'usuario', v_usuario
+  );
+end;
+$$;
+
 create or replace function public.actualizar_ruta_operativa(
   p_ruta text,
   p_nombre text,
@@ -394,6 +482,9 @@ $$;
 
 revoke all on function public.guardar_ruta_operativa(text, text[], text) from public, anon;
 grant execute on function public.guardar_ruta_operativa(text, text[], text) to authenticated;
+
+revoke all on function public.guardar_viaje_operativo(text, text[], text, double precision, double precision, text, double precision, double precision, time, numeric, smallint, text) from public, anon;
+grant execute on function public.guardar_viaje_operativo(text, text[], text, double precision, double precision, text, double precision, double precision, time, numeric, smallint, text) to authenticated;
 
 revoke all on function public.actualizar_ruta_operativa(text, text, text[], text) from public, anon;
 grant execute on function public.actualizar_ruta_operativa(text, text, text[], text) to authenticated;

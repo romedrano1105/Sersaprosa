@@ -87,7 +87,7 @@ def _como_diccionario(fila):
 
 
 def cliente_servicio():
-    """Cliente con la clave de servicio, solo para el respaldo de escritura del backend."""
+    """Cliente con clave de servicio para operaciones administrativas del backend."""
     if not SUPABASE_SERVICE_ROLE_KEY:
         raise AuthConfigurationError("Falta configurar SUPABASE_SERVICE_ROLE_KEY.")
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)

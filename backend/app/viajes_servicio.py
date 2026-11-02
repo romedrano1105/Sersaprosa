@@ -4,10 +4,12 @@ Todo se recibe por parámetro (clientes y funciones) para probarlo sin Supabase 
 para que, si algo falla, NO quede una ruta a medias: primero se valida, geocodifica y evalúa (sin
 escribir nada) y solo después se escribe, deshaciendo lo escrito si un paso posterior falla.
 """
-import uuid
+import logging
 from datetime import date
 
-from . import rutas_admin, rutas_logica, viajes_logica
+from . import rpc_utils, rutas_logica, viajes_logica
+
+logger = logging.getLogger(__name__)
 
 
 class ErrorViaje(Exception):
@@ -59,7 +61,7 @@ def _registrar_riesgo(cliente_usuario, ruta_id: str, limpio: dict, cliente_servi
             "p_ruta_id": ruta_id, "p_monto": limpio["monto"], "p_tipo_carga_id": limpio["tipo_carga_id"],
         }).execute().data
     except Exception as error:
-        if cliente_servicio is None or not rutas_admin.funcion_ausente(error):
+        if cliente_servicio is None or not rpc_utils.funcion_ausente(error):
             raise
     tipos = cliente_servicio.table("tipos_carga").select("id,sensibilidad").eq("id", limpio["tipo_carga_id"]).limit(1).execute().data or []
     if not tipos:
@@ -120,52 +122,47 @@ def generar_viaje(datos, pedidos, *, usuario, cliente_usuario, cliente_servicio,
     evaluacion = _evaluar(evaluar, o, d)      # hasta aquí no se escribió nada
 
     try:
-        if ids:
-            rutas_admin._validar_pedidos(cliente_servicio, ids)
-        existentes = [f["nombre"] for f in (cliente_servicio.table("rutas_planificadas").select("nombre")
+        existentes = [f["nombre"] for f in (cliente_usuario.table("rutas_planificadas").select("nombre")
                                             .eq("fecha", hoy.isoformat()).execute().data or [])]
-    except rutas_admin.ReglaDeNegocio as error:
-        raise ErrorViaje(409, str(error)) from error
     except Exception as error:
+        logger.exception("No se pudieron consultar las rutas existentes para generar un viaje.")
         raise ErrorViaje(503, "No se pudo consultar las rutas de hoy. Revisa Supabase.") from error
 
     nombre = viajes_logica.nombre_de_viaje(limpio["destino"], limpio["horario"], existentes)
-    ruta_id = "RT-" + uuid.uuid4().hex[:8].upper()
     try:
-        cliente_servicio.table("rutas_planificadas").insert({
-            "id": ruta_id, "nombre": nombre, "fecha": hoy.isoformat(), "entregas": len(ids),
-            "metodo_creacion": "ia",
-            "origen_texto": limpio["origen"], "origen_lat": o["lat"], "origen_lng": o["lng"],
-            "destino_texto": limpio["destino"], "destino_lat": d["lat"], "destino_lng": d["lng"],
-            "hora_salida": limpio["horario"], "creado_por": usuario,
-            "monto": limpio["monto"], "tipo_carga_id": limpio["tipo_carga_id"],
-        }).execute()
+        resultado = cliente_usuario.rpc("guardar_viaje_operativo", {
+            "p_nombre": nombre,
+            "p_pedidos": ids,
+            "p_origen": limpio["origen"],
+            "p_origen_lat": o["lat"],
+            "p_origen_lng": o["lng"],
+            "p_destino": limpio["destino"],
+            "p_destino_lat": d["lat"],
+            "p_destino_lng": d["lng"],
+            "p_hora_salida": limpio["horario"],
+            "p_monto": limpio["monto"],
+            "p_tipo_carga_id": limpio["tipo_carga_id"],
+            "p_usuario": usuario,
+        }).execute().data
     except Exception as error:
-        if _falta_sql(error):
+        code = str(getattr(error, "code", "") or "")
+        if rpc_utils.funcion_ausente(error) or _falta_sql(error):
             raise ErrorViaje(
-                503,
-                "Falta aplicar backend/database/viajes_ruta.sql, riesgo_rutas.sql "
-                "y metricas_operativas.sql en Supabase.",
+                503, "Falta aplicar las migraciones de viajes y escrituras operativas en Supabase."
             ) from error
+        if code == "42501":
+            raise ErrorViaje(403, "Solo el coordinador de rutas puede guardar viajes.") from error
+        if code in {"22023", "P0001", "23505"}:
+            raise ErrorViaje(409, str(getattr(error, "message", "Los pedidos o el nombre de ruta ya no están disponibles."))) from error
+        logger.exception("No se pudo crear el viaje mediante la función SQL.")
         raise ErrorViaje(503, "No se pudo guardar la ruta. Revisa Supabase.") from error
 
-    def deshacer():
-        try:
-            cliente_servicio.table("entregas").update({"ruta": None}).eq("ruta", nombre).execute()
-            cliente_servicio.table("rutas_planificadas").delete().eq("id", ruta_id).execute()
-        except Exception:
-            pass
-
-    try:
-        rutas_admin._marcar_pedidos(cliente_servicio, ids, nombre)
-        riesgo = _registrar_riesgo(cliente_usuario, ruta_id, limpio, cliente_servicio)
-    except ErrorViaje:
-        deshacer()
-        raise
-    except Exception as error:
-        deshacer()
-        raise ErrorViaje(503, "No se pudo completar el guardado de la ruta (pedidos o nivel de riesgo). No se creó la ruta.") from error
-    return _resumen(ruta_id, nombre, hoy, len(ids), limpio, o, d, riesgo, evaluacion)
+    if not isinstance(resultado, dict) or not resultado.get("id"):
+        raise ErrorViaje(502, "Supabase no devolvió una ruta válida.")
+    return _resumen(
+        resultado["id"], resultado.get("nombre", nombre), hoy,
+        int(resultado.get("entregas", len(ids))), limpio, o, d, resultado, evaluacion,
+    )
 
 
 def actualizar_viaje(ruta_id, datos, *, usuario, cliente_usuario, cliente_servicio, geocodificar, evaluar, hoy: date | None = None):

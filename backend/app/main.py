@@ -1,10 +1,14 @@
 import logging
+import math
 import os
-import traceback
+import time
+import uuid
+from collections import deque
 from pathlib import Path
+from threading import Lock
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +37,10 @@ from .viajes_router import router as viajes_router
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+LOGIN_MAX_INTENTOS = 5
+LOGIN_VENTANA_SEGUNDOS = 15 * 60
+_login_lock = Lock()
+_login_fallos: dict[str, deque[float]] = {}
 
 # Permite que el navegador haga peticiones desde PaginaPrincipal.html sin bloqueos de CORS
 app.add_middleware(
@@ -64,18 +72,15 @@ class CredencialesEmpleado(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
-def _donde_fallo(error: BaseException) -> str:
-    """Últimos 2 pasos del traceback como «archivo:línea (función)». Sin datos del usuario ni del mensaje."""
-    marcos = traceback.extract_tb(error.__traceback__)[-2:]
-    return " ← ".join(f"{Path(m.filename).name}:{m.lineno} ({m.name})" for m in reversed(marcos))
-
-
 @app.exception_handler(Exception)
 async def error_inesperado(request, error):
-    """Siempre JSON (el front lo lee). Indica tipo y lugar del fallo; el detalle completo va a los logs."""
-    logger.exception("Error no controlado en %s", request.url.path)
+    """Devuelve una referencia opaca; la excepción y su traceback quedan solo en logs."""
+    error_id = uuid.uuid4().hex
+    logger.exception("Error no controlado. error_id=%s path=%s", error_id, request.url.path)
     return JSONResponse(status_code=500, content={
-        "detail": f"Error interno del servidor ({type(error).__name__} en {_donde_fallo(error)}). Revise los logs del servicio en Render."})
+        "error_id": error_id,
+        "detail": f"Error interno del servidor. Referencia: {error_id}.",
+    })
 
 
 @app.get("/version", include_in_schema=False)
@@ -88,7 +93,16 @@ def version():
 
 
 @app.post("/login")
-def login(credenciales: CredencialesEmpleado):
+def login(credenciales: CredencialesEmpleado, request: Request):
+    ip = request.client.host if request.client else "desconocido"
+    retry_after = _login_segundos_bloqueo(ip)
+    if retry_after:
+        raise HTTPException(
+            status_code=429,
+            detail={"message": "Demasiados intentos. Espere antes de volver a iniciar sesión."},
+            headers={"Retry-After": str(retry_after)},
+        )
+
     codigo = credenciales.code.strip()
     if not codigo:
         raise HTTPException(status_code=422, detail="El código de empleado es obligatorio.")
@@ -108,10 +122,11 @@ def login(credenciales: CredencialesEmpleado):
         logger.exception("Falló la conexión con Supabase al buscar el empleado.")
         raise HTTPException(
             status_code=503,
-            detail=f"No se pudo leer el empleado en Supabase ({type(error).__name__}: {str(error)[:120]}). Revise SUPABASE_URL, las claves y la tabla empleados.",
+            detail="No se pudo leer el empleado en Supabase. Revise la configuración del servidor.",
         ) from error
 
     if not empleado:
+        _login_registrar_fallo(ip)
         raise HTTPException(status_code=401, detail="Código de empleado o contraseña incorrectos.")
     if not empleado.get("email"):
         logger.error("El empleado con código %s no tiene email de Supabase Auth asociado.", codigo)
@@ -135,6 +150,8 @@ def login(credenciales: CredencialesEmpleado):
             code,
             message,
         )
+        if isinstance(status, int) and 400 <= status < 500:
+            _login_registrar_fallo(ip)
         status_code = status if isinstance(status, int) and 400 <= status < 600 else 502
         raise HTTPException(
             status_code=status_code,
@@ -154,6 +171,7 @@ def login(credenciales: CredencialesEmpleado):
             detail="Supabase Auth no devolvió una sesión válida.",
         )
 
+    _login_limpiar_fallos(ip)
     metadata = auth.user.user_metadata or {}
     app_metadata = auth.user.app_metadata or {}
     return {
@@ -163,6 +181,34 @@ def login(credenciales: CredencialesEmpleado):
         "email": auth.user.email,
         "role": app_metadata.get("role", ""),
     }
+
+
+def _login_segundos_bloqueo(ip: str, ahora: float | None = None) -> int:
+    ahora = time.monotonic() if ahora is None else ahora
+    with _login_lock:
+        for clave, intentos in list(_login_fallos.items()):
+            while intentos and ahora - intentos[0] >= LOGIN_VENTANA_SEGUNDOS:
+                intentos.popleft()
+            if not intentos:
+                _login_fallos.pop(clave, None)
+        intentos = _login_fallos.get(ip, ())
+        if len(intentos) < LOGIN_MAX_INTENTOS:
+            return 0
+        return max(1, math.ceil(LOGIN_VENTANA_SEGUNDOS - (ahora - intentos[0])))
+
+
+def _login_registrar_fallo(ip: str, ahora: float | None = None) -> None:
+    ahora = time.monotonic() if ahora is None else ahora
+    with _login_lock:
+        intentos = _login_fallos.setdefault(ip, deque())
+        while intentos and ahora - intentos[0] >= LOGIN_VENTANA_SEGUNDOS:
+            intentos.popleft()
+        intentos.append(ahora)
+
+
+def _login_limpiar_fallos(ip: str) -> None:
+    with _login_lock:
+        _login_fallos.pop(ip, None)
 
 # --- PÁGINAS WEB (frontend servido por esta misma API) ---
 PUBLIC_DIR = Path(__file__).resolve().parents[2] / "public"
