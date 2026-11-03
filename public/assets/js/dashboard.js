@@ -45,7 +45,9 @@
   }
 
   function todayISO() {
-    return window.Api.todayISO();
+    const date = new Date();
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().slice(0, 10);
   }
 
   function storedSession() {
@@ -1152,7 +1154,6 @@
       onNewTrip: () => openTrip("nuevo"),
       onEditTrip: route => openTrip("editar", route),
       onReviewRoute: reviewRoute,
-      onAcceptProposal: acceptProposal,
       onGoTo: name => setScreen(name),
       onChanged: afterRouteChange
     });

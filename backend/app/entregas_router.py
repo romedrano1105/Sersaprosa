@@ -9,7 +9,7 @@ Tabla de Supabase que espera (crear antes de usar):
 
 Seguridad: el rol se valida AQUÍ con el token de Supabase (app_metadata.role), nunca solo en la página.
 """
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
@@ -41,12 +41,13 @@ def listar(req: Consulta | None = None, authorization: str | None = Header(defau
     cliente = usuario_autorizado(authorization)
     req = req or Consulta()
     try:
-        fecha = date.fromisoformat(req.fecha) if req.fecha else logica.hoy_el_salvador()
+        fecha = date.fromisoformat(req.fecha) if req.fecha else date.today()
     except ValueError:
         raise HTTPException(422, "Fecha no válida. Use el formato AAAA-MM-DD.")
     if req.estado and req.estado != "todos" and req.estado not in logica.ESTADOS:
         raise HTTPException(422, "Estado no válido.")
-    inicio, fin = logica.limites_utc(fecha)
+    inicio = fecha.isoformat()
+    fin = (fecha + timedelta(days=1)).isoformat()
     consulta = (
         cliente.table("entregas").select("*")
         .gte("hora_programada", inicio)

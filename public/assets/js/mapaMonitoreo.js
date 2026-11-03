@@ -770,7 +770,7 @@
       }
       if (manual) { S.cargando = true; pintarLista(); }
       try {
-        const hoy = global.Api.todayISO();
+        const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
         const [rutas, disp, entregas] = await Promise.all([
           global.Api.post("/rutas/listar"),
           global.Api.post("/disponibilidad/listar"),

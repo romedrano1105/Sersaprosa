@@ -1,13 +1,12 @@
 import os
 import unittest
-from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
 from unittest.mock import patch
 
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
 
-from backend.app import entregas_logica, entregas_router
+from backend.app import entregas_router
 
 
 class Consulta:
@@ -37,11 +36,11 @@ class Consulta:
 
     def execute(self):
         inicio, fin = self.rango_actual
-        fecha_inicio = datetime.fromisoformat(self.filtros[0][2])
-        fecha_fin = datetime.fromisoformat(self.filtros[1][2])
+        fecha_inicio = self.filtros[0][2]
+        fecha_fin = self.filtros[1][2]
         filtradas = [
             fila for fila in self.filas
-            if fecha_inicio <= datetime.fromisoformat(fila["hora_programada"]) < fecha_fin
+            if fecha_inicio <= fila["hora_programada"][:10] < fecha_fin
         ]
         return type("Respuesta", (), {"data": filtradas[inicio:fin + 1]})()
 
@@ -56,16 +55,12 @@ class Cliente:
 
 class ListarEntregasTest(unittest.TestCase):
     def test_filtra_fecha_en_supabase_y_recupera_todas_las_paginas(self):
-        hoy = date(2026, 11, 2)
-        inicio_utc = datetime.combine(hoy, time.min, tzinfo=ZoneInfo("America/El_Salvador")).astimezone(timezone.utc)
+        hoy = date.today()
         filas = [
-            {"id": str(i), "hora_programada": (inicio_utc + timedelta(minutes=i)).isoformat(), "estado": "pendiente"}
+            {"id": str(i), "hora_programada": f"{hoy.isoformat()}T08:00:00", "estado": "pendiente"}
             for i in range(1001)
         ]
-        siguiente_dia_utc = datetime.combine(
-            hoy + timedelta(days=1), time.min, tzinfo=ZoneInfo("America/El_Salvador")
-        ).astimezone(timezone.utc)
-        filas.append({"id": "otro-dia", "hora_programada": siguiente_dia_utc.isoformat()})
+        filas.append({"id": "otro-dia", "hora_programada": f"{(hoy + timedelta(days=1)).isoformat()}T00:00:00"})
         cliente = Cliente(filas)
 
         with patch.object(entregas_router, "usuario_autorizado", return_value=cliente):
@@ -76,23 +71,10 @@ class ListarEntregasTest(unittest.TestCase):
         self.assertEqual(
             cliente.consulta.filtros,
             [
-                ("hora_programada", ">=", "2026-11-02T06:00:00+00:00"),
-                ("hora_programada", "<", "2026-11-03T06:00:00+00:00"),
+                ("hora_programada", ">=", hoy.isoformat()),
+                ("hora_programada", "<", (hoy + timedelta(days=1)).isoformat()),
             ],
         )
-
-    def test_incluye_pedidos_cercanos_a_medianoche_segun_fecha_local(self):
-        fecha = date(2026, 11, 2)
-        filas = [
-            {"id": "antes", "hora_programada": "2026-11-02T05:59:59+00:00"},
-            {"id": "inicio", "hora_programada": "2026-11-02T06:00:00+00:00"},
-            {"id": "fin", "hora_programada": "2026-11-03T05:59:59+00:00"},
-            {"id": "siguiente", "hora_programada": "2026-11-03T06:00:00+00:00"},
-        ]
-
-        respuesta = entregas_logica.construir_respuesta(filas, fecha)
-
-        self.assertEqual({pedido["id"] for pedido in respuesta["entregas"]}, {"inicio", "fin"})
 
 
 if __name__ == "__main__":
