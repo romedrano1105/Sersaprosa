@@ -996,6 +996,9 @@
     });
   }
 
+  // Empleados y Vehículos: personal real (gestionEmpleados.js) + disponibilidad y asignación (VerificarConduJS.js).
+  // Al guardar un empleado se recarga la disponibilidad, y al asignar una ruta se recarga el personal.
+  let staffModule = null;
   function mountAvailabilityPanel() {
     if (availabilityModule) return;
     availabilityModule = window.Disponibilidad.mount($("panelDisponibilidad"), {
@@ -1004,8 +1007,14 @@
       LOAD: "/disponibilidad/listar",
       ASSIGN: "/disponibilidad/asignar",
       ROLE_ALLOWED: "coordinador_rutas",
-      onUnauthorized: () => window.AppNavigation.handleUnauthorized()
+      onUnauthorized: () => window.AppNavigation.handleUnauthorized(),
+      onAssigned: () => { if (staffModule) staffModule.reload(); }
     });
+    if (window.GestionEmpleados) {
+      staffModule = window.GestionEmpleados.mount($("panelEmpleados"), {
+        onChanged: () => { if (availabilityModule) availabilityModule.reload(); }
+      });
+    }
   }
 
   function setMonitorTab(name) {
@@ -1085,7 +1094,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, availabilityModule, reportsModule].forEach(module => {
+    [eventModule, alertModule, availabilityModule, staffModule, reportsModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();

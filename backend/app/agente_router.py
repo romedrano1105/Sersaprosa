@@ -42,16 +42,28 @@ def _agente(cliente, ahora: datetime, enrutador=None) -> AgenteRutaSegura:
 def _agregar_trafico_google(reporte: dict) -> dict:
     elegido = reporte.get("ruta_elegida") or {}
     geometria = elegido.get("geometria") or []
+    clave = os.getenv("GOOGLE_ROUTES_API_KEY")
+    fallo = False
     try:
-        trafico = consultar_trafico_google(os.getenv("GOOGLE_ROUTES_API_KEY"), geometria)
+        trafico = consultar_trafico_google(clave, geometria)
     except (httpx.HTTPError, ValueError):
         logger.warning("No se pudo consultar el tráfico de Google Routes.", exc_info=True)
         trafico = {"disponible": False, "segmentos": []}
+        fallo = True
     reporte["trafico_google"] = trafico
+    # El agente ya avisa «Sin fuente de tráfico configurada»; con Google se reemplaza por un solo aviso claro.
+    advertencias = [a for a in reporte.get("advertencias") or [] if not a.startswith("Sin fuente de tráfico configurada")]
     if not trafico["disponible"]:
-        reporte.setdefault("advertencias", []).append(
-            "Tráfico de Google no disponible; la ruta segura sigue mostrándose sin esta capa."
-        )
+        if not clave:
+            advertencias.append("Tráfico de Google no disponible: falta configurar GOOGLE_ROUTES_API_KEY en el servidor; "
+                                "la ruta se evaluó sin congestión ni accidentes viales.")
+        elif fallo:
+            advertencias.append("Tráfico de Google no disponible: Google Routes no respondió (revisa que la clave tenga "
+                                "habilitada la Routes API); la ruta segura sigue mostrándose sin esta capa.")
+        else:
+            advertencias.append("Tráfico de Google no disponible: Google no reportó tráfico para esta ruta; "
+                                "la ruta segura sigue mostrándose sin esta capa.")
+    reporte["advertencias"] = advertencias
     return reporte
 
 

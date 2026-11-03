@@ -42,6 +42,26 @@ class AgenteRouterGoogleTrafficTest(unittest.TestCase):
         self.assertTrue(resultado["ruta_elegida"])
         self.assertTrue(resultado["advertencias"])
 
+    def test_un_solo_aviso_de_trafico_que_dice_que_falta(self):
+        reporte = {"ruta_elegida": {"geometria": [[13.7, -89.2], [13.8, -89.1]]},
+                   "advertencias": ["Sin fuente de tráfico configurada: la evaluación no considera congestión ni accidentes viales.",
+                                    "No se pudieron consultar los incidentes (falta la tabla en Supabase: …)"]}
+        with patch.dict(os.environ, {}, clear=True), \
+                patch("backend.app.agente_router.consultar_trafico_google", return_value={"disponible": False, "segmentos": []}):
+            resultado = _agregar_trafico_google(reporte)
+        trafico = [a for a in resultado["advertencias"] if "tráfico" in a.lower()]
+        self.assertEqual(len(trafico), 1)
+        self.assertIn("GOOGLE_ROUTES_API_KEY", trafico[0])
+        self.assertTrue(any("incidentes" in a for a in resultado["advertencias"]))    # los demás avisos se conservan
+
+    def test_con_trafico_de_google_no_queda_el_aviso_sin_fuente(self):
+        reporte = {"ruta_elegida": {"geometria": [[13.7, -89.2], [13.8, -89.1]]},
+                   "advertencias": ["Sin fuente de tráfico configurada: la evaluación no considera congestión ni accidentes viales."]}
+        trafico = {"disponible": True, "segmentos": [{"velocidad": "SLOW", "geometria": [[13.7, -89.2], [13.8, -89.1]]}]}
+        with patch.dict(os.environ, {"GOOGLE_ROUTES_API_KEY": "clave"}), \
+                patch("backend.app.agente_router.consultar_trafico_google", return_value=trafico):
+            self.assertEqual(_agregar_trafico_google(reporte)["advertencias"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
