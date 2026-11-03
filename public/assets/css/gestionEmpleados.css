@@ -1,0 +1,58 @@
+/* Panel «Personal» (gestionEmpleados.js). Clases con prefijo ge-; usa las variables de dashboard.css. */
+#panelEmpleados { margin-bottom: 18px; }
+.ge { display: grid; gap: 12px; color: var(--text); font-family: "Inter", system-ui, sans-serif; }
+.ge h3 { margin: 0; font: 700 19px "Inter", system-ui, sans-serif; }
+.ge-cab { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.ge-resumen { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.ge-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.ge-input { width: 100%; padding: 8px 10px; color: var(--text); font: inherit; font-size: 13px; background: #15171b; border: 1px solid #3d4047; border-radius: 4px; color-scheme: dark; }
+.ge-input:disabled { opacity: .6; }
+
+.ge-btn { padding: 7px 12px; color: var(--text); font: inherit; font-size: 13px; font-weight: 600; background: transparent; border: 1px solid #ffffff4d; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.ge-btn:hover:not(:disabled) { border-color: #fff; }
+.ge-btn:disabled { opacity: .4; cursor: default; }
+.ge-prim { color: #fff; background: #007afc; border-color: #007afc; }
+.ge-prim:hover:not(:disabled) { background: #0062ca; }
+.ge-btn-no { color: #ff9ca1; border-color: #7c3137; }
+
+.ge-avisos { display: grid; gap: 8px; }
+.ge-avisos:empty { display: none; }
+.ge-msg { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 0; padding: 10px 14px; font-size: 13px; border-radius: 6px; }
+.ge-msg-ok { background: #16261f; border: 1px solid #2c5a45; }
+.ge-msg-error { background: #2a1d1e; border: 1px solid #7c3137; color: #ffb3b6; }
+.ge-vacio { margin: 0; padding: 16px; color: var(--muted); text-align: center; border: 1px dashed #3d4047; border-radius: 6px; }
+
+.ge-tabla-wrap { overflow-x: auto; }
+.ge-tabla { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px; }
+.ge-tabla th, .ge-tabla td { padding: 9px 8px; text-align: left; vertical-align: middle; border-bottom: 1px solid var(--line); }
+.ge-tabla th { color: var(--muted); font-size: 12px; font-weight: 500; }
+.ge-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ge-txt-no { color: #ff9ca1; }
+.ge-fila-off td { color: var(--muted); }
+.ge-acciones { display: flex; gap: 6px; justify-content: flex-end; }
+.ge-cat { padding: 1px 8px; font-size: 11px; font-weight: 700; border-radius: 99px; }
+.ge-cat-conductor { color: #dfe7ff; background: #5b8cff33; }
+.ge-cat-guardia { color: #e8dcff; background: #9b6bff33; }
+.ge-pill { display: inline-block; padding: 1px 9px; font-size: 12px; font-weight: 600; border-radius: 99px; white-space: nowrap; }
+.ge-ok { color: #4cc38a; background: #228a5633; }
+.ge-info { color: #9db9ff; background: #5b8cff2b; }
+.ge-no { color: #ff9ca1; background: #e5484d2b; }
+.ge-warn { color: #f5c26b; background: #f5a5242b; }
+.ge-off { color: var(--muted); background: #ffffff10; }
+
+/* Formulario */
+.ge-fondo { position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center; padding: 12px; background: #000a; }
+.ge-modal { display: grid; gap: 12px; width: min(460px, 100%); padding: 20px; color: var(--text); background: #1c1e21; border: 1px solid #3d4047; border-radius: 8px; font-family: "Inter", system-ui, sans-serif; }
+.ge-modal-cab { display: flex; justify-content: space-between; align-items: center; }
+.ge-modal h3 { margin: 0; font: 700 19px "Inter", system-ui, sans-serif; }
+.ge-x { color: #d9dce1; font-size: 24px; background: none; border: 0; cursor: pointer; }
+.ge-campo { display: grid; gap: 4px; }
+.ge-campo[hidden] { display: none; }
+.ge-campo label { color: var(--muted); font-size: 12px; }
+.ge-form-error { margin: 0; color: #ff8d90; font-size: 12px; }
+.ge-form-error[hidden] { display: none; }
+.ge-modal-acciones { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 560px) {
+  .ge-acciones { flex-direction: column; align-items: stretch; }
+}

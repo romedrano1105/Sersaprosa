@@ -127,12 +127,19 @@ flujo de trabajo del día:
    Los pedidos de la ruta en borrador se eligen con las casillas de esa misma lista (`pedidosEnCurso.js`
    guarda la selección; ya no hay pantalla «Pedidos en curso»). Si un pedido no tiene coordenadas, el
    coordinador puede pulsar **«Ubicar pedidos por su dirección»** (`POST /entregas/ubicar`).
-2. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas. Las rutas
+2. **Empleados y Vehículos**: panel **Personal** (`gestionEmpleados.js`) para agregar, editar y dar de baja
+   conductores y guardias reales (`POST /empleados/listar|guardar|estado`, funciones de
+   [`empleados_gestion.sql`](backend/database/empleados_gestion.sql); baja lógica, sin clave de servicio) y
+   asignación de conductor, guardias y vehículo a las rutas guardadas. Las rutas
    rechazadas no se ofrecen para asignar; las de la IA se asignan después de aceptar su propuesta y las
    armadas a mano nacen aceptadas (`rutas_operativas_seguras.sql`). Una ruta con conductor guardado sin
    asignación vigente se libera con «Liberar ruta» (`desasignar_ruta_operativa`).
 3. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
-4. **Monitoreo en Vivo**: notificaciones, eventos especiales y **Alertas e incidentes**, un solo panel
+4. **Monitoreo en Vivo**: el mapa **Unidades en ruta** (`mapaMonitoreo.js`) muestra cada ruta con asignación
+   vigente: conductor y custodios reales, vehículo, monto y riesgo. Al elegir una unidad dibuja la ruta completa
+   (origen → pedidos → destino, por calles con OSRM) con el color del incidente o del nivel de riesgo y encuadra
+   la ruta con el vehículo. Conducción en vivo usa esas mismas unidades.
+   Además: notificaciones, eventos especiales y **Alertas e incidentes**, un solo panel
    (`alertasIncidentes.js`) con los incidentes de viajes en curso (tiempo real) y las alertas de viajes
    finalizados, con filtros por estado, severidad y origen.
 5. **Dashboard de métricas**: porcentaje de rutas IA frente a rutas manuales, eventos explícitamente mitigados y tiempo promedio real entre inicio y finalización de entregas.

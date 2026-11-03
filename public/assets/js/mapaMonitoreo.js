@@ -2,17 +2,22 @@
  *
  * Se monta solo en <div id="panelMapaMonitoreo"> la primera vez que ese panel se ve (no hace falta
  * llamarlo desde dashboard.js). Usa lo que el sistema ya tiene:
- *   POST /rutas/listar          rutas de hoy: conductor, origen, destino, horario, monto y riesgo
- *   POST /disponibilidad/listar vehículo (placa y tipo) asignado a cada ruta
+ *   POST /rutas/listar          rutas de hoy: origen, destino, horario, monto, riesgo y orden de pedidos
+ *   POST /disponibilidad/listar asignaciones vigentes: conductor y guardias REALES (tabla empleados) y vehículo
+ *   POST /entregas/listar       pedidos de cada ruta: la línea pasa por ellos, como en Tracking de rutas
  *   POST /incidentes/listar     incidentes pendientes: la unidad cambia de color según la severidad
  *   OSRM (navegador)            trazado por calles, igual que el mapa de Tracking de rutas (ADR 0004)
+ *
+ * Una unidad es una ruta de hoy con asignación vigente (no basta con el nombre del conductor guardado).
+ * Las rutas manuales (sin viaje) salen del centro de San Salvador y terminan en su último pedido.
  *
  * Posición: el sistema aún no recibe GPS de los vehículos, así que la unidad se mueve por la ruta
  * según la hora de salida y la duración estimada del trayecto. Si más adelante llega GPS real:
  *   MapaMonitoreo.setPosicion(rutaId, lat, lng)   // fija la posición real de esa unidad
  *
- * Colores: azul = en ruta, gris = por salir, verde = llegó,
+ * Colores de la unidad: azul = en ruta, gris = por salir, verde = llegó,
  *          rojo / naranja / amarillo = incidente alto / medio / bajo (igual que Notificaciones).
+ * Línea de ruta: color del incidente si lo hay; si no, del nivel de riesgo (Alto rojo, Medio naranja, Bajo verde).
  * Sin innerHTML para texto de usuario (ADR 0001).
  */
 (function (global) {
@@ -24,6 +29,8 @@
   const TICK_MS = 1000;          // movimiento de las unidades
   const FALLOS_PARA_AVISAR = 2;
   const CENTRO = [13.6929, -89.2182]; // San Salvador
+  const SALIDA_POR_DEFECTO = { texto: "Centro de San Salvador", lat: 13.6989, lng: -89.1914 }; // igual que Tracking
+  const COLOR_RIESGO = { alto: "#e5484d", medio: "#f5a524", bajo: "#3fb27f" };
   const VELOCIDAD_RESPALDO_KMH = 35;  // solo si OSRM no responde
   const MULTIPLICADORES = [1, 10, 60];
 
@@ -120,35 +127,86 @@
     return new Date(ms).toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" });
   }
 
-  // Une rutas de hoy + asignaciones + incidentes. Solo entran las rutas con viaje (coordenadas) y conductor.
-  function armarUnidades(rutas, disp, incidentes) {
+  const normTexto = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+  function lugarValido(l) {
+    if (!l) return null;
+    const lat = Number(l.lat), lng = Number(l.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) return null;
+    return { texto: l.texto || "", lat, lng };
+  }
+
+  // Pedidos en curso de la ruta con coordenadas, en su orden de visita (orden_pedidos, luego hora).
+  function paradasDeRuta(ruta, entregas) {
+    const nombre = normTexto(ruta.nombre);
+    const orden = new Map((ruta.orden_pedidos || []).map((id, i) => [String(id), i]));
+    return (entregas || [])
+      .filter(p => p && normTexto(p.ruta) === nombre && p.estado !== "completada")
+      .map(p => ({ id: String(p.id), hora: p.hora || "", lugar: lugarValido({ texto: p.cliente || p.direccion, lat: p.lat, lng: p.lng }) }))
+      .filter(p => p.lugar)
+      .sort((a, b) => (orden.has(a.id) ? orden.get(a.id) : 1e9) - (orden.has(b.id) ? orden.get(b.id) : 1e9) || a.hora.localeCompare(b.hora))
+      .map(p => p.lugar);
+  }
+
+  function nivelRiesgo(ruta) {
+    const v = (ruta.viaje && ruta.viaje.nivel_riesgo) || ruta.riesgo_ruta || "";
+    return v ? v.charAt(0).toUpperCase() + v.slice(1).toLowerCase() : null;
+  }
+
+  // Une rutas de hoy + asignaciones vigentes + empleados reales + pedidos + incidentes.
+  // Entra toda ruta con asignación de hoy que se pueda trazar (con viaje o con pedidos ubicados).
+  function armarUnidades(rutas, disp, incidentes, entregas) {
     const asignaciones = new Map(((disp && disp.assignments) || []).map(a => [String(a.ruta), a]));
     const vehiculos = new Map(((disp && disp.vehicles) || []).map(v => [String(v.id), v]));
+    const conductores = new Map(((disp && disp.drivers) || []).map(d => [String(d.id), d]));
+    const guardias = new Map(((disp && disp.guards) || []).map(g => [String(g.id), g]));
     const porRuta = new Map();
     (incidentes || []).forEach(i => {
       const clave = String(i.ruta_id || i.viaje || "");
       if (!porRuta.has(clave)) porRuta.set(clave, []);
       porRuta.get(clave).push(i);
     });
-    const conViaje = (rutas || []).filter(r => r && r.viaje && r.viaje.origen && r.viaje.destino);
-    const unidades = conViaje.filter(r => r.conductor).map(r => {
+    let sinAsignar = 0, sinTrazado = 0;
+    const unidades = [];
+    (rutas || []).forEach(r => {
+      if (!r) return;
+      const viaje = r.viaje || null;
+      const paradas = paradasDeRuta(r, entregas);
       const asignacion = asignaciones.get(String(r.id));
-      const vehiculo = asignacion ? vehiculos.get(String(asignacion.vehiculo)) : null;
-      return {
+      if (!asignacion) {
+        if (viaje || paradas.length) sinAsignar += 1;
+        return;
+      }
+      const origen = lugarValido(viaje && viaje.origen) || Object.assign({}, SALIDA_POR_DEFECTO);
+      const destinoViaje = lugarValido(viaje && viaje.destino);
+      const destino = destinoViaje || paradas[paradas.length - 1] || null;
+      if (!destino) { sinTrazado += 1; return; }
+      const intermedias = destinoViaje ? paradas : paradas.slice(0, -1);
+      const empleado = conductores.get(String(asignacion.conductor));
+      const vehiculo = vehiculos.get(String(asignacion.vehiculo));
+      const custodios = (asignacion.guardias || []).map(id => {
+        const g = guardias.get(String(id));
+        return { codigo: String(id), nombre: g ? g.nombre : String(id) };
+      });
+      const salidaAsignacion = Date.parse(asignacion.fecha);
+      unidades.push({
         id: String(r.id),
         nombre: r.nombre || "Ruta sin nombre",
-        conductor: r.conductor,
+        conductor: (empleado && empleado.nombre) || r.conductor || String(asignacion.conductor || "Sin conductor"),
+        conductorInfo: { codigo: String(asignacion.conductor || ""), licencia: empleado ? empleado.licencia || null : null },
+        custodios,
         vehiculo: vehiculo ? { placa: vehiculo.placa, tipo: vehiculo.tipo } : null,
-        monto: r.viaje.monto,
-        riesgo: r.viaje.nivel_riesgo || null,
-        horario: r.viaje.horario || "",
-        salidaMs: r.viaje.salida_ms || null,
-        origen: r.viaje.origen,
-        destino: r.viaje.destino,
+        monto: viaje ? viaje.monto : null,
+        riesgo: nivelRiesgo(r),
+        horario: (viaje && viaje.horario) || "",
+        salidaMs: (viaje && viaje.salida_ms) || (!(viaje && viaje.horario) && Number.isFinite(salidaAsignacion) ? salidaAsignacion : null),
+        origen,
+        destino,
+        paradas: intermedias,
         incidentes: porRuta.get(String(r.id)) || []
-      };
+      });
     });
-    return { unidades, sinAsignar: conViaje.length - unidades.length };
+    return { unidades, sinAsignar, sinTrazado };
   }
 
   /* ---------- DOM ---------- */
@@ -166,39 +224,6 @@
     return node;
   }
 
-  /* ---------- demostración (datos de ejemplo en memoria: nada se guarda) ---------- */
-
-  function demoDatos() {
-    const ahora = Date.now();
-    const lugar = (texto, lat, lng) => ({ texto, lat, lng });
-    const centro = lugar("Centro de San Salvador", 13.6989, -89.1914);
-    const viaje = (origen, destino, minutosAtras, monto, riesgo) => ({
-      origen, destino, horario: "", salida_ms: ahora - minutosAtras * 60000, monto, nivel_riesgo: riesgo
-    });
-    const rutas = [
-      { id: "demo-1", nombre: "Ruta Oriente (demo)", conductor: "Carlos Mendoza", viaje: viaje(centro, lugar("Soyapango", 13.7100, -89.1394), 6, 25000, "Alto") },
-      { id: "demo-2", nombre: "Ruta Poniente (demo)", conductor: "Sofía Valenzuela", viaje: viaje(lugar("Metrocentro", 13.7050, -89.2170), lugar("Santa Tecla", 13.6769, -89.2797), 9, 4800, "Medio") },
-      { id: "demo-3", nombre: "Ruta Sur (demo)", conductor: "Arturo Beltrán", viaje: viaje(lugar("Colonia Escalón", 13.7000, -89.2400), lugar("San Marcos", 13.6555, -89.1800), 3, 1200, "Bajo") },
-      { id: "demo-4", nombre: "Ruta Norte (demo)", conductor: "Mariana Rojas", viaje: viaje(centro, lugar("Ilopango", 13.7000, -89.1100), -25, 900, "Bajo") }
-    ];
-    const disp = {
-      vehicles: [
-        { id: "v1", placa: "P-482-913", tipo: "Camión blindado" }, { id: "v2", placa: "P-317-206", tipo: "Camioneta" },
-        { id: "v3", placa: "P-905-441", tipo: "Pick-up" }, { id: "v4", placa: "P-228-775", tipo: "Furgón" }
-      ],
-      assignments: [
-        { ruta: "demo-1", vehiculo: "v1" }, { ruta: "demo-2", vehiculo: "v2" },
-        { ruta: "demo-3", vehiculo: "v3" }, { ruta: "demo-4", vehiculo: "v4" }
-      ]
-    };
-    // Incidentes de ejemplo: aparecen a una fracción del recorrido (se ubican cuando la ruta ya está trazada).
-    const incidentes = [
-      { id: "demo-i1", ruta_id: "demo-1", tipo: "accidente", severidad: "alta", descripcion: "Colisión leve en el bulevar (demo)", fraccion: 0.45 },
-      { id: "demo-i2", ruta_id: "demo-3", tipo: "desvio_ruta", severidad: "baja", descripcion: "Desvío menor de la ruta planificada (demo)", fraccion: 0.3 }
-    ];
-    return { rutas, disp, incidentes, ahora };
-  }
-
   /* ---------- montaje ---------- */
 
   function mount(container) {
@@ -212,7 +237,6 @@
       sinAsignar: 0,
       seleccion: null, seguir: false, filtro: "todos", busca: "",
       mult: 1, relojSim: Date.now(), relojReal: Date.now(),
-      demo: false, demoDatos: null,
       cargando: true, errorDatos: "", fallosIncidentes: 0, errorIncidentes: "",
       timers: [], iniciado: false, visible: false, geoCola: [], geoActivas: 0
     };
@@ -231,7 +255,6 @@
           title: m === 1 ? "Tiempo real" : "Avanza el reloj " + m + " veces más rápido (solo para revisar el recorrido)",
           onclick: () => cambiarVelocidad(m)
         }, m + "x")));
-      el.btnDemo = h("button", { type: "button", class: "mm-btn", onclick: alternarDemo }, "Ver demostración");
       el.btnFlota = h("button", { type: "button", class: "mm-btn", onclick: enfocarFlota }, "Enfocar flota");
       el.notas = h("div", { class: "mm-notas" });
       el.busca = h("input", { type: "search", maxlength: "60", placeholder: "Buscar conductor, placa o ruta…", "aria-label": "Buscar unidad", autocomplete: "off",
@@ -253,7 +276,7 @@
               h("span", { class: "mm-stat mm-s-ruta" }, h("i", {}), el.stats.ruta, " en ruta"),
               h("span", { class: "mm-stat mm-s-inc" }, h("i", {}), el.stats.incidente, " con incidente"),
               h("span", { class: "mm-stat mm-s-otras" }, h("i", {}), el.stats.otras, " otras")),
-            el.velocidad, el.btnFlota, el.btnDemo)),
+            el.velocidad, el.btnFlota)),
         el.notas,
         h("div", { class: "mm-body" },
           h("aside", { class: "mm-side" }, h("div", { class: "mm-filtros" }, el.busca, el.chips), el.lista),
@@ -275,6 +298,7 @@
         vehiculo: h("strong", {}, "—"), monto: h("strong", {}, "—"), riesgo: h("strong", {}, "—"),
         velocidad: h("strong", {}, "—"), llegada: h("strong", {}, "—"), avance: h("strong", {}, "—"),
         barra: h("span", {}), trayecto: h("small", { class: "mm-d-trayecto" }, "—"),
+        licencia: h("strong", {}, "—"), custodios: h("strong", {}, "—"), paradas: h("strong", {}, "—"),
         incidentes: h("div", { class: "mm-d-inc" }),
         seguir: h("button", { type: "button", class: "mm-btn mm-btn-prim", onclick: () => { S.seguir = true; const u = actual(); if (u && u.pos) S.map.panTo([u.pos.lat, u.pos.lng]); } }, "Seguir unidad"),
         ocultar: h("button", { type: "button", class: "mm-btn", onclick: () => { S.capaRuta.clearLayers(); } }, "Ocultar ruta")
@@ -285,7 +309,8 @@
           h("button", { type: "button", class: "mm-x", "aria-label": "Cerrar detalle", onclick: cerrarDetalle }, "×")),
         h("div", { class: "mm-d-grid" },
           campo("Vehículo", d.vehiculo), campo("Monto que lleva", d.monto), campo("Riesgo", d.riesgo),
-          campo("Velocidad est.", d.velocidad), campo("Llegada est.", d.llegada), campo("Avance", d.avance)),
+          campo("Velocidad est.", d.velocidad), campo("Llegada est.", d.llegada), campo("Avance", d.avance),
+          campo("Licencia vence", d.licencia), campo("Custodios", d.custodios), campo("Paradas", d.paradas)),
         h("div", { class: "mm-bar" }, d.barra),
         d.trayecto, d.incidentes,
         h("div", { class: "mm-d-acciones" }, d.seguir, d.ocultar));
@@ -300,6 +325,9 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19
       }).addTo(S.map);
       L.control.zoom({ position: "topright" }).addTo(S.map);
+      // La ruta va en su propio pane: sobre las calles y las zonas, debajo de los marcadores (overlay 400, markers 600).
+      S.map.createPane("mmRuta");
+      S.map.getPane("mmRuta").style.zIndex = 450;
       S.capaRuta = L.layerGroup().addTo(S.map);
       S.capaIncidentes = L.layerGroup().addTo(S.map);
       S.capaUnidades = L.layerGroup().addTo(S.map);
@@ -330,8 +358,9 @@
     }
 
     /* --- unidades --- */
+    const puntosDe = u => [u.origen].concat(u.paradas || [], [u.destino]);
     function claveGeo(u) {
-      return [u.origen.lat, u.origen.lng, u.destino.lat, u.destino.lng].join(",");
+      return puntosDe(u).map(p => p.lat + "," + p.lng).join(";");
     }
 
     function aplicarUnidades(nuevas) {
@@ -372,23 +401,23 @@
         if (!u || u.geo) continue;
         const clave = claveGeo(u);
         S.geoActivas += 1;
-        obtenerRuta(u.origen, u.destino).then(geo => {
+        obtenerRuta(puntosDe(u)).then(geo => {
           const actual = S.unidades.get(u.id);
           if (actual && claveGeo(actual) === clave) {
             actual.geo = Object.assign(geo, { acc: acumulado(geo.coords) });
-            if (S.seleccion === actual.id) dibujarRuta(actual);
+            if (S.seleccion === actual.id) { dibujarRuta(actual); if (!actual.ajustado) ajustarVista(actual); }
           }
         }).finally(() => {
           S.geoActivas -= 1;
           correrColaGeo();
-          if (S.demo) cargarIncidentes();   // los incidentes de la demo necesitan la ruta ya trazada
           tick();
         });
       }
     }
 
-    async function obtenerRuta(origen, destino) {
-      const url = OSRM_URL + origen.lng + "," + origen.lat + ";" + destino.lng + "," + destino.lat + "?overview=full&geometries=geojson";
+    // Origen → pedidos → destino por calles (OSRM). Sin servicio: línea recta entre los puntos, marcada como aproximada.
+    async function obtenerRuta(puntos) {
+      const url = OSRM_URL + puntos.map(p => p.lng + "," + p.lat).join(";") + "?overview=full&geometries=geojson";
       const control = new global.AbortController();
       const plazo = global.setTimeout(() => control.abort(), 9000);
       try {
@@ -399,8 +428,9 @@
         if (!ruta || !ruta.geometry || ruta.geometry.coordinates.length < 2) throw new Error("Sin ruta");
         return { coords: ruta.geometry.coordinates.map(c => [c[1], c[0]]), duracionMs: ruta.duration * 1000, distanciaM: ruta.distance, aprox: false };
       } catch (error) {
-        const recta = [[origen.lat, origen.lng], [destino.lat, destino.lng]];
-        const metros = distancia(recta[0], recta[1]) * 1.3;
+        const recta = puntos.map(p => [p.lat, p.lng]);
+        const acc = acumulado(recta);
+        const metros = acc[acc.length - 1] * 1.3;
         return { coords: recta, duracionMs: (metros / (VELOCIDAD_RESPALDO_KMH / 3.6)) * 1000, distanciaM: metros, aprox: true };
       } finally {
         global.clearTimeout(plazo);
@@ -419,6 +449,13 @@
 
     function colorDe(info) {
       return info.inc ? SEV[info.inc.severidad].color : ESTADO[info.estado].color;
+    }
+
+    // Línea de la ruta: incidente si lo hay; si no, nivel de riesgo; si no, el color del estado.
+    function colorRuta(u) {
+      const info = u.info || estadoDe(u);
+      if (info.inc) return SEV[info.inc.severidad].color;
+      return COLOR_RIESGO[String(u.riesgo || "").toLowerCase()] || ESTADO[info.estado].color;
     }
 
     function textoEstado(info) {
@@ -465,7 +502,8 @@
       const info = u.info || estadoDe(u);
       if (S.filtro !== "todos" && grupo(u, info.estado) !== S.filtro) return false;
       if (!S.busca) return true;
-      return [u.conductor, u.nombre, u.vehiculo && u.vehiculo.placa, u.vehiculo && u.vehiculo.tipo].filter(Boolean).join(" ").toLowerCase().includes(S.busca);
+      return [u.conductor, u.nombre, u.vehiculo && u.vehiculo.placa, u.vehiculo && u.vehiculo.tipo]
+        .concat((u.custodios || []).map(c => c.nombre)).filter(Boolean).join(" ").toLowerCase().includes(S.busca);
     }
 
     function pintarLista() {
@@ -495,8 +533,7 @@
       if (hayUnidades) return h("p", { class: "mm-empty" }, "Ninguna unidad coincide con el filtro.");
       return h("div", { class: "mm-empty" },
         h("p", {}, "No hay unidades en ruta ahora mismo."),
-        h("small", {}, "Aparecen aquí las rutas de hoy con viaje (origen y destino) que ya tienen conductor y vehículo asignados."),
-        h("button", { type: "button", class: "mm-btn", onclick: alternarDemo }, "Ver demostración"));
+        h("small", {}, "Aparecen aquí las rutas de hoy que ya tienen conductor y vehículo asignados (se asignan en Empleados y Vehículos)."));
     }
 
     function tarjeta(u) {
@@ -508,7 +545,8 @@
       };
       ref.raiz.append(
         h("div", { class: "mm-card-top" }, h("strong", {}, u.vehiculo ? u.vehiculo.placa : "Sin vehículo"), ref.estado, ref.vel),
-        h("div", { class: "mm-card-driver" }, "👤 ", u.conductor),
+        h("div", { class: "mm-card-driver" }, "👤 ", u.conductor,
+          u.custodios && u.custodios.length ? h("small", { class: "mm-card-custodios" }, " · 🛡 " + u.custodios.length + (u.custodios.length === 1 ? " custodio" : " custodios")) : null),
         h("div", { class: "mm-card-meta" }, h("span", {}, "Monto " + montoTexto(u.monto)), h("span", { class: "mm-card-ruta" }, u.nombre)),
         h("div", { class: "mm-bar" }, ref.barra));
       if (S.seleccion === u.id) ref.raiz.classList.add("mm-sel");
@@ -532,13 +570,28 @@
       const u = S.unidades.get(id);
       if (!u) return;
       S.seleccion = id;
-      S.seguir = true;
       el.detalle.classList.remove("hidden");
       el.lista.querySelectorAll(".mm-card").forEach(c => c.classList.remove("mm-sel"));
       if (u.tarjeta) u.tarjeta.raiz.classList.add("mm-sel");
-      if (u.pos && volar) S.map.flyTo([u.pos.lat, u.pos.lng], 15, { duration: 1 });
+      S.seguir = false;              // se ve la ruta completa; «Seguir unidad» vuelve a centrar el vehículo
+      u.ajustado = false;
       dibujarRuta(u);
       tick();
+      ajustarVista(u, volar);
+    }
+
+    // Encuadra la ruta completa (o sus puntos, si aún no hay trazado) junto con la posición del vehículo.
+    function ajustarVista(u, animar) {
+      if (!S.map) return;
+      const puntos = (u.geo ? u.geo.coords : puntosDe(u).map(p => [p.lat, p.lng])).slice();
+      if (u.pos) puntos.push([u.pos.lat, u.pos.lng]);
+      if (!puntos.length) return;
+      const caja = global.L.latLngBounds(puntos);
+      if (!caja.isValid()) return;
+      u.ajustado = Boolean(u.geo);
+      const relleno = { paddingTopLeft: [40, 40], paddingBottomRight: [40, el.detalle && !el.detalle.classList.contains("hidden") ? 200 : 40], maxZoom: 16 };
+      if (animar) S.map.flyToBounds(caja, Object.assign({ duration: 0.8 }, relleno));
+      else S.map.fitBounds(caja, relleno);
     }
 
     function cerrarDetalle() {
@@ -552,21 +605,31 @@
     function dibujarRuta(u) {
       const L = global.L;
       S.capaRuta.clearLayers();
-      if (!u.geo) return;
+      const color = colorRuta(u);
+      const coords = u.geo ? u.geo.coords : puntosDe(u).map(p => [p.lat, p.lng]);
+      const aprox = !u.geo || u.geo.aprox;
+      const pane = "mmRuta";
       u.capas = {
-        total: L.polyline(u.geo.coords, { color: "#5b8cff", weight: 5, opacity: 0.3, dashArray: u.geo.aprox ? "6 8" : null }).addTo(S.capaRuta),
-        hecho: L.polyline([], { color: "#5b8cff", weight: 5, opacity: 0.95 }).addTo(S.capaRuta)
+        borde: L.polyline(coords, { pane, color: "#0b0d10", weight: 10, opacity: 0.55, interactive: false }).addTo(S.capaRuta),
+        total: L.polyline(coords, { pane, color, weight: 6, opacity: 0.35, dashArray: aprox ? "6 8" : null }).addTo(S.capaRuta),
+        hecho: L.polyline([], { pane, color, weight: 6, opacity: 0.95 }).addTo(S.capaRuta)
       };
-      const punto = (lugar, etiqueta, color) => L.circleMarker([lugar.lat, lugar.lng], { radius: 7, color: "#fff", weight: 2, fillColor: color, fillOpacity: 1 })
+      const punto = (lugar, etiqueta, relleno) => L.circleMarker([lugar.lat, lugar.lng], { pane, radius: 7, color: "#fff", weight: 2, fillColor: relleno, fillOpacity: 1 })
         .bindTooltip(h("div", {}, h("strong", {}, etiqueta), h("span", {}, lugar.texto || "")), { className: "mm-tip" }).addTo(S.capaRuta);
       punto(u.origen, "Origen", "#3fb27f");
+      (u.paradas || []).forEach((p, i) => {
+        L.marker([p.lat, p.lng], {
+          icon: L.divIcon({ className: "mm-parada-wrap", html: h("span", { class: "mm-parada", style: "--c:" + color }, String(i + 1)), iconSize: [22, 22], iconAnchor: [11, 11] }),
+          keyboard: false, zIndexOffset: 100
+        }).bindTooltip(h("div", {}, h("strong", {}, "Parada " + (i + 1)), h("span", {}, p.texto || "")), { className: "mm-tip" }).addTo(S.capaRuta);
+      });
       punto(u.destino, "Destino", "#e5484d");
       actualizarRecorrido(u);
     }
 
     function actualizarRecorrido(u) {
       if (!u.capas || !u.geo || !u.pos) return;
-      const color = colorDe(u.info);
+      const color = colorRuta(u);
       const hecho = u.geo.coords.slice(0, u.pos.idx + 1);
       hecho.push([u.pos.lat, u.pos.lng]);
       u.capas.hecho.setLatLngs(hecho);
@@ -581,7 +644,10 @@
       el.detalle.style.setProperty("--c", color);
       d.placa.textContent = u.vehiculo ? u.vehiculo.placa : "Sin vehículo";
       d.estado.textContent = textoEstado(info);
-      d.conductor.textContent = u.conductor;
+      d.conductor.textContent = u.conductor + (u.conductorInfo && u.conductorInfo.codigo ? " · " + u.conductorInfo.codigo : "");
+      d.licencia.textContent = u.conductorInfo && u.conductorInfo.licencia ? new Date(String(u.conductorInfo.licencia).slice(0, 10) + "T12:00:00").toLocaleDateString("es-SV") : "—";
+      d.custodios.textContent = u.custodios && u.custodios.length ? u.custodios.map(c => c.nombre).join(", ") : "Sin custodios";
+      d.paradas.textContent = String((u.paradas || []).length + 1);
       d.ruta.textContent = u.nombre;
       d.vehiculo.textContent = u.vehiculo ? u.vehiculo.tipo : "—";
       d.monto.textContent = montoTexto(u.monto);
@@ -633,28 +699,35 @@
     /* --- datos --- */
     function pintarNotas() {
       const notas = [];
-      if (S.demo) notas.push(["mm-nota-demo", "MODO DEMOSTRACIÓN · datos de ejemplo, no se guardan. Usa 10x o 60x para ver el recorrido completo."]);
       if (S.errorDatos) notas.push(["mm-nota-error", S.errorDatos, "Reintentar", () => cargarDatos(true)]);
       if (S.errorIncidentes) notas.push(["mm-nota-warn", S.errorIncidentes, "Reintentar", () => cargarIncidentes(true)]);
-      if (S.sinAsignar && !S.demo) notas.push(["mm-nota-info", S.sinAsignar + (S.sinAsignar === 1 ? " ruta con viaje sin conductor asignado" : " rutas con viaje sin conductor asignado") + " (se asigna en Empleados y Vehículos)."]);
+      if (S.sinAsignar) notas.push(["mm-nota-info", S.sinAsignar + (S.sinAsignar === 1 ? " ruta de hoy sin conductor asignado" : " rutas de hoy sin conductor asignado") + " (se asigna en Empleados y Vehículos)."]);
       if (S.mult > 1) notas.push(["mm-nota-info", "Reloj acelerado ×" + S.mult + ": las posiciones no corresponden a la hora real."]);
       el.notas.replaceChildren(...notas.map(([clase, texto, accion, fn]) => h("div", { class: "mm-nota " + clase, role: "status" },
         h("span", {}, texto), accion ? h("button", { type: "button", class: "mm-btn", onclick: fn }, accion) : null)));
     }
 
     async function cargarDatos(manual) {
-      if (S.demo) return;
       if (!global.Api || !global.Api.session()) return;
       if (manual) { S.cargando = true; pintarLista(); }
       try {
-        const [rutas, disp] = await Promise.all([global.Api.post("/rutas/listar"), global.Api.post("/disponibilidad/listar")]);
-        if (S.demo) return;
-        const armado = armarUnidades(rutas && rutas.rutas, disp, S.incidentes);
+        const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const [rutas, disp, entregas] = await Promise.all([
+          global.Api.post("/rutas/listar"),
+          global.Api.post("/disponibilidad/listar"),
+          global.Api.post("/entregas/listar", { fecha: hoy }).catch(() => null)   // sin pedidos se traza origen → destino
+        ]);
+        const armado = armarUnidades(rutas && rutas.rutas, disp, S.incidentes, entregas && entregas.entregas);
         S.sinAsignar = armado.sinAsignar;
+        // Conducción en vivo recibe las mismas unidades reales (conductor, vehículo y posición de salida).
+        if (global.ConduccionVivo && typeof global.ConduccionVivo.definirRutas === "function") {
+          global.ConduccionVivo.definirRutas(armado.unidades.map(u => ({
+            id: u.id, nombre: u.nombre, conductor: u.conductor, vehiculo: u.vehiculo ? u.vehiculo.placa : "—", lat: u.origen.lat, lng: u.origen.lng
+          })));
+        }
         S.errorDatos = "";
         aplicarUnidades(armado.unidades);
       } catch (error) {
-        if (S.demo) return;
         S.errorDatos = (error && error.message) || "No se pudieron cargar las rutas y los vehículos";
       }
       S.cargando = false;
@@ -664,26 +737,13 @@
     }
 
     async function cargarIncidentes(manual) {
-      if (S.demo) {
-        const items = [];
-        S.demoDatos.incidentes.forEach(spec => {
-          const u = S.unidades.get(spec.ruta_id);
-          if (!u || !u.geo) return;
-          const p = puntoEn(u.geo.coords, u.geo.acc, spec.fraccion);
-          items.push(Object.assign({}, spec, { lat: p.lat, lng: p.lng, ruta: u.nombre, conductor: u.conductor }));
-        });
-        aplicarIncidentes(items);
-        return;
-      }
       if (!global.Api || !global.Api.session()) return;
       try {
         const datos = await global.Api.post("/incidentes/listar");
-        if (S.demo) return;
         S.fallosIncidentes = 0;
         S.errorIncidentes = "";
         aplicarIncidentes(Array.isArray(datos && datos.items) ? datos.items : []);
       } catch (error) {
-        if (S.demo) return;
         S.fallosIncidentes += 1;
         // Nunca se pinta «sin incidentes» si en realidad no hay conexión: se conserva lo último y se avisa.
         if (manual || S.fallosIncidentes >= FALLOS_PARA_AVISAR) S.errorIncidentes = "No se pueden recibir alertas de incidentes en tiempo real";
@@ -709,43 +769,6 @@
       S.map.fitBounds(global.L.latLngBounds(puntos).pad(0.25), { maxZoom: 15 });
     }
 
-    function reiniciarUnidades() {
-      cerrarDetalle();
-      S.unidades.forEach(u => { if (u.marcador) S.capaUnidades.removeLayer(u.marcador); });
-      S.unidades.clear();
-      S.incidentes = [];
-      S.firmaIncidentes = "";
-      S.capaIncidentes.clearLayers();
-      S.geoCola = [];
-    }
-
-    function alternarDemo() {
-      reiniciarUnidades();
-      cambiarVelocidad(1);
-      if (!S.demo) {
-        S.demo = true;
-        S.demoDatos = demoDatos();
-        el.btnDemo.textContent = "Salir de la demo";
-        const armado = armarUnidades(S.demoDatos.rutas, S.demoDatos.disp, []);
-        S.sinAsignar = 0;
-        S.errorDatos = S.errorIncidentes = "";
-        S.cargando = false;
-        aplicarUnidades(armado.unidades);
-        pintarNotas();
-        pintarLista();
-        tick();
-        enfocarFlota();
-      } else {
-        S.demo = false;
-        S.demoDatos = null;
-        el.btnDemo.textContent = "Ver demostración";
-        S.cargando = true;
-        pintarNotas();
-        pintarLista();
-        cargarDatos(true).then(() => cargarIncidentes());
-      }
-    }
-
     /* --- ciclo de vida: solo trabaja mientras el panel se ve --- */
     function detener() {
       S.timers.forEach(t => global.clearInterval(t));
@@ -756,8 +779,8 @@
       if (S.timers.length) return;
       S.timers = [
         global.setInterval(tick, TICK_MS),
-        global.setInterval(() => { if (!S.demo) cargarDatos(); }, DATOS_MS),
-        global.setInterval(() => { if (!S.demo) cargarIncidentes(); }, INCIDENTES_MS)
+        global.setInterval(cargarDatos, DATOS_MS),
+        global.setInterval(cargarIncidentes, INCIDENTES_MS)
       ];
     }
 
@@ -803,7 +826,7 @@
   global.MapaMonitoreo = {
     mount,
     instancia: null,
-    util: { distancia, acumulado, puntoEn, horaASalida, avance, peorIncidente, armarUnidades, montoTexto, grupo }
+    util: { distancia, acumulado, puntoEn, horaASalida, avance, peorIncidente, armarUnidades, paradasDeRuta, lugarValido, montoTexto, grupo }
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", autoMontar);

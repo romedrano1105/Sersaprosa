@@ -126,6 +126,16 @@ class FuentesQueFallan(unittest.TestCase):
         self.assertEqual(len(s.avisos), 1)
         self.assertIn("incidentes", s.avisos[0])
 
+    def test_el_aviso_dice_que_tabla_falta(self):
+        class APIError(Exception):
+            code, message = "PGRST205", "Could not find the table 'public.alertas_seguridad' in the schema cache"
+        self.assertIn("falta la tabla", h.causa_error(APIError()))
+        self.assertIn("alertas_seguridad", h.causa_error(APIError()))
+        class SinPermiso(Exception):
+            code, message = "42501", "permission denied for table alertas_seguridad"
+        self.assertTrue(h.causa_error(SinPermiso()).startswith("sin permiso"))
+        self.assertEqual(h.causa_error(TimeoutError()), "TimeoutError")
+
 
 try:
     from backend.app import database
