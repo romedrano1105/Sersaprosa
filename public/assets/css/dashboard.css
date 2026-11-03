@@ -62,13 +62,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Pasos de la columna izquierda: sin tarjetas dentro de tarjetas, separados por una línea. */
 .route-step { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .route-panel > .route-step:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
-.route-panel .ord-picker, .route-panel .mr-card { margin: 0; padding: 0; background: none; border: 0; border-radius: 0; }
-.route-custom summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none; font: 600 18px "Barlow Condensed", sans-serif; }
-.route-custom summary::-webkit-details-marker { display: none; }
-.route-custom summary::before { content: "▸"; color: var(--route); font-size: 14px; }
-.route-custom[open] summary::before { content: "▾"; }
-.route-custom summary small { color: var(--faint); font: 400 11px "Inter", sans-serif; }
-.route-custom .mr-card { margin-top: 12px; }
 .map-section { min-height: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .map-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .map-card-head > div > span { color: var(--route); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
@@ -91,8 +84,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .origin-copy strong { overflow: hidden; margin-top: 2px; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .icon-button { width: 34px; height: 34px; flex: none; border-radius: 5px; color: var(--muted); font-size: 19px; }
 .privacy-note { margin: 8px 0 16px; color: var(--faint); font-size: 10px; line-height: 1.4; }
-.tracking-button { width: 100%; }
-.tracking-status { margin: 8px 0 14px; color: var(--muted); font-size: 11px; }
+/* Botón dentro de un aviso (p. ej. «Ubicar pedidos por su dirección») */
+.inline-action { margin-left: 4px; padding: 3px 10px; color: var(--text); font-size: 12px; font-weight: 600; background: var(--panel-raised); border: 1px solid #ffffff4d; border-radius: 4px; cursor: pointer; }
+.inline-action:hover:not(:disabled) { border-color: #fff; }
+.inline-action:disabled { opacity: .55; cursor: default; }
 .notice { margin: 12px 0; padding: 10px 12px; border-left: 3px solid var(--mid); background: #e7b75b12; color: var(--muted); font-size: 12px; }
 .notice.hidden { display: none; }
 .stops { margin: 18px 0 22px 13px; padding: 0; list-style: none; border-left: 2px solid #3d4047; }
@@ -162,7 +157,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ev .ev-msg-err, .as .as-error { background: #e5484d12; border-color: var(--high); color: #ff9ca1; }
 .ev .ev-msg-warn, .as .as-warning { background: #f5a52412; border-color: var(--mid); color: var(--mid); }
 
-/* Planificador de ruta multi-paradas (routePlanner.js) */
 /* Guardar la ruta trazada */
 /* Guardar la ruta: barra bajo el encabezado, visible solo en borrador */
 #saveRoute.save-route { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin: 0 0 16px; padding: 12px 16px; background: var(--panel); border: 1px solid #5b8cff55; border-radius: 8px; }
@@ -180,44 +174,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .save-route-row .primary-button { min-height: 42px; padding: 8px 16px; }
 .save-route-row .primary-button:disabled { opacity: .6; cursor: wait; }
 
-.mr-card { margin: 0 0 20px; padding: 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; }
-.mr-heading h3 { margin: 2px 0 14px; font: 600 19px "Barlow Condensed", sans-serif; }
-.mr-list { position: relative; margin: 0; padding: 0; list-style: none; }
-.mr-stops:empty { display: none; }
-.mr-row { position: relative; display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 0; border-radius: 8px; }
-.mr-row::before { position: absolute; top: 100%; left: 14px; width: 2px; height: 8px; content: ""; background: #344b5c; }
-.mr-row--stop::before { left: 56px; } /* alinea con el marcador, tras el asa de arrastre */
-.mr-row--destination::before { display: none; }
-.mr-row.is-dragging { background: var(--panel-raised); box-shadow: 0 6px 18px #0006; outline: 1px solid var(--route); }
-.mr-marker { position: relative; display: grid; flex: none; place-items: center; width: 30px; height: 30px; color: var(--brand); }
-.mr-marker--stop { color: var(--route); }
-.mr-marker--destination { color: var(--high); }
-.mr-marker .mr-icon { width: 22px; height: 22px; }
-.mr-field { flex: 1; min-width: 0; }
-.mr-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.mr-input { display: block; width: 100%; min-height: 44px; padding: 10px 12px; color: var(--text); background: #1f2124; border: 1px solid var(--line); border-radius: 7px; font-size: 14px; }
-.mr-input::placeholder { color: var(--faint); }
-.mr-input:hover { border-color: #4a4e56; }
-.mr-handle, .mr-remove { display: grid; flex: none; place-items: center; width: 34px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--faint); cursor: pointer; }
-.mr-handle { cursor: grab; touch-action: none; }
-.mr-handle:active { cursor: grabbing; }
-.mr-handle:hover, .mr-handle:focus-visible { color: var(--text); }
-.mr-remove { width: 40px; border-radius: 7px; }
-.mr-remove:hover, .mr-remove:focus-visible { color: var(--high); background: #e66b6118; }
-.mr-handle .mr-icon, .mr-remove .mr-icon { width: 20px; height: 20px; }
-.mr-add, .mr-calculate { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 14px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.mr-add { margin-top: 4px; border: 1px dashed #4a4e56; background: transparent; color: var(--route); }
-.mr-add:hover:not(:disabled) { border-style: solid; border-color: var(--route); background: #5b8cff12; }
-.mr-add:disabled { opacity: .5; cursor: not-allowed; }
-.mr-calculate { border: 0; background: var(--route); color: #1b2133; }
-.mr-calculate:hover:not(:disabled) { filter: brightness(1.08); }
-.mr-calculate:disabled { opacity: .7; cursor: wait; }
-.mr-add .mr-icon, .mr-calculate .mr-icon { width: 18px; height: 18px; }
-.mr-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
-.mr-reset { padding: 6px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-.mr-reset:hover:not(:disabled) { color: var(--text); }
-.mr-message { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--high); background: #e66b6112; color: #f0a49d; font-size: 12px; }
-.mr-card.is-busy .mr-input { opacity: .7; }
 @media (max-width: 1100px) {
   .topbar { align-items: flex-start; }
   .top-actions { flex-wrap: wrap; }
@@ -240,8 +196,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .top-actions { gap: 10px; }
   .last-updated { flex: 1; }
   .refresh-button { width: 100%; }
-  .mr-card { padding: 12px; }
-  .mr-input { font-size: 16px; }
   .map-frame { flex: none; min-height: 42vh; height: 42vh; }
   .map-caption { right: 7px; bottom: 7px; left: 7px; align-items: flex-start; flex-direction: column; font-size: 9px; }
   .login-card { padding: 28px 22px; }

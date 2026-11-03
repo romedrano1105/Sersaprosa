@@ -5,7 +5,7 @@ from fastapi import APIRouter, Header, HTTPException
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
-from . import database, rpc_utils
+from . import database, rpc_utils, rutas_logica
 from .autenticacion import usuario_desde_autorizacion
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,13 @@ def _coordinador(authorization: str | None):
         raise HTTPException(403, "Esta sección es solo para el coordinador de rutas.")
     nombre = (usuario.user_metadata or {}).get("name") or usuario.email or "Usuario"
     return database.cliente_autenticado(token), nombre
+
+
+def _rutas_de_hoy(cliente) -> list[dict]:
+    """id, nombre, conductor y estado de la propuesta de las rutas de hoy. Lee con el token del coordinador (RLS)."""
+    hoy = rutas_logica.hoy_el_salvador().isoformat()
+    return cliente.table("rutas_planificadas").select("id,nombre,conductor,estado_propuesta") \
+        .eq("fecha", hoy).execute().data or []
 
 
 class Asignacion(BaseModel):
@@ -52,6 +59,17 @@ def listar(authorization: str | None = Header(default=None)):
         "guards": len(result["guards"]),
         "vehicles": len(result["vehicles"]),
     }
+    # Coherencia con las rutas generadas: las rechazadas no se ofrecen y se avisa de los estados fantasma
+    # (conductor guardado sin asignación vigente), que desasignar_ruta_operativa libera.
+    result["inconsistencias"] = []
+    try:
+        conciliado = rutas_logica.conciliar_asignaciones(
+            _rutas_de_hoy(cliente), [a.get("ruta") for a in result["assignments"]])
+        rechazadas = set(conciliado["rechazadas"])
+        result["routes"] = [r for r in result["routes"] if str(r.get("id")) not in rechazadas]
+        result["inconsistencias"] = conciliado["fantasmas"]
+    except Exception:  # sin la columna o sin permiso de lectura: se devuelve lo de la función SQL tal cual
+        logger.warning("No se pudo conciliar las rutas de hoy con las asignaciones.", exc_info=True)
     return result
 
 
@@ -117,4 +135,5 @@ def desasignar(req: Desasignacion, authorization: str | None = Header(default=No
         ) from error
     if not isinstance(result, dict) or not result.get("ruta"):
         raise HTTPException(502, "El servidor no confirmó la desasignación.")
-    return {"ruta": result["ruta"], "desasignada": True}
+    # reparada = la ruta tenía conductor guardado sin asignación vigente y solo se liberó.
+    return {"ruta": result["ruta"], "desasignada": True, "reparada": bool(result.get("reparada"))}

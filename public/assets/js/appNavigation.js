@@ -5,7 +5,6 @@
   const LOGIN_URL = "/PaginaPrincipal.html";
   const LINKS = [
     { id: "routes", label: "Tracking de rutas", detail: "Viajes, ruta óptima y seguimiento", icon: "↗" },
-    { id: "orders", label: "Pedidos en curso", detail: "Pendientes y en proceso", icon: "▤" },
     { id: "monitor", label: "Monitoreo en Vivo", detail: "Eventos y alertas", icon: "◎" },
     { id: "metrics", label: "Dashboard de métricas", detail: "Eficiencia y mitigación", icon: "▥" },
     { id: "daily", label: "Empleados y Vehículos", detail: "Gestión diaria", icon: "♙" },
@@ -14,7 +13,6 @@
   ];
   const SECTION_HASHES = {
     routes: "",
-    orders: "#pedidos",
     monitor: "#monitoreo",
     metrics: "#metricas",
     daily: "#personal",
@@ -46,7 +44,6 @@
 function activeSection() {
     if (global.location.pathname.endsWith("/riesgo_rutas.html")) return "risk";
     return global.location.hash === "#monitoreo" ? "monitor" :
-      global.location.hash === "#pedidos" ? "orders" :
       global.location.hash === "#metricas" ? "metrics" :
       global.location.hash === "#riesgo" ? "risk" :
       global.location.hash === "#reportes" ? "reports" :
@@ -135,7 +132,7 @@ function activeSection() {
         }
         // Estamos fuera de la página principal: volver a ella
         if (global.location.pathname.endsWith("/riesgo_rutas.html")) {
-          const hashes = { routes: "", orders: "#pedidos", monitor: "#monitoreo", metrics: "#metricas", daily: "#personal", risk: "#riesgo", reports: "#reportes" };
+          const hashes = { routes: "", monitor: "#monitoreo", metrics: "#metricas", daily: "#personal", risk: "#riesgo", reports: "#reportes" };
           global.location.assign(LOGIN_URL + (hashes[item.id] || ""));
           return;
         }

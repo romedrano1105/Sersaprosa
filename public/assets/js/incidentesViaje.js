@@ -2,7 +2,8 @@
  *
  * Uso (lo hace dashboard.js):
  *   IncidentesViaje.iniciar({ onCount: n => ... })   // arranca la consulta en segundo plano y las notificaciones
- *   IncidentesViaje.mount(contenedor)                // dibuja el panel de alertas activas
+ *   IncidentesViaje.iniciar({ onItems: (items, estado) => ... })  // lo usa el panel unificado alertasIncidentes.js
+ *   IncidentesViaje.mount(contenedor)                // panel propio (ya no se usa en la página)
  *
  * Tiempo real: el navegador consulta POST /incidentes/listar cada POLL_MS (4 s; el máximo acordado
  * es 10 s). Como cada consulta trae TODAS las alertas activas, al volver la conexión se recuperan
@@ -72,7 +73,7 @@
 
   const state = {
     items: [], conocidas: new Set(), cargado: false, fallos: 0, sinConexion: false,
-    consultando: false, timer: null, iniciado: false, onCount: null, panel: null,
+    consultando: false, timer: null, iniciado: false, onCount: null, onItems: null, panel: null,
     modal: null, mapa: null, toasts: null
   };
 
@@ -107,6 +108,7 @@
     }
     state.consultando = false;
     renderPanel();
+    if (state.onItems) state.onItems(state.items.slice(), { cargado: state.cargado, sinConexion: state.sinConexion });
     programar();
   }
 
@@ -267,6 +269,7 @@
 
   function iniciar(opciones) {
     if (opciones && opciones.onCount) state.onCount = opciones.onCount;   // vale aunque ya haya arrancado
+    if (opciones && opciones.onItems) state.onItems = opciones.onItems;   // panel unificado (alertasIncidentes.js)
     if (state.iniciado) return;
     state.iniciado = true;
     document.addEventListener("visibilitychange", () => { if (!document.hidden) consultar(); });
@@ -281,5 +284,5 @@
     return { reload: consultar };
   }
 
-  global.IncidentesViaje = { iniciar, mount, util: { ordenar, nuevasDesde, textoRecuperadas, mostrarVacio, POLL_MS, FALLOS_PARA_AVISAR, MSG_SIN_TIEMPO_REAL } };
+  global.IncidentesViaje = { iniciar, mount, abrir: abrirDetalle, consultar, util: { ordenar, nuevasDesde, textoRecuperadas, mostrarVacio, POLL_MS, FALLOS_PARA_AVISAR, MSG_SIN_TIEMPO_REAL } };
 })(window);

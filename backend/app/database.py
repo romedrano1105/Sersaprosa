@@ -8,6 +8,15 @@ from jwt import PyJWKClient
 from jwt.exceptions import PyJWKClientConnectionError, PyJWKClientError
 from supabase import create_client
 
+# En local se pueden poner las claves en un archivo .env (ver .env.example). En Render se configuran en
+# «Environment». python-dotenv es opcional: si no está instalado, se usan solo las variables del sistema.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+
 def normalizar_url_supabase(valor: str) -> str:
     """La API vive en https://<ref>.supabase.co. Si pegaron la URL del panel
     (https://supabase.com/dashboard/project/<ref>/...) se deduce la correcta del <ref>."""
@@ -147,3 +156,53 @@ def cliente_servicio():
             if _service_client is None:
                 _service_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     return _service_client
+
+
+# --- Diagnóstico de la conexión (GET /salud). Nunca devuelve claves ni datos de las tablas. ---
+TABLAS_REQUERIDAS = {
+    "empleados": "codigo,email",
+    "entregas": "id,direccion,lat,lng",
+    "rutas_planificadas": "id,nombre,fecha",
+    "alertas_seguridad": "id,lat,lng",
+    "eventos_especiales": "id,lat,lng",
+}
+
+
+def clasificar_error(error: BaseException) -> str:
+    texto = f"{getattr(error, 'code', '')} {error}".lower()
+    if any(c in texto for c in ("pgrst204", "42703", "column")):
+        return "falta una columna (aplica los scripts de backend/database)"
+    if any(c in texto for c in ("pgrst205", "42p01", "does not exist", "could not find the table")):
+        return "falta la tabla"
+    if any(c in texto for c in ("401", "403", "jwt", "permission", "apikey", "invalid api key")):
+        return "clave inválida o sin permiso"
+    return f"sin conexión ({type(error).__name__})"
+
+
+def diagnostico(fabrica_cliente=None) -> dict:
+    """Variables configuradas (sí/no), formato de la URL y si cada tabla responde."""
+    url_ok = bool(re.fullmatch(r"https://[a-z0-9]{15,25}\.supabase\.co", SUPABASE_URL or ""))
+    resultado = {
+        "variables": {
+            "SUPABASE_URL": bool(os.getenv("SUPABASE_URL")),
+            "SUPABASE_ANON_KEY": bool(os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")),
+            "SUPABASE_SERVICE_ROLE_KEY": bool(SUPABASE_SERVICE_ROLE_KEY),
+        },
+        "url_valida": url_ok,
+        "tablas": {},
+    }
+    try:
+        cliente = (fabrica_cliente or cliente_servicio)()
+    except Exception as error:  # noqa: BLE001
+        resultado["tablas"] = {t: "sin clave de servicio" for t in TABLAS_REQUERIDAS}
+        resultado["ok"] = False
+        resultado["error"] = str(error)[:120]
+        return resultado
+    for tabla, columnas in TABLAS_REQUERIDAS.items():
+        try:
+            cliente.table(tabla).select(columnas).limit(1).execute()
+            resultado["tablas"][tabla] = "ok"
+        except Exception as error:  # noqa: BLE001
+            resultado["tablas"][tabla] = clasificar_error(error)
+    resultado["ok"] = url_ok and all(resultado["variables"].values()) and all(v == "ok" for v in resultado["tablas"].values())
+    return resultado

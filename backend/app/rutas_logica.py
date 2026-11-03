@@ -74,3 +74,22 @@ def rutas_de_hoy(filas, hoy: date) -> list[dict]:
             }
         rutas.append(ruta)
     return sorted(rutas, key=lambda r: r["nombre"].lower())
+
+
+def conciliar_asignaciones(rutas_hoy, ids_asignadas) -> dict:
+    """Compara las rutas de hoy con las asignaciones vigentes para no depender de estados fantasma.
+
+    - fantasmas: rutas que conservan `conductor` en rutas_planificadas pero NO tienen fila en asignaciones_ruta
+      (datos viejos o una asignación borrada a mano). Antes quedaban atascadas: no se podían asignar, desasignar
+      ni editar. Se informan para liberarlas.
+    - rechazadas: rutas cuya propuesta fue rechazada; no se ofrecen para asignar hasta aceptarla o regenerarla.
+    """
+    asignadas = {str(i) for i in ids_asignadas or []}
+    fantasmas, rechazadas = [], []
+    for fila in rutas_hoy or []:
+        rid = str(fila.get("id"))
+        if rid not in asignadas and str(fila.get("conductor") or "").strip():
+            fantasmas.append({"id": rid, "nombre": str(fila.get("nombre") or rid), "conductor": str(fila["conductor"]).strip()})
+        if fila.get("estado_propuesta") == "rechazada" and rid not in asignadas:
+            rechazadas.append(rid)
+    return {"fantasmas": fantasmas, "rechazadas": rechazadas}

@@ -15,15 +15,13 @@
   <link rel="stylesheet" href="../assets/css/appNavigation.css">
   <link rel="stylesheet" href="../assets/css/dashboard.css">
   <link rel="stylesheet" href="../assets/css/eventosEspecialesCSS.css">
-  <link rel="stylesheet" href="../assets/css/alertasSeguridad.css">
   <link rel="stylesheet" href="../assets/css/verificarConduCSS.css">
   <link rel="stylesheet" href="../assets/css/notificacionesCSS.css">
   <link rel="stylesheet" href="../assets/css/mapaMonitoreo.css">
-  <link rel="stylesheet" href="../assets/css/pedidosEnCurso.css">
   <link rel="stylesheet" href="../assets/css/centroRutas.css">
   <link rel="stylesheet" href="../assets/css/conduccionVivo.css">
   <link rel="stylesheet" href="../assets/css/incidentesViaje.css">
-  <link rel="stylesheet" href="../assets/css/historialIncidentes.css">
+  <link rel="stylesheet" href="../assets/css/alertasIncidentes.css">
   <link rel="stylesheet" href="../assets/css/metricas.css">
   <link rel="stylesheet" href="../assets/css/reportesViaje.css">
 </head>
@@ -73,8 +71,6 @@
           <div class="origin-copy"><span>INICIO DE RUTA</span><strong id="originLabel">Centro de San Salvador</strong></div>
           <button class="icon-button" id="locate" type="button" aria-label="Usar mi ubicación actual como inicio" title="Usar mi ubicación actual (el GPS solo se pide al pulsar)">⌖</button>
         </div>
-        <button class="secondary-button tracking-button" id="trackRoute" type="button">Iniciar seguimiento en vivo</button>
-        <p id="trackingStatus" class="tracking-status" role="status">Seguimiento detenido.</p>
 
         <!-- Guardar la ruta trazada (solo en borrador): la relocaliza dashboard.js -->
         <section id="saveRoute" class="save-route hidden" aria-label="Guardar ruta">
@@ -97,11 +93,6 @@
               <!-- centroRutas.js pinta aquí: buscar y filtrar, la fila de inicio y los pedidos numerados -->
               <div id="taskList"></div>
             </section>
-
-            <details class="route-step route-custom">
-              <summary>Ruta personalizada <small>(opcional · origen, paradas y destino a mano)</small></summary>
-              <section id="multiRoute" aria-label="Planificador de ruta multi-paradas"></section>
-            </details>
           </aside>
 
           <section class="map-section" aria-label="Mapa y recorrido">
@@ -134,9 +125,6 @@
         <span id="routeTitle" hidden></span>
       </section>
 
-      <section id="ordersScreen" class="screen hidden" aria-labelledby="pageTitle">
-        <div id="panelPedidos" class="monitor-content"></div>
-      </section>
 
       <!-- Riesgo de rutas: misma página que riesgo_rutas.html (ids rr-*, lógica en riesgoRutas.js), integrada aquí. -->
       <section id="riskScreen" class="screen hidden" aria-labelledby="pageTitle">
@@ -196,9 +184,7 @@
         <div class="monitor-tabs" role="tablist" aria-label="Paneles de monitoreo">
           <button type="button" role="tab" aria-selected="false" data-monitor-panel="notifications">Notificaciones <span class="tab-count hidden" id="notifCount" aria-label="notificaciones sin leer"></span></button>
           <button type="button" role="tab" aria-selected="true" data-monitor-panel="events">Eventos especiales</button>
-          <button type="button" role="tab" aria-selected="false" data-monitor-panel="alerts">Alertas de seguridad</button>
-          <button type="button" role="tab" aria-selected="false" data-monitor-panel="incidents">Incidentes en curso <span class="tab-count hidden" id="incCount" aria-label="incidentes sin atender"></span></button>
-          <button type="button" role="tab" aria-selected="false" data-monitor-panel="history">Historial de incidentes</button>
+          <button type="button" role="tab" aria-selected="false" data-monitor-panel="alerts">Alertas e incidentes <span class="tab-count hidden" id="incCount" aria-label="alertas e incidentes pendientes"></span></button>
         </div>
         <section id="monitorNotifs" class="monitor-content hidden" role="tabpanel">
           <div id="panelMapaMonitoreo"></div>
@@ -207,17 +193,12 @@
         <section id="monitorEvents" class="monitor-content" role="tabpanel">
           <div id="panelEventos" class="ev-shell"></div>
         </section>
+        <!-- Alertas e incidentes en un solo panel (alertasIncidentes.js) -->
         <section id="monitorAlerts" class="monitor-content hidden" role="tabpanel">
-          <div id="panelAlertas" class="as-shell"></div>
+          <div id="panelAlertasIncidentes"></div>
         </section>
         <section id="monitorDriving" class="monitor-content hidden" role="tabpanel">
           <div id="panelConduccion"></div>
-        </section>
-        <section id="monitorIncidents" class="monitor-content hidden" role="tabpanel">
-          <div id="panelIncidentes"></div>
-        </section>
-        <section id="monitorHistory" class="monitor-content hidden" role="tabpanel">
-          <div id="panelHistorialIncidentes"></div>
         </section>
       </section>
       <section id="metricsScreen" class="screen hidden" aria-labelledby="pageTitle">
@@ -282,11 +263,9 @@
   <script src="../assets/js/core/api.js"></script>
   <script src="../assets/js/appNavigation.js"></script>
   <script src="../assets/js/eventosEspecialesJS.js"></script>
-  <script src="../assets/js/alertasSeguridad.js"></script>
   <script src="../assets/js/VerificarConduJS.js"></script>
   <script src="../assets/js/notificacionesJS.js"></script>
   <script src="../assets/js/mapaMonitoreo.js"></script>
-  <script src="../assets/js/routePlanner.js"></script>
   <script src="../assets/js/pedidosEnCurso.js"></script>
   <script src="../assets/js/viajeRutas.js"></script>
   <script src="../assets/js/rechazoRutas.js"></script>
@@ -294,7 +273,7 @@
   <script src="../assets/js/riesgoRutas.js"></script>
   <script src="../assets/js/noticiasRiesgo.js"></script>
   <script src="../assets/js/incidentesViaje.js"></script>
-  <script src="../assets/js/historialIncidentes.js"></script>
+  <script src="../assets/js/alertasIncidentes.js"></script>
   <script src="../assets/js/metricasDashboard.js"></script>
   <script src="../assets/js/conduccionVivo.js"></script>
   <script src="../assets/js/reportesViaje.js"></script>

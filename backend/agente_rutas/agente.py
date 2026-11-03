@@ -126,7 +126,7 @@ class AgenteRutaSegura:
             "rutas_descartadas": [d.a_dict() for d in sorted(descartadas, key=lambda e: e.score)],
             "justificacion": texto,
             "riesgos_residuales": [x["descripcion"] for x in elegida.a_dict()["hallazgos"]],
-            "advertencias": advertencias + (["Todas las rutas tienen veto de seguridad: se recomienda no operar o escoltar."]
+            "advertencias": advertencias + list(s.avisos) + (["Todas las rutas tienen veto de seguridad: se recomienda no operar o escoltar."]
                                             if elegida.vetada else []),
             "fuentes_consultadas": {"incidentes": len(s.incidentes), "tramos_trafico": len(s.trafico), "zonas": len(s.zonas)},
             "generado_en": s.ahora.isoformat(),

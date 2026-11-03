@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from . import database, entregas_logica, eventos_logica, motor_rutas
 from .autenticacion import usuario_desde_autorizacion
@@ -13,15 +13,24 @@ router = APIRouter(tags=["rutas seguras"])
 
 
 class SolicitudRuta(BaseModel):
-    coordinates: list[tuple[float, float]] = Field(min_length=2, max_length=50)
+    # Se acepta cualquier lista: los puntos sin coordenadas (null, texto vacío) se descartan con un mensaje claro
+    # en vez de responder el 422 genérico de validación, que la página no sabe mostrar.
+    coordinates: list = Field(default_factory=list, max_length=50)
 
-    @field_validator("coordinates")
-    @classmethod
-    def validar_coordenadas(cls, coordinates):
-        for lat, lng in coordinates:
-            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-                raise ValueError("Una coordenada está fuera de rango.")
-        return coordinates
+
+def puntos_validos(coordenadas) -> tuple[list[tuple[float, float]], int]:
+    """Puntos [lat, lng] numéricos y en rango, en orden, sin repetidos seguidos. Devuelve (válidos, descartados)."""
+    validos = []
+    for punto in coordenadas or []:
+        try:
+            lat, lng = float(punto[0]), float(punto[1])
+        except (TypeError, ValueError, IndexError, KeyError):
+            continue
+        if lat != lat or lng != lng or not (-90 <= lat <= 90 and -180 <= lng <= 180) or (lat == 0 and lng == 0):
+            continue
+        if not validos or validos[-1] != (lat, lng):
+            validos.append((lat, lng))
+    return validos, len(coordenadas or []) - len(validos)
 
 
 def _usuario_autorizado(authorization):
@@ -91,22 +100,41 @@ def _cargar_riesgos():
         raise
     except Exception as error:
         logger.exception("No fue posible cargar los eventos para evitar en el cálculo de rutas.")
-        raise HTTPException(
-            503,
-            "No fue posible verificar los eventos de seguridad. La ruta no se calculó.",
-        ) from error
+        raise ErrorRiesgos(type(error).__name__) from error
 
     return _normalizar_riesgos(eventos, alertas)
+
+
+class ErrorRiesgos(RuntimeError):
+    """No se pudieron leer eventos_especiales / alertas_seguridad (tabla ausente, RLS o red)."""
 
 
 @router.post("/rutas/calcular")
 @router.post("/generar-ruta", include_in_schema=False)
 def calcular(req: SolicitudRuta, authorization: str | None = Header(default=None)):
     _usuario_autorizado(authorization)
-    eventos = _cargar_riesgos()
+    puntos, descartados = puntos_validos(req.coordinates)
+    if len(puntos) < 2:
+        raise HTTPException(422, (
+            f"Se necesitan al menos 2 puntos con coordenadas válidas para calcular la ruta "
+            f"(llegaron {len(puntos)} válidos y {descartados} sin coordenadas). "
+            "Agrega lat/lng a los pedidos o usa «Ubicar pedidos»."))
+    advertencias = []
+    if descartados:
+        advertencias.append(f"{descartados} punto(s) sin coordenadas válidas no se incluyeron en la ruta.")
     try:
-        return motor_rutas.calcular_rutas(req.coordinates, eventos)
+        eventos = _cargar_riesgos()
+    except ErrorRiesgos as error:
+        eventos = []
+        advertencias.append(
+            f"No se pudieron verificar los eventos de seguridad ({error}): la ruta NO evita zonas de riesgo. "
+            "Revisa las tablas eventos_especiales y alertas_seguridad en Supabase.")
+    try:
+        resultado = motor_rutas.calcular_rutas(puntos, eventos)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
     except motor_rutas.ErrorProveedorRutas as error:
         raise HTTPException(502, str(error)) from error
+    resultado["riesgos_verificados"] = not any("eventos de seguridad" in a for a in advertencias)
+    resultado["advertencias"] = advertencias
+    return resultado
