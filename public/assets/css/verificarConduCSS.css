@@ -20,8 +20,8 @@ body.dsp-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93
 .dsp-root{display:block}
 /* ENCABEZADO: título, subtítulo y datos de la sesión. */
 .dsp-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--d-brand);padding-bottom:12px;margin-bottom:18px}
-.dsp .dsp-title{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
-.dsp .dsp-h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
+.dsp .dsp-title{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
+.dsp .dsp-h{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
 .dsp .dsp-sub{margin:2px 0 0;color:var(--d-mut)}
 .dsp .dsp-who{text-align:right;font-size:14px;color:var(--d-mut)}
 .dsp .dsp-who b{color:var(--d-tx);font-weight:500}
@@ -33,8 +33,9 @@ body.dsp-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93
 
 /* CONTADORES: tarjetas con disponibles / total. */
 .dsp .dsp-counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.dsp .dsp-pend{margin:-6px 0 18px;padding:10px 14px;border:1px solid #64411e;border-left:4px solid #f5a524;border-radius:6px;background:#2a2216;color:#f2d29b;font-size:13px}
 .dsp .dsp-cnt{background:var(--d-panel);border:1px solid var(--d-line);border-left:5px solid var(--d-brand);border-radius:4px;padding:12px 14px}
-.dsp .dsp-n{font-family:'Barlow Semi Condensed',sans-serif;font-size:38px;font-weight:700;line-height:1}
+.dsp .dsp-n{font-family:'Inter',system-ui,sans-serif;font-size:38px;font-weight:700;line-height:1}
 .dsp .dsp-n small{font-size:16px;color:var(--d-mut);font-weight:500}
 .dsp .dsp-l{color:var(--d-mut);font-size:14px;margin-top:4px}
 

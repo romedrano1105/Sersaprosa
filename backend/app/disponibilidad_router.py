@@ -61,6 +61,8 @@ def listar(authorization: str | None = Header(default=None)):
     }
     # Coherencia con las rutas generadas: las rechazadas no se ofrecen y se avisa de los estados fantasma
     # (conductor guardado sin asignación vigente), que desasignar_ruta_operativa libera.
+    # Rutas de la IA que esperan aceptación (las devuelve rutas_operativas_seguras.sql como 'pending').
+    result["pendientes_aceptar"] = result.pop("pending", []) if isinstance(result.get("pending"), list) else []
     result["inconsistencias"] = []
     try:
         conciliado = rutas_logica.conciliar_asignaciones(

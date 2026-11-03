@@ -17,8 +17,8 @@ body.asn-page{--bg:#14202b;--panel:#1d2c3a;--line:#2e4153;--tx:#e8eef2;--mut:#93
 
 /* ENCABEZADO */
 .asn .asn-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--a-brand);padding-bottom:12px;margin-bottom:18px}
-.asn .asn-title{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
-.asn .asn-h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
+.asn .asn-title{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
+.asn .asn-h{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
 .asn .asn-sub{margin:2px 0 0;color:var(--a-mut)}
 .asn .asn-who{text-align:right;font-size:14px;color:var(--a-mut)}
 .asn .asn-who b{color:var(--a-tx);font-weight:500}

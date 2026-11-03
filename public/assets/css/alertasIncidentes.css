@@ -7,10 +7,10 @@
 .ai { display: grid; gap: 14px; color: var(--text, #f2f3f5); font-family: "Inter", system-ui, sans-serif; }
 .ai-cabecera { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .ai-kicker { color: var(--brand, #5b8cff); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
-.ai-cabecera h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.ai-cabecera h2 { margin: 5px 0 0; font: 600 21px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .ai-cabecera p { margin: 4px 0 0; color: var(--muted, #9a9fa8); font-size: 12px; }
 .ai-contador { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 6px; text-align: right; }
-.ai-contador strong { font: 600 26px "Barlow Condensed", sans-serif; }
+.ai-contador strong { font: 600 26px "Inter", system-ui, sans-serif; }
 .ai-contador span { color: var(--muted, #9a9fa8); font-size: 12px; }
 .ai-contador small { grid-column: 1 / -1; color: var(--muted, #9a9fa8); font-size: 11px; }
 
@@ -52,7 +52,7 @@
 /* Detalle de una alerta (los incidentes usan el detalle de incidentesViaje.css) */
 .ai-fondo { position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center; padding: 12px; background: #000a; }
 .ai-modal { position: relative; width: min(640px, 100%); max-height: 92vh; overflow: auto; padding: 22px; color: var(--text, #f2f3f5); background: #1c1e21; border: 1px solid #3d4047; border-top: 5px solid var(--ai-color, #5b8cff); border-radius: 8px; }
-.ai-modal h3 { margin: 0 28px 12px 0; font: 600 22px "Barlow Condensed", sans-serif; }
+.ai-modal h3 { margin: 0 28px 12px 0; font: 600 22px "Inter", system-ui, sans-serif; }
 .ai-modal h4 { margin: 14px 0 6px; color: var(--muted, #9a9fa8); font-size: 13px; }
 .ai-cerrar { position: absolute; top: 8px; right: 12px; color: #d9dce1; font-size: 26px; background: none; border: 0; cursor: pointer; }
 .ai-datos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }

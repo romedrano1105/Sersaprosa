@@ -32,10 +32,11 @@ $$;
 create unique index if not exists rutas_planificadas_fecha_nombre_uq
   on public.rutas_planificadas (fecha, nombre);
 
--- Rutas manuales creadas antes como 'propuesta': no tienen nada que revisar y quedaban sin poder asignarse.
+-- Solo las rutas generadas por la IA tienen una propuesta que revisar. Las demás (manuales o anteriores a
+-- esta migración) quedaban como 'propuesta' y no se podían asignar nunca: se marcan aceptadas.
 update public.rutas_planificadas
 set estado_propuesta = 'aceptada'
-where metodo_creacion = 'manual' and estado_propuesta = 'propuesta';
+where coalesce(metodo_creacion, '') <> 'ia' and estado_propuesta = 'propuesta';
 
 create table if not exists public.asignaciones_guardias (
   id uuid primary key default gen_random_uuid(),
@@ -151,7 +152,6 @@ declare
   v_id text := 'RT-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
   v_usuario text := coalesce(auth.jwt() ->> 'email', auth.uid()::text, 'Usuario');
   v_sensibilidad smallint;
-  v_puntaje integer;
   v_nivel text;
   v_afectados integer;
 begin
@@ -181,9 +181,7 @@ begin
     raise exception 'El tipo de carga no está disponible.' using errcode = '22023';
   end if;
 
-  v_puntaje := case when p_monto < 10000 then 0 when p_monto < 100000 then 1 else 2 end
-    + v_sensibilidad;
-  v_nivel := case when v_puntaje <= 1 then 'Bajo' when v_puntaje = 2 then 'Medio' else 'Alto' end;
+  v_nivel := public.nivel_riesgo_por_monto(p_monto, v_sensibilidad);
 
   insert into public.rutas_planificadas (
     id, nombre, fecha, entregas, creado_por, orden_pedidos, metodo_creacion,
@@ -391,7 +389,7 @@ begin
   if v_ruta.estado_propuesta = 'rechazada' then
     raise exception 'La propuesta fue rechazada: genera una alternativa o acéptala antes de asignarla.' using errcode = 'P0001';
   end if;
-  if v_ruta.estado_propuesta is distinct from 'aceptada' then
+  if v_ruta.metodo_creacion = 'ia' and v_ruta.estado_propuesta is distinct from 'aceptada' then
     raise exception 'La propuesta de ruta debe aceptarse antes de asignarla.' using errcode = 'P0001';
   end if;
 
@@ -497,6 +495,79 @@ begin
   return jsonb_build_object('ruta', p_ruta, 'desasignada', true);
 end;
 $$;
+
+-- Disponibilidad del día (reemplaza la de operaciones_rutas.sql):
+--   drivers: empleados activos de categoría conductor (o sin categoría, como antes); ya no aparecen guardias
+--            ni administradores como conductores.
+--   guards:  empleados activos de categoría guardia (antes la función no los devolvía y la lista salía vacía).
+--   routes:  rutas de hoy sin asignación vigente que ya se pueden asignar.
+--   pending: rutas de la IA cuya propuesta aún no se acepta (se aceptan en Tracking → Revisar propuesta).
+create or replace function public.listar_disponibilidad_operativa()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_hoy date := timezone('America/El_Salvador', now())::date;
+begin
+  if (auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'coordinador_rutas' then
+    raise exception 'No tiene permiso para consultar la disponibilidad.' using errcode = '42501';
+  end if;
+
+  return jsonb_build_object(
+    'drivers', coalesce((
+      select jsonb_agg(jsonb_build_object('id', codigo, 'nombre', nombre, 'licencia', licencia) order by nombre)
+      from public.empleados
+      where activo = true and coalesce(categoria, 'conductor') = 'conductor'
+    ), '[]'::jsonb),
+    'guards', coalesce((
+      select jsonb_agg(jsonb_build_object('id', codigo, 'nombre', nombre) order by nombre)
+      from public.empleados
+      where activo = true and categoria = 'guardia'
+    ), '[]'::jsonb),
+    'vehicles', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', id, 'placa', placa, 'tipo', tipo, 'seguro', seguro, 'revision', revision
+      ) order by placa)
+      from public.vehiculos
+      where activo = true
+    ), '[]'::jsonb),
+    'routes', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'nombre', r.nombre) order by r.nombre)
+      from public.rutas_planificadas r
+      where r.fecha = v_hoy
+        and not exists (select 1 from public.asignaciones_ruta a where a.ruta_id = r.id and a.fecha_operativa = v_hoy)
+        and r.estado_propuesta is distinct from 'rechazada'
+        and not (r.metodo_creacion = 'ia' and r.estado_propuesta is distinct from 'aceptada')
+    ), '[]'::jsonb),
+    'pending', coalesce((
+      select jsonb_agg(jsonb_build_object('id', r.id, 'nombre', r.nombre) order by r.nombre)
+      from public.rutas_planificadas r
+      where r.fecha = v_hoy and r.metodo_creacion = 'ia' and r.estado_propuesta = 'propuesta'
+        and not exists (select 1 from public.asignaciones_ruta a where a.ruta_id = r.id and a.fecha_operativa = v_hoy)
+    ), '[]'::jsonb),
+    'assignments', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'ruta', a.ruta_id,
+        'conductor', a.conductor_id,
+        'vehiculo', a.vehiculo_id,
+        'guardias', coalesce((
+          select jsonb_agg(g.guardia_id) from public.asignaciones_guardias g where g.asignacion_id = a.id
+        ), '[]'::jsonb),
+        'fecha', a.fecha_asignacion,
+        'usuario', a.usuario
+      ) order by a.fecha_asignacion)
+      from public.asignaciones_ruta a
+      where a.fecha_operativa = v_hoy
+    ), '[]'::jsonb)
+  );
+end;
+$$;
+
+revoke all on function public.listar_disponibilidad_operativa() from public, anon;
+grant execute on function public.listar_disponibilidad_operativa() to authenticated;
 
 revoke all on function public.guardar_ruta_operativa(text, text[], text) from public, anon;
 grant execute on function public.guardar_ruta_operativa(text, text[], text) to authenticated;

@@ -17,9 +17,9 @@ body.ev-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93a
 
 /* ENCABEZADO */
 .ev-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:2px solid var(--e-brand);padding-bottom:12px;margin-bottom:18px}
-.ev .ev-title{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
-.ev .ev-h{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
-.ev .ev-h2{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:16px;margin:16px 0 8px}
+.ev .ev-title{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:30px;line-height:1.1;margin:0}
+.ev .ev-h{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:19px;margin:0 0 10px}
+.ev .ev-h2{font-family:'Inter',system-ui,sans-serif;font-weight:700;font-size:16px;margin:16px 0 8px}
 .ev .ev-sub{margin:2px 0 0;color:var(--e-mut)}
 .ev .ev-who{text-align:right;font-size:14px;color:var(--e-mut)}
 .ev .ev-who b{color:var(--e-tx);font-weight:500}
@@ -36,7 +36,7 @@ body.ev-page{--bg:#1f2124;--panel:#26282c;--line:#3d4047;--tx:#e8eef2;--mut:#93a
 /* CONTADORES */
 .ev .ev-counters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
 .ev .ev-cnt{background:var(--e-panel);border:1px solid var(--e-line);border-left:5px solid var(--e-brand);border-radius:4px;padding:12px 14px}
-.ev .ev-n{font-family:'Barlow Semi Condensed',sans-serif;font-size:38px;font-weight:700;line-height:1}
+.ev .ev-n{font-family:'Inter',system-ui,sans-serif;font-size:38px;font-weight:700;line-height:1}
 .ev .ev-n small{font-size:16px;color:var(--e-mut);font-weight:500}
 .ev .ev-l{color:var(--e-mut);font-size:14px;margin-top:4px}
 
