@@ -15,7 +15,7 @@
   color: var(--mm-text);
   font-family: "Inter", system-ui, sans-serif;
 }
-.mm h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.mm h2 { margin: 5px 0 0; font: 600 21px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .mm-kicker { color: var(--mm-blue); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 
 /* Cabecera */
@@ -101,7 +101,7 @@
 /* Marcador de incidente */
 .mm-inc-wrap { background: none; border: 0; }
 .mm-inc { width: 30px; height: 30px; display: grid; place-items: center; color: #111; background: var(--c); border: 2px solid #fff; border-radius: 6px; transform: rotate(45deg); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 35%, transparent), 0 4px 14px #000a; }
-.mm-inc span { transform: rotate(-45deg); font: 800 16px "Barlow Condensed", sans-serif; }
+.mm-inc span { transform: rotate(-45deg); font: 800 16px "Inter", system-ui, sans-serif; }
 
 /* Tooltips y popups */
 .mm-tip.leaflet-tooltip { color: #f2f3f5; background: #15171bf2; border: 1px solid #3d4047; border-radius: 5px; box-shadow: 0 8px 20px #0008; }
@@ -113,7 +113,7 @@
 .mm-popup .leaflet-popup-content { margin: 12px 14px; }
 .mm-pop { display: grid; gap: 4px; min-width: 190px; padding-left: 10px; border-left: 4px solid var(--c); }
 .mm-pop small { color: var(--c); font-size: 9px; font-weight: 700; letter-spacing: .1em; }
-.mm-pop strong { font: 600 15px "Barlow Condensed", sans-serif; }
+.mm-pop strong { font: 600 15px "Inter", system-ui, sans-serif; }
 .mm-pop span { color: #9a9fa8; font-size: 11px; }
 
 /* Detalle de la unidad (sobre el mapa) */
