@@ -30,7 +30,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .login-logo { display: block; width: 78px; height: 78px; object-fit: contain; margin: 0 auto 22px; padding: 10px; background: #f6f8fb; border-radius: 10px; }
 .eyebrow, .section-kicker { color: var(--brand); font-size: 10px; font-weight: 700; letter-spacing: .15em; }
 .login-card > .eyebrow { display: block; text-align: center; }
-.login-card h1 { margin: 6px 0; text-align: center; font: 700 34px/1.1 "Barlow Condensed", sans-serif; }
+.login-card h1 { margin: 6px 0; text-align: center; font: 700 34px/1.1 "Inter", system-ui, sans-serif; }
 .login-card > p:not(.login-error) { margin: 0 0 24px; color: var(--muted); text-align: center; }
 .login-card label { display: block; margin: 16px 0; color: var(--muted); font-size: 13px; }
 .login-card input { display: block; width: 100%; margin-top: 6px; padding: 12px; color: var(--text); background: #1a1c1f; border: 1px solid #3d4047; border-radius: 5px; }
@@ -40,7 +40,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 .dashboard { min-height: 100vh; background: radial-gradient(circle at 86% -10%, #222530 0, transparent 30%), var(--bg); }
 .topbar { min-height: 126px; padding: 26px 34px 22px; display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); background: #16171ad9; }
-.page-heading h1 { margin: 5px 0 3px; font: 600 32px/1 "Barlow Condensed", sans-serif; letter-spacing: .015em; }
+.page-heading h1 { margin: 6px 0 4px; font: 700 30px/1.1 "Inter", system-ui, sans-serif; letter-spacing: -.01em; }
 .page-heading p { margin: 0; color: var(--muted); font-size: 11px; }
 .top-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
 .connection-status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid #2b3c6b; border-radius: 4px; background: #1b2133; color: var(--route); font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
@@ -65,10 +65,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .map-section { min-height: 0; display: flex; flex-direction: column; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 .map-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .map-card-head > div > span { color: var(--route); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
-.map-card-head h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.map-card-head h2 { margin: 5px 0 0; font: 600 21px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .map-source { color: var(--muted); font-size: 10px; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.section-heading h2 { margin: 4px 0 0; font: 600 21px/1.1 "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.section-heading h2 { margin: 4px 0 0; font: 600 21px/1.1 "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .secure-badge { padding: 5px 8px; border: 1px solid #2b3c6b; border-radius: 4px; background: #1b2133; color: var(--route); font-size: 8px; font-weight: 700; letter-spacing: .08em; }
 .route-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 20px 0; padding: 13px 0; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; }
 .route-metrics > div { min-width: 0; padding: 0 11px; border-right: 1px solid var(--line); }
@@ -98,7 +98,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .empty { margin: 16px 0; color: var(--muted); font-size: 12px; }
 .empty:not(.hidden) { padding: 12px; border: 1px solid #7c3137; border-radius: 6px; background: #e5484d12; color: #ff9ca1; }
 .route-options-heading { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 8px; }
-.route-options-heading h3 { margin: 0; font: 600 17px "Barlow Condensed", sans-serif; }
+.route-options-heading h3 { margin: 0; font: 600 17px "Inter", system-ui, sans-serif; }
 .route-options-heading > span { color: var(--faint); font-size: 10px; }
 .route-option { display: block; width: 100%; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--text); cursor: pointer; text-align: left; }
 .route-option[aria-pressed="true"] { border-color: var(--route); box-shadow: inset 3px 0 var(--route); }
@@ -107,7 +107,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .route-option strong { font-size: 12px; }
 .route-option small { margin-top: 3px; color: var(--muted); font-size: 10px; }
 .navigation-guidance { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
-.navigation-guidance h3 { margin: 0 0 8px; font: 600 17px "Barlow Condensed", sans-serif; }
+.navigation-guidance h3 { margin: 0 0 8px; font: 600 17px "Inter", system-ui, sans-serif; }
 .navigation-guidance ol { max-height: 300px; overflow: auto; margin: 0; padding: 0; list-style: none; }
 .navigation-guidance li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .navigation-guidance li.direction-active { border-left: 3px solid var(--route); background: #53c8ad12; color: var(--text); }
@@ -143,7 +143,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .ev-shell, .as-shell, .dsp-shell { max-width: none; padding: 0; }
 .as { --as-bg: var(--bg); --as-panel: var(--panel); --as-line: var(--line); --as-text: var(--text); --as-muted: var(--muted); --as-brand: var(--route); --as-high: var(--high); --as-mid: var(--mid); --as-low: var(--low); }
 .dsp .dsp-panel, .ev .ev-panel, .as .as-panel, .ev .ev-cnt, .as .as-counter { background: #26282c; border-color: var(--line); border-radius: 6px; }
-.dsp .dsp-n, .dsp .dsp-title, .dsp .dsp-h, .ev .ev-n, .ev .ev-title, .ev .ev-h, .as h1, .as h2, .as h3 { font-family: "Barlow Condensed", sans-serif; }
+.dsp .dsp-n, .dsp .dsp-title, .dsp .dsp-h, .ev .ev-n, .ev .ev-title, .ev .ev-h, .as h1, .as h2, .as h3 { font-family: "Inter", system-ui, sans-serif; }
 .dsp .dsp-btn.dsp-primary, .ev .ev-btn.ev-primary, .as button.as-primary { background: var(--route); border-color: var(--route); color: #ffffff; }
 .dsp .dsp-select, .ev .ev-input, .ev .ev-select, .as input, .as select, .as textarea { background: #1a1c1f; border-color: #3d4047; color: var(--text); }
 .dsp .dsp-panel { border-radius: 6px; }
@@ -165,7 +165,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .save-route-copy .privacy-note { margin: 0; }
 #saveRoute .save-route-row { flex: 1 1 320px; max-width: 520px; }
 #saveRoute .notice { flex-basis: 100%; margin: 0; }
-.save-route h3 { margin: 0 0 4px; font: 600 17px "Barlow Condensed", sans-serif; }
+.save-route h3 { margin: 0 0 4px; font: 600 17px "Inter", system-ui, sans-serif; }
 .save-route-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .save-route-row input { flex: 1 1 160px; min-height: 42px; padding: 8px 12px; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 14px; }
 .primary-button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; color: #ffffff; background: var(--route); border: 0; border-radius: 6px; font: inherit; font-weight: 700; cursor: pointer; }
@@ -244,7 +244,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .agent-panel { margin-bottom: 12px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid #3ec27a; border-radius: 6px; font-size: 13px; }
 .agent-panel.is-risk { border-left-color: var(--high); }
 .agent-panel.is-error { border-left-color: var(--mid); }
-.agent-panel h3 { margin: 0 0 4px; font: 600 17px "Barlow Condensed", sans-serif; }
+.agent-panel h3 { margin: 0 0 4px; font: 600 17px "Inter", system-ui, sans-serif; }
 .agent-panel p { margin: 4px 0; color: var(--muted); line-height: 1.5; }
 .agent-panel ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
 .agent-panel li { margin: 2px 0; }

@@ -146,7 +146,9 @@
     }
     const usadas = new Set(asg.map(a => a.ruta));
     const routes = (raw.routes || []).filter(r => !usadas.has(r.id));
-    return { drivers, guards, vehicles, routes, asg };
+    // Rutas de la IA que esperan aceptación: no se ofrecen para asignar, pero se avisa cuáles son.
+    const pendientes = Array.isArray(raw.pendientes_aceptar) ? raw.pendientes_aceptar : [];
+    return { drivers, guards, vehicles, routes, asg, pendientes };
   }
 
   /* ============ Datos de demostración (se ignoran al configurar LOAD) ============ */
@@ -504,6 +506,10 @@
           cnt(gOk, D.guards.length, "Guardias disponibles"),
           cnt(vOk, D.vehicles.length, "Vehículos disponibles"),
           cnt(Math.min(dOk, vOk, D.routes.length), null, "Rutas que se pueden cubrir ahora")),
+        (D.pendientes || []).length ? h("p", { class: "dsp-pend", role: "status" },
+          (D.pendientes.length === 1 ? "La ruta «" + D.pendientes[0].nombre + "» es una propuesta de la IA sin aceptar"
+            : D.pendientes.length + " rutas de la IA esperan aceptación") +
+          ": acéptala en Tracking de rutas → «Revisar propuesta» para poder asignarla.") : null,
         h("div", { class: "dsp-cols" },
           panel("Conductores", "driver", D.drivers),
           panel("Guardias", "guard", D.guards),
