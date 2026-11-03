@@ -210,19 +210,44 @@ def generar_viaje(datos, pedidos, *, usuario, cliente_usuario, cliente_servicio,
     )
 
 
-def actualizar_viaje(ruta_id, datos, *, usuario, cliente_usuario, cliente_servicio, geocodificar, evaluar, hoy: date | None = None):
-    """Edita origen, destino, horario, tipo de carga y monto mientras la ruta no haya salido."""
+MSG_FALTA_EDITAR = "Falta aplicar backend/database/editar_viaje.sql en Supabase."
+
+
+def _error_edicion(error, accion: str) -> ErrorViaje:
+    """Traduce el error de las funciones SQL de «Editar viaje» a un mensaje claro."""
+    codigo = str(getattr(error, "code", "") or "")
+    mensaje = str(getattr(error, "message", "") or "")
+    if rpc_utils.funcion_ausente(error):
+        return ErrorViaje(503, MSG_FALTA_EDITAR)
+    if codigo == "42501":
+        return ErrorViaje(403, "Solo el coordinador de rutas puede editar viajes.")
+    if codigo == "P0001":
+        return ErrorViaje(409, mensaje or "La ruta ya no se puede editar.")
+    if codigo == "22023":
+        return ErrorViaje(422, mensaje or "Los datos del viaje no son válidos.")
+    if _falta_sql(error):
+        return ErrorViaje(503, "Faltan columnas de viajes en Supabase: aplica viajes_ruta.sql y riesgo_rutas.sql.")
+    logger.error("Fallo al %s: %s %s", accion, codigo, mensaje or error)
+    return ErrorViaje(503, f"No se pudo {accion}. Revisa Supabase.")
+
+
+def actualizar_viaje(ruta_id, datos, *, usuario, cliente_usuario, cliente_servicio=None, geocodificar, evaluar,
+                     hoy: date | None = None):
+    """Edita origen, destino, horario, tipo de carga y monto mientras la ruta no haya salido.
+
+    Lee y escribe con funciones SQL (SECURITY DEFINER) usando el JWT del coordinador: no depende de la clave
+    service_role, que puede no tener permisos sobre las tablas.
+    """
     hoy = hoy or rutas_logica.hoy_el_salvador()
     try:
-        filas = cliente_servicio.table("rutas_planificadas").select("*").eq("id", ruta_id).limit(1).execute().data or []
-        fila = filas[0] if filas else None
-        asignada = bool(fila) and bool(cliente_servicio.table("asignaciones_ruta").select("ruta_id")
-                                       .eq("ruta_id", ruta_id).eq("fecha_operativa", hoy.isoformat()).limit(1).execute().data)
+        fila = cliente_usuario.rpc("consultar_viaje_editable", {"p_ruta": ruta_id}).execute().data
     except Exception as error:
-        raise ErrorViaje(503, "No se pudo consultar la ruta. Revisa Supabase.") from error
-    if not fila or str(fila.get("fecha") or "")[:10] != hoy.isoformat():
+        raise _error_edicion(error, "consultar la ruta") from error
+    if isinstance(fila, list):
+        fila = fila[0] if fila else None
+    if not isinstance(fila, dict) or str(fila.get("fecha") or "")[:10] != hoy.isoformat():
         raise ErrorViaje(404, "La ruta no existe o no es de hoy.")
-    if viajes_logica.ruta_ya_salio(fila, asignada):
+    if viajes_logica.ruta_ya_salio(fila, bool(fila.get("asignada"))):
         raise ErrorViaje(409, "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar el viaje.")
     limpio = _validar(datos)
 
@@ -233,18 +258,19 @@ def actualizar_viaje(ruta_id, datos, *, usuario, cliente_usuario, cliente_servic
 
     o = _lugar_elegido(datos, "origen") or lugar("origen", fila.get("origen_texto"), fila.get("origen_lat"), fila.get("origen_lng"))
     d = _lugar_elegido(datos, "destino") or lugar("destino", fila.get("destino_texto"), fila.get("destino_lat"), fila.get("destino_lng"))
-    evaluacion = _evaluar(evaluar, o, d)
+    evaluacion = _evaluar(evaluar, o, d)                  # hasta aquí no se escribió nada
     try:
-        cliente_servicio.table("rutas_planificadas").update({
-            "origen_texto": limpio["origen"], "origen_lat": o["lat"], "origen_lng": o["lng"],
-            "destino_texto": limpio["destino"], "destino_lat": d["lat"], "destino_lng": d["lng"],
-            "hora_salida": limpio["horario"], "estado_propuesta": "propuesta",
-        }).eq("id", ruta_id).execute()
-        riesgo = _registrar_riesgo(cliente_usuario, ruta_id, limpio, cliente_servicio)
-    except ErrorViaje:
-        raise
+        resultado = cliente_usuario.rpc("actualizar_viaje_operativo", {
+            "p_ruta": ruta_id,
+            "p_origen": limpio["origen"], "p_origen_lat": o["lat"], "p_origen_lng": o["lng"],
+            "p_destino": limpio["destino"], "p_destino_lat": d["lat"], "p_destino_lng": d["lng"],
+            "p_hora_salida": limpio["horario"], "p_monto": limpio["monto"], "p_tipo_carga_id": limpio["tipo_carga_id"],
+        }).execute().data
     except Exception as error:
-        if _falta_sql(error):
-            raise ErrorViaje(503, "Falta aplicar backend/database/viajes_ruta.sql en Supabase.") from error
-        raise ErrorViaje(503, "No se pudo guardar el cambio. Revisa Supabase.") from error
-    return _resumen(ruta_id, fila["nombre"], hoy, int(fila.get("entregas") or 0), limpio, o, d, riesgo, evaluacion)
+        raise _error_edicion(error, "guardar el cambio") from error
+    if isinstance(resultado, list):
+        resultado = resultado[0] if resultado else None
+    if not isinstance(resultado, dict) or not resultado.get("id"):
+        raise ErrorViaje(502, "Supabase no confirmó el cambio del viaje.")
+    return _resumen(ruta_id, resultado.get("nombre") or fila.get("nombre"), hoy,
+                    int(resultado.get("entregas") or fila.get("entregas") or 0), limpio, o, d, resultado, evaluacion)
