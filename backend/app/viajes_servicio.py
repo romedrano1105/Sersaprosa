@@ -10,6 +10,7 @@ from datetime import date
 from . import rpc_utils, rutas_logica, viajes_logica
 
 logger = logging.getLogger(__name__)
+DISTANCIA_MAXIMA_KM = 300
 
 
 class ErrorViaje(Exception):
@@ -43,11 +44,55 @@ def _lugar_elegido(datos: dict, campo: str):
     return {"lat": lat, "lng": lng} if abs(lat) <= 90 and abs(lng) <= 180 else None
 
 
-def _evaluar(evaluar, origen: dict, destino: dict) -> dict:
+def _coordenada(punto) -> tuple[float, float] | None:
+    """(lat, lng) numéricos y en rango, o None (evita mandar null/undefined al motor de rutas)."""
     try:
-        return evaluar((origen["lat"], origen["lng"]), (destino["lat"], destino["lng"]))
+        lat, lng = float((punto or {}).get("lat")), float((punto or {}).get("lng"))
+    except (TypeError, ValueError):
+        return None
+    if lat != lat or lng != lng or abs(lat) > 90 or abs(lng) > 180 or (lat == 0 and lng == 0):
+        return None
+    return lat, lng
+
+
+def _distancia_km(a, b) -> float:
+    from math import asin, cos, radians, sin, sqrt
+    dlat, dlng = radians(b[0] - a[0]), radians(b[1] - a[1])
+    h = sin(dlat / 2) ** 2 + cos(radians(a[0])) * cos(radians(b[0])) * sin(dlng / 2) ** 2
+    return 6371 * 2 * asin(min(1.0, sqrt(h)))
+
+
+def mensaje_error_ruta(error: BaseException) -> tuple[int, str]:
+    """Traduce el fallo del agente o del motor de rutas a un estado HTTP y un mensaje que se pueda accionar."""
+    nombre, texto = type(error).__name__, str(error)
+    modulo = type(error).__module__ or ""
+    if nombre == "SinAlternativa":
+        return 409, "No hay otra ruta disponible además de las rechazadas."
+    if "No se obtuvieron rutas candidatas" in texto or "NoRoute" in texto:
+        return 422, ("No existe una ruta por calles entre el origen y el destino. "
+                     "Revisa que ambos lugares estén en El Salvador y sean accesibles en vehículo.")
+    if modulo.startswith("httpx") or "OSRM" in texto or isinstance(error, (ConnectionError, TimeoutError)):
+        return 502, ("El motor de rutas (OSRM) no respondió. Revisa la conexión del servidor "
+                     "e inténtalo de nuevo en unos minutos.")
+    return 502, f"No se pudo calcular la ruta óptima ({nombre}). Revisa la conexión e inténtalo de nuevo."
+
+
+def _evaluar(evaluar, origen: dict, destino: dict) -> dict:
+    o, d = _coordenada(origen), _coordenada(destino)
+    if o is None or d is None:
+        campo = "origen" if o is None else "destino"
+        mensaje = f"{viajes_logica.ETIQUETAS[campo]}: no tiene coordenadas válidas. Elige el lugar de la lista o escribe una dirección más completa."
+        raise ErrorViaje(422, mensaje, {campo: mensaje})
+    if _distancia_km(o, d) < 0.05:
+        raise ErrorViaje(422, "El origen y el destino son el mismo lugar.", {"destino": "Debe ser distinto del origen."})
+    if _distancia_km(o, d) > DISTANCIA_MAXIMA_KM:
+        raise ErrorViaje(422, f"El origen y el destino deben estar a menos de {DISTANCIA_MAXIMA_KM} km.")
+    try:
+        return evaluar(o, d)
     except Exception as error:
-        raise ErrorViaje(502, "No se pudo calcular la ruta óptima. Revisa la conexión e inténtalo de nuevo.") from error
+        logger.exception("Falló el cálculo de la ruta óptima %s → %s.", o, d)
+        estado, mensaje = mensaje_error_ruta(error)
+        raise ErrorViaje(estado, mensaje) from error
 
 
 def _falta_sql(error) -> bool:

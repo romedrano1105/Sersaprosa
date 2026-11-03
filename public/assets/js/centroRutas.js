@@ -1,20 +1,3 @@
-  // ---- Incidentes de viajes en curso (incidentesViaje.js): consulta en segundo plano desde que inicia sesión ----
-  function startIncidents() {
-    if (!window.IncidentesViaje || (window.Api.session() || {}).role !== "coordinador_rutas") return;
-    window.IncidentesViaje.iniciar({
-      onCount: count => {
-        const badge = $("incCount");
-        badge.textContent = count > 99 ? "99+" : String(count);
-        badge.classList.toggle("hidden", count === 0);
-      }
-    });
-  }
-
-  function mountIncidentsPanel() {
-    if (!window.IncidentesViaje || (window.Api.session() || {}).role !== "coordinador_rutas") return;
-    startIncidents();
-    window.IncidentesViaje.mount($("panelIncidentes"));
-  }
 /* =====================================================================
    CENTRO DE CONTROL DE RUTAS — SERSAPROSA   (window.CentroRutas)
 
@@ -37,7 +20,7 @@
        onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), onReviewRoute(ruta), selection (Pedidos.store),
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
-     centro.update({ deliveries, orders, result, manual, originLabel, events, notifications });
+     centro.update({ deliveries, orders, result, originLabel, events, notifications });
    ===================================================================== */
 (function (global) {
   "use strict";
@@ -205,7 +188,7 @@
     const coordinador = !!sesion && sesion.role === ROL;
     const S = {
       rutas: [], rutasError: "", disp: null, dispError: "",
-      deliveries: [], orders: [], result: null, manual: false, originLabel: "", events: [], notifs: null,
+      deliveries: [], orders: [], result: null, originLabel: "", events: [], notifs: null,
       activeId: null, inicioMs: Date.now(), vista: [], retrasoMax: 0,
       widgets: true, filtro: "todos", q: "", mensaje: null, ocupado: false, editing: null
     };
@@ -219,7 +202,7 @@
     const nombreDe = (lista, id, clave) => { const x = lista.find(e => e.id === id); return x ? x[clave] : id; };
 
     // En borrador la lista incluye los pedidos en curso aún sin elegir (con casilla) para poder armar la ruta ahí mismo.
-    const esBorrador = () => !activa() && !S.manual && !!opts.selection;
+    const esBorrador = () => !activa() && !!opts.selection;
     function derivar() {
       const trazados = S.orders.filter(p => enCurso(p) && tieneUbicacion(p));
       const tramos = (S.result && S.result.raw && Array.isArray(S.result.raw.legs)) ? S.result.raw.legs : [];
@@ -335,7 +318,8 @@
       const ruta = activa();
       if (!ruta) return;
       if (asignacionDe(ruta) || ruta.conductor) {
-        aviso("error", "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar.");
+        aviso("error", asignacionDe(ruta) ? "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar."
+          : "La ruta conserva un conductor sin asignación vigente. Usa «Liberar ruta» y vuelve a intentarlo.");
         return;
       }
       const ids = S.orders.filter(enCurso).map(p => String(p.id));
@@ -526,8 +510,9 @@
       const ruta = activa();
       if (!ruta || !global.confirm("¿Quitar la asignación de «" + ruta.nombre + "»?\nConductor, guardias y vehículo quedan disponibles otra vez.")) return;
       try {
-        await opts.post("/disponibilidad/desasignar", { ruta: ruta.id });
-        aviso("ok", "Asignación quitada: el personal y el vehículo vuelven a estar disponibles.");
+        const r = await opts.post("/disponibilidad/desasignar", { ruta: ruta.id });
+        aviso("ok", r && r.reparada ? "Ruta liberada: tenía un conductor guardado sin asignación vigente. Ya puedes asignarla."
+          : "Asignación quitada: el personal y el vehículo vuelven a estar disponibles.");
         await tras({ seleccionar: ruta.id });
       } catch (error) {
         aviso("error", error.message);
@@ -617,13 +602,24 @@
         S.rutas.length ? null : h("p", { class: "cc-hint" }, "Todavía no hay rutas guardadas hoy."), lista);
     }
 
+    // Las rutas de la IA se asignan después de aceptar su propuesta (asignar_ruta_operativa lo exige);
+    // las rechazadas no se asignan hasta generar una alternativa o aceptarla.
+    function propuestaDe(ruta) {
+      const rechazada = !!ruta && ruta.estado_propuesta === "rechazada";
+      const sinAceptar = !!ruta && !!ruta.viaje && !!ruta.estado_propuesta && !rechazada && ruta.estado_propuesta !== "aceptada";
+      return { rechazada, sinAceptar };
+    }
+
     function renderCabecera() {
       const ruta = activa();
       const a = asignacionDe(ruta);
+      // Sin depender de estados fantasma: la asignación vigente manda; un conductor guardado sin ella se puede liberar.
+      const fantasma = !!ruta && !a && !!S.disp && !!String(ruta.conductor || "").trim();
+      const { rechazada, sinAceptar } = propuestaDe(ruta);
       const estado = ruta ? estadoRuta(S.orders, !!a) : "borrador";
       const trazados = S.orders.filter(p => enCurso(p) && tieneUbicacion(p)).length;
       const r = S.result;
-      const titulo = S.manual ? "Ruta personalizada" : ruta ? ruta.nombre : "Nueva ruta";
+      const titulo = ruta ? ruta.nombre : "Nueva ruta";
       const etaFinal = S.vista.reduce((m, v) => Math.max(m, v.eta || 0), 0);
       const restante = etaFinal ? Math.max(0, Math.round((etaFinal - Date.now()) / 60000)) : null;
       const metricas = [];
@@ -650,7 +646,7 @@
             h("span", { class: "cc-badge cc-b-" + estado }, ESTADOS_RUTA[estado])),
           h("div", { class: "cc-id" }, ruta && ruta.viaje
             ? "ID " + ruta.id + " · " + ruta.viaje.origen.texto + " → " + ruta.viaje.destino.texto + " · sale " + ruta.viaje.horario
-            : ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : S.manual ? "Origen, paradas y destino a mano" : "Sin guardar · elige pedidos y guarda la ruta"),
+            : ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : "Sin guardar · elige pedidos y guarda la ruta"),
           h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
           boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
@@ -663,14 +659,21 @@
             a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
           ruta && ruta.viaje && opts.onReviewRoute ? boton("Revisar propuesta", "⊘", () => opts.onReviewRoute(ruta), !!a,
             a ? "La ruta ya tiene asignación: no se puede rechazar" : "Ver la ruta propuesta, aceptarla o rechazarla") : null,
-          boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a, !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : ""),
-          boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
+          boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a || rechazada || sinAceptar,
+            !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : rechazada ? "La propuesta fue rechazada: genera una alternativa o acéptala"
+              : sinAceptar ? "Acepta la propuesta (Revisar propuesta) antes de asignarla" : ""),
+          fantasma
+            ? boton("Liberar ruta", "⊖", desasignar, false, "Tiene un conductor guardado sin asignación vigente: libérala para poder asignarla")
+            : boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
           !S.editing ? boton("Invertir orden", "⇅", () => reordenar("reverse"), trazados < 2, "Invierte el orden de visita") : null,
           !S.editing ? boton("Optimizar ruta", "✦", () => reordenar("optimize"), trazados < 2, "Ordena por cercanía desde el inicio") : null,
           boton("Ver historial", "⟲", abrirHistorial, !ruta, ruta ? "" : "Guarda la ruta primero"),
-          !ruta && !S.manual && typeof opts.onSave === "function"
+          !ruta && typeof opts.onSave === "function"
             ? boton("Guardar ruta", "💾", () => opts.onSave(), S.orders.length === 0, "Guarda la ruta para asignarla", "cc-primary") : null) : null));
       if (selectorAbierto && coordinador) nodos.push(renderSelector());
+      if (fantasma && coordinador) nodos.push(h("p", { class: "cc-msg cc-msg-error", role: "status" },
+        "Esta ruta conserva el conductor «" + String(ruta.conductor).trim() + "» pero no tiene asignación vigente hoy. " +
+        "Usa «Liberar ruta» para dejarla lista y asignarla de nuevo."));
       if (S.mensaje) nodos.push(h("p", { class: "cc-msg cc-msg-" + S.mensaje.tipo, role: "status" }, S.mensaje.texto));
       if (S.editing && S.editing.error) nodos.push(h("div", { class: "cc-msg cc-msg-error", role: "alert" },
         h("span", {}, S.editing.error),
@@ -686,6 +689,7 @@
     function renderWidgets() {
       const ruta = activa();
       const a = asignacionDe(ruta);
+      const { rechazada, sinAceptar } = propuestaDe(ruta);
       const alcance = ruta ? S.orders : S.deliveries;
       const res = resumenPedidos(alcance);
       const porcentaje = res.total ? Math.round(res.completados * 100 / res.total) : 0;
@@ -698,6 +702,8 @@
       let asignado;
       if (!coordinador) asignado = h("p", { class: "cc-hint" }, "La asignación la gestiona el coordinador de rutas.");
       else if (!ruta) asignado = h("p", { class: "cc-hint" }, "Ruta sin guardar. Guárdala para asignarle conductor, guardias y vehículo.");
+      else if (!a && rechazada) asignado = h("p", { class: "cc-hint" }, "La propuesta fue rechazada: genera una alternativa o acéptala antes de asignarla.");
+      else if (!a && sinAceptar) asignado = h("p", { class: "cc-hint" }, "Acepta la propuesta con «Revisar propuesta» para poder asignarla.");
       else if (!a) asignado = h("div", {}, h("p", { class: "cc-hint" }, "Todavía sin conductor ni vehículo."), boton("Asignar ahora", "＋", abrirAsignar, false, "", "cc-primary"));
       else {
         const conductor = S.disp ? nombreDe(S.disp.drivers, a.conductor, "nombre") : a.conductor;
@@ -729,8 +735,7 @@
           h("div", { class: "cc-stats" },
             h("div", {}, h("b", {}, res.total), h("span", {}, "Total")),
             h("div", {}, h("b", {}, res.pendientes), h("span", {}, "Pendientes")),
-            h("div", {}, h("b", {}, res.proceso), h("span", {}, "En proceso"))),
-          h("button", { type: "button", class: "cc-link", onclick: () => opts.onGoTo && opts.onGoTo("orders") }, "Pedidos en curso →")),
+            h("div", {}, h("b", {}, res.proceso), h("span", {}, "En proceso")))),
         tarjeta(ruta ? "Completados (ruta)" : "Completados (hoy)",
           h("div", { class: "cc-done" }, donut(porcentaje),
             h("ul", { class: "cc-legend" },

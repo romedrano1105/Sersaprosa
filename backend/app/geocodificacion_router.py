@@ -13,7 +13,9 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
+from . import entregas_logica
 from .entregas_router import usuario_autorizado
+from .eventos_router import usuario_coordinador
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["geocodificacion"])
@@ -135,3 +137,33 @@ def endpoint_geocodificar(req: SolicitudGeocodificar, authorization: str | None 
         raise HTTPException(422, str(error)) from error
     except ErrorGeocodificacion as error:
         raise HTTPException(502, str(error)) from error
+
+
+class SolicitudUbicar(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=entregas_logica.MAX_UBICAR)
+
+
+@router.post("/entregas/ubicar")
+def ubicar_entregas(req: SolicitudUbicar, authorization: str | None = Header(default=None)):
+    """Coordenadas para pedidos sin lat/lng: geocodifica su dirección y las guarda en `entregas`.
+
+    Solo coordinador. Lee y escribe con su token (RLS + función SQL guardar_coordenadas_entrega),
+    sin clave de servicio.
+    """
+    cliente, _ = usuario_coordinador(authorization)
+    ids = list(dict.fromkeys(str(i).strip() for i in req.ids if str(i).strip()))
+    try:
+        filas = cliente.table("entregas").select("id,direccion,zona,lat,lng").in_("id", ids).execute().data or []
+    except Exception as error:
+        logger.exception("No se pudieron leer las entregas a ubicar.")
+        raise HTTPException(503, "No se pudieron leer los pedidos en Supabase. Aplica entregas_coordenadas.sql.") from error
+
+    def guardar(pid, lat, lng):
+        resultado = cliente.rpc("guardar_coordenadas_entrega", {"p_id": str(pid), "p_lat": lat, "p_lng": lng}).execute().data
+        if isinstance(resultado, dict) and resultado.get("guardada") is False:
+            raise RuntimeError("La entrega ya tenía coordenadas válidas.")
+
+    resultado = entregas_logica.ubicar_pedidos(filas, geocodificar, guardar)
+    encontrados = {str(f.get("id")) for f in filas}
+    resultado["sin_ubicar"] += [{"id": i, "motivo": "El pedido no existe."} for i in ids if i not in encontrados]
+    return resultado

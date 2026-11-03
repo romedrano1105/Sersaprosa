@@ -1,0 +1,80 @@
+/* Alertas e incidentes (alertasIncidentes.js). Todas las clases empiezan con ai-.
+ * Severidad: alta = rojo, media = naranja, baja = amarillo (igual que incidentesViaje.css). */
+.ai-sev-alta { --ai-color: #e5484d; }
+.ai-sev-media { --ai-color: #f5a524; }
+.ai-sev-baja { --ai-color: #f2c94c; }
+
+.ai { display: grid; gap: 14px; color: var(--text, #f2f3f5); font-family: "Inter", system-ui, sans-serif; }
+.ai-cabecera { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.ai-kicker { color: var(--brand, #5b8cff); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
+.ai-cabecera h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.ai-cabecera p { margin: 4px 0 0; color: var(--muted, #9a9fa8); font-size: 12px; }
+.ai-contador { display: grid; grid-template-columns: auto auto; align-items: baseline; gap: 0 6px; text-align: right; }
+.ai-contador strong { font: 600 26px "Barlow Condensed", sans-serif; }
+.ai-contador span { color: var(--muted, #9a9fa8); font-size: 12px; }
+.ai-contador small { grid-column: 1 / -1; color: var(--muted, #9a9fa8); font-size: 11px; }
+
+/* Filtros */
+.ai-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; padding: 14px; background: #1c1e21; border: 1px solid var(--line, #33363c); border-radius: 8px; }
+.ai-campo { display: grid; gap: 4px; min-width: 0; }
+.ai-campo label { color: var(--muted, #9a9fa8); font-size: 11px; }
+.ai-campo input, .ai-campo select { width: 100%; padding: 8px 10px; color: var(--text, #f2f3f5); font: inherit; font-size: 13px; background: #15171b; border: 1px solid #3d4047; border-radius: 4px; color-scheme: dark; }
+
+/* Avisos */
+.ai-avisos { display: grid; gap: 8px; }
+.ai-avisos:empty { display: none; }
+.ai-error, .ai-ok { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 6px; font-size: 13px; }
+.ai-error { background: #2a2216; border: 1px solid #64411e; }
+.ai-error strong, .ai-error small { display: block; }
+.ai-error small { margin-top: 3px; color: var(--muted, #9a9fa8); font-size: 11px; }
+.ai-error button { flex: none; padding: 8px 14px; color: var(--text, #f2f3f5); background: transparent; border: 1px solid #ffffff4d; border-radius: 4px; cursor: pointer; }
+.ai-ok { background: #16261f; border: 1px solid #2c5a45; }
+.ai-ok button { color: var(--muted, #9a9fa8); font-size: 20px; line-height: 1; background: none; border: 0; cursor: pointer; }
+.ai-estado { margin: 0; padding: 18px; text-align: center; color: var(--muted, #9a9fa8); background: #1c1e21; border: 1px dashed #3d4047; border-radius: 6px; }
+
+/* Lista */
+.ai-resultados { display: grid; gap: 10px; }
+.ai-lista { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ai-tarjeta { width: 100%; display: grid; gap: 4px; padding: 12px 14px; text-align: left; color: inherit; font: inherit; background: #1c1e21; border: 1px solid var(--line, #33363c); border-left: 5px solid var(--ai-color, #9a9fa8); border-radius: 6px; cursor: pointer; }
+.ai-tarjeta:hover, .ai-tarjeta:focus-visible { border-color: var(--ai-color, #9a9fa8); outline: none; }
+.ai-tarjeta.ai-nueva { background: #24201a; }
+.ai-tarjeta.ai-resuelta { opacity: .7; border-left-color: #3fb27f; }
+.ai-fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ai-linea { color: #d9dce1; font-size: 13px; overflow-wrap: anywhere; }
+.ai-tarjeta small { color: var(--muted, #9a9fa8); font-size: 11px; overflow-wrap: anywhere; }
+.ai-chip { padding: 1px 8px; font-size: 10px; font-weight: 700; border-radius: 999px; white-space: nowrap; }
+.ai-chip-sev { color: #111; background: var(--ai-color, #9a9fa8); }
+.ai-chip-incidente { color: #dfe7ff; background: #5b8cff33; }
+.ai-chip-alerta { color: #d9dce1; background: #ffffff1a; }
+.ai-chip-ok { color: #07120f; background: #3fb27f; }
+.ai-chip-nueva { color: #fff; background: #e5484d; }
+
+/* Detalle de una alerta (los incidentes usan el detalle de incidentesViaje.css) */
+.ai-fondo { position: fixed; inset: 0; z-index: 9998; display: grid; place-items: center; padding: 12px; background: #000a; }
+.ai-modal { position: relative; width: min(640px, 100%); max-height: 92vh; overflow: auto; padding: 22px; color: var(--text, #f2f3f5); background: #1c1e21; border: 1px solid #3d4047; border-top: 5px solid var(--ai-color, #5b8cff); border-radius: 8px; }
+.ai-modal h3 { margin: 0 28px 12px 0; font: 600 22px "Barlow Condensed", sans-serif; }
+.ai-modal h4 { margin: 14px 0 6px; color: var(--muted, #9a9fa8); font-size: 13px; }
+.ai-cerrar { position: absolute; top: 8px; right: 12px; color: #d9dce1; font-size: 26px; background: none; border: 0; cursor: pointer; }
+.ai-datos { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.ai-datos dt { color: var(--muted, #9a9fa8); }
+.ai-datos dd { margin: 0; overflow-wrap: anywhere; }
+.ai-mapa { height: 230px; margin: 14px 0; background: #15171b; border-radius: 6px; }
+.ai-atencion { display: grid; gap: 6px; margin-top: 14px; }
+.ai-atencion label { color: var(--muted, #9a9fa8); font-size: 12px; }
+.ai-atencion textarea { width: 100%; padding: 8px 10px; color: var(--text, #f2f3f5); font: inherit; font-size: 13px; background: #15171b; border: 1px solid #3d4047; border-radius: 4px; resize: vertical; }
+.ai-form-error { margin: 0; color: #ff8d90; font-size: 12px; }
+.ai-form-error[hidden] { display: none; }
+.ai-primario { justify-self: start; padding: 9px 16px; color: #fff; font: inherit; font-size: 13px; font-weight: 600; background: #007afc; border: 0; border-radius: 4px; cursor: pointer; }
+.ai-primario:disabled { opacity: .5; cursor: default; }
+.ai-auditoria { margin: 0; padding-left: 18px; color: #d9dce1; font-size: 12px; }
+
+@media (max-width: 560px) {
+  .ai-datos { grid-template-columns: 1fr; }
+  .ai-datos dt { margin-top: 6px; }
+  .ai-error { flex-wrap: wrap; }
+  .ai-contador { text-align: left; }
+}
+
+/* La barra de pestañas de Monitoreo se desplaza dentro de su caja en el celular en vez de ensanchar la página. */
+.monitor-tabs { max-width: 100%; box-sizing: border-box; overflow-x: auto; scrollbar-width: thin; }
+.monitor-tabs button { flex: none; white-space: nowrap; }

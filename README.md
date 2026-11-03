@@ -94,11 +94,9 @@ del navegador.
 El menú compartido está en `public/assets/js/appNavigation.js` y sigue el
 flujo de trabajo del día:
 
-1. **Pedidos en curso**: pedidos que faltan por entregar; se eligen los que van en la ruta
-   (`pedidosEnCurso.js`).
-2. **Tracking de rutas** (centro de control, `centroRutas.js`; antes «Planificar rutas»): rutas de hoy con su estado
+1. **Tracking de rutas** (centro de control, `centroRutas.js`; antes «Planificar rutas»): rutas de hoy con su estado
    (borrador, sin asignar, asignada, en curso, completada); acciones editar, asignar,
-   desasignar, invertir orden, optimizar y ver historial; tarjetas de asignación, alertas
+   desasignar (o «Liberar ruta» si conserva un conductor sin asignación vigente), invertir orden, optimizar y ver historial; tarjetas de asignación, alertas
    (riesgo, retrasos, notificaciones), resumen y completados; lista de pedidos con ETA y
    mapa. Una ruta nueva se **guarda** con `POST /rutas/guardar`; también existen
    `POST /rutas/listar`, `POST /rutas/actualizar` y `POST /disponibilidad/desasignar`
@@ -122,10 +120,18 @@ flujo de trabajo del día:
    [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql) en Supabase.
    **«Revisar propuesta»** permite aceptar una ruta o rechazarla con motivo; si hay una alternativa segura, se presenta para revisión. Para guardar el estado y el historial de rechazos, aplica
    [`backend/database/rechazos_ruta.sql`](backend/database/rechazos_ruta.sql) después de crear `rutas_planificadas`.
-3. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas.
-4. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
-5. **Monitoreo en Vivo**: eventos especiales, alertas de seguridad y notificaciones (con modo demostración).
-6. **Dashboard de métricas**: porcentaje de rutas IA frente a rutas manuales, eventos explícitamente mitigados y tiempo promedio real entre inicio y finalización de entregas.
+   Los pedidos de la ruta en borrador se eligen con las casillas de esa misma lista (`pedidosEnCurso.js`
+   guarda la selección; ya no hay pantalla «Pedidos en curso»). Si un pedido no tiene coordenadas, el
+   coordinador puede pulsar **«Ubicar pedidos por su dirección»** (`POST /entregas/ubicar`).
+2. **Empleados y Vehículos**: asigna conductor, guardias y vehículo a las rutas guardadas. Las rutas
+   rechazadas no se ofrecen para asignar; las de la IA se asignan después de aceptar su propuesta y las
+   armadas a mano nacen aceptadas (`rutas_operativas_seguras.sql`). Una ruta con conductor guardado sin
+   asignación vigente se libera con «Liberar ruta» (`desasignar_ruta_operativa`).
+3. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
+4. **Monitoreo en Vivo**: notificaciones, eventos especiales y **Alertas e incidentes**, un solo panel
+   (`alertasIncidentes.js`) con los incidentes de viajes en curso (tiempo real) y las alertas de viajes
+   finalizados, con filtros por estado, severidad y origen.
+5. **Dashboard de métricas**: porcentaje de rutas IA frente a rutas manuales, eventos explícitamente mitigados y tiempo promedio real entre inicio y finalización de entregas.
 
 El panel de métricas está disponible para usuarios autenticados. Para registrar
 una mitigación, cambiar el estado de un evento o corregir una discrepancia se
@@ -143,7 +149,7 @@ en Supabase, después de crear las tablas `rutas_planificadas`, `entregas` y
 `eventos_especiales`. El rango de consulta incluye como máximo 365 días.
 
 Estructura del front: `public/assets/js/core/api.js` (sesión y llamadas al backend,
-`window.Api`), un archivo por módulo (`pedidosEnCurso.js`, `routePlanner.js`,
+`window.Api`), un archivo por módulo (`centroRutas.js`, `alertasIncidentes.js`,
 `VerificarConduJS.js`, …) y `dashboard.js` como arranque que cambia de pantalla.
 `POST /rutas/guardar` usa la función SQL `guardar_ruta_operativa`. Las pruebas de
 lógica del front corren con `npm test` (`tests/js`) y las del backend con `pytest`.
@@ -169,9 +175,22 @@ las cuentas autorizadas para consultar y asignar rutas.
 Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
 en Supabase y guarda coordenadas verificadas en `entregas.lat` y
-`entregas.lng`. Si faltan coordenadas, la página lo indica y no envía las
-direcciones a un geocodificador externo. El número y disponibilidad de rutas
-alternativas depende de las opciones devueltas por OSRM.
+`entregas.lng`. El backend normaliza las coordenadas (texto, invertidas, 0,0 o fuera de El Salvador
+cuentan como faltantes) para que la página nunca reciba `null` a medias. Si faltan, la página lo indica
+y el coordinador puede usar «Ubicar pedidos por su dirección»: el servidor geocodifica la dirección
+(OpenRouteService o Nominatim), guarda `lat`/`lng` con la función SQL `guardar_coordenadas_entrega`
+(incluida en `entregas_coordenadas.sql`, con el token del coordinador) y nunca inventa coordenadas. Para datos demo,
+[`backend/database/coordenadas_pedidos_demo.sql`](backend/database/coordenadas_pedidos_demo.sql)
+asigna el centro aproximado del municipio o colonia a los pedidos sin coordenadas.
+
+Para comprobar la conexión con Supabase abre `/salud`: indica qué variables están configuradas,
+si la URL es válida y qué tablas responden, sin mostrar claves ni datos. En local las variables
+se pueden poner en un archivo `.env` (ver `.env.example`; requiere `pip install python-dotenv`).
+
+Si una fuente de riesgo (incidentes, eventos, zonas) no responde, el agente de rutas calcula igual
+y lo indica en las advertencias; si el motor de rutas falla, el mensaje dice si fue OSRM, falta de
+ruta por calles o coordenadas no válidas. El número y disponibilidad de rutas alternativas depende
+de las opciones devueltas por OSRM.
 
 Las funciones `listar_disponibilidad_operativa` y `asignar_ruta_operativa`
 validan el rol del usuario dentro de PostgreSQL y se ejecutan con el token

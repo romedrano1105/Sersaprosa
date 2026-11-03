@@ -49,6 +49,57 @@ def es_de_la_fecha(entrega: dict, fecha: date | None = None) -> bool:
     return bool(f) and f.date() == fecha
 
 
+# Caja de El Salvador (con margen). Una coordenada fuera de aquí casi siempre es lat/lng invertidos o un 0,0.
+CAJA_EL_SALVADOR = (12.9, -90.3, 14.6, -87.5)   # lat_min, lng_min, lat_max, lng_max
+TEXTOS_VACIOS = {"", "sin direccion", "sin zona", "sin cliente", "n/a", "na", "-", "--"}
+
+
+def coordenadas(lat, lng) -> tuple[float, float] | None:
+    """(lat, lng) como números válidos dentro de El Salvador, o None.
+
+    Acepta texto ("13.69"), corrige lat/lng invertidos y descarta null, NaN, 0,0 y puntos fuera del país,
+    para que la página nunca reciba undefined/null ni mande un destino absurdo al motor de rutas.
+    """
+    try:
+        la, lo = float(str(lat).strip().replace(",", ".")), float(str(lng).strip().replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+    if la != la or lo != lo:                      # NaN
+        return None
+    la0, lo0, la1, lo1 = CAJA_EL_SALVADOR
+    if la0 <= la <= la1 and lo0 <= lo <= lo1:
+        return la, lo
+    if la0 <= lo <= la1 and lo0 <= la <= lo1:     # vienen invertidas
+        return lo, la
+    return None
+
+
+def _util(texto) -> str:
+    t = " ".join(str(texto or "").split())
+    return "" if norm(t) in TEXTOS_VACIOS else t
+
+
+def consultas_ubicacion(entrega: dict) -> list[tuple[str, str]]:
+    """Textos para geocodificar un pedido sin coordenadas, del más preciso al menos: [(texto, precision)].
+
+    precision = "direccion" (la dirección del pedido) o "zona" (centro aproximado del municipio/colonia).
+    """
+    direccion, zona = _util(entrega.get("direccion")), _util(entrega.get("zona"))
+    candidatos = []
+    if direccion and zona and norm(zona) not in norm(direccion):
+        candidatos.append((f"{direccion}, {zona}, El Salvador", "direccion"))
+    if direccion:
+        candidatos.append((f"{direccion}, El Salvador", "direccion"))
+    if zona:
+        candidatos.append((f"{zona}, El Salvador", "zona"))
+    vistos, salida = set(), []
+    for texto, precision in candidatos:
+        if len(texto) >= 3 and norm(texto) not in vistos:
+            vistos.add(norm(texto))
+            salida.append((texto, precision))
+    return salida
+
+
 def formatear(entrega: dict) -> dict:
     """FCJ1-56 y FCJ1-59: deja el pedido con el formato que espera la página."""
     f = a_datetime(entrega.get("hora_programada"))
@@ -65,9 +116,13 @@ def formatear(entrega: dict) -> dict:
         "contacto": entrega.get("contacto") or "",
         "productos": entrega.get("productos") or "",
         "notas": entrega.get("notas") or "",
-        "lat": entrega.get("lat"),
-        "lng": entrega.get("lng"),
+        **_lat_lng(entrega),
     }
+
+
+def _lat_lng(entrega: dict) -> dict:
+    pos = coordenadas(entrega.get("lat"), entrega.get("lng"))
+    return {"lat": pos[0], "lng": pos[1], "ubicada": True} if pos else {"lat": None, "lng": None, "ubicada": False}
 
 
 def filtrar(entregas: list[dict], estado=None, zona=None, ruta=None) -> list[dict]:
@@ -93,7 +148,8 @@ def construir_respuesta(entregas: list[dict], fecha: date | None = None,
     fecha = fecha or date.today()
     del_dia = [formatear(e) for e in entregas if es_de_la_fecha(e, fecha)]
     del_dia.sort(key=lambda e: e["hora"])
-    totales = {"todos": len(del_dia), "sin_ruta": sum(1 for e in del_dia if e["sin_ruta"])}
+    totales = {"todos": len(del_dia), "sin_ruta": sum(1 for e in del_dia if e["sin_ruta"]),
+               "sin_ubicacion": sum(1 for e in del_dia if not e["ubicada"])}
     for est in ESTADOS:
         totales[est] = sum(1 for e in del_dia if e["estado"] == est)
     return {
@@ -103,3 +159,60 @@ def construir_respuesta(entregas: list[dict], fecha: date | None = None,
         "zonas": sorted({e["zona"] for e in del_dia}),
         "rutas": sorted({e["ruta"] for e in del_dia if e["ruta"]}),
     }
+
+MAX_UBICAR = 25   # pedidos por solicitud: el geocodificador público admite ~1 consulta por segundo
+
+
+def ubicar_pedidos(filas: list[dict], geocodificar, guardar=None) -> dict:
+    """Coordenadas para pedidos que no las tienen, a partir de su dirección (o, si no, de su zona).
+
+    `geocodificar(texto)` → {lat, lng, label}; lanza ValueError si no encuentra el lugar y otra excepción si el
+    servicio falla. `guardar(id, lat, lng)` persiste en Supabase para no volver a geocodificar.
+    Nunca inventa coordenadas: lo que no se pudo ubicar vuelve en `sin_ubicar` con el motivo.
+    """
+    ubicadas, sin_ubicar, avisos = [], [], []
+    servicio_caido = False
+    for fila in filas or []:
+        pid = fila.get("id")
+        pos = coordenadas(fila.get("lat"), fila.get("lng"))
+        if pos:
+            ubicadas.append({"id": pid, "lat": pos[0], "lng": pos[1], "precision": "guardada", "guardada": True})
+            continue
+        consultas = consultas_ubicacion(fila)
+        if not consultas:
+            sin_ubicar.append({"id": pid, "motivo": "El pedido no tiene dirección ni zona para ubicarlo."})
+            continue
+        if servicio_caido:
+            sin_ubicar.append({"id": pid, "motivo": "El servicio de direcciones no respondió."})
+            continue
+        encontrado = None
+        for texto, precision in consultas:
+            try:
+                lugar = geocodificar(texto)
+            except ValueError:
+                continue
+            except Exception:  # noqa: BLE001 — proveedor caído: no se insiste con los demás pedidos
+                servicio_caido = True
+                break
+            pos = coordenadas((lugar or {}).get("lat"), (lugar or {}).get("lng"))
+            if pos:
+                encontrado = {"id": pid, "lat": pos[0], "lng": pos[1], "precision": precision,
+                              "etiqueta": (lugar or {}).get("label") or texto}
+                break
+        if not encontrado:
+            sin_ubicar.append({"id": pid, "motivo": "El servicio de direcciones no respondió." if servicio_caido
+                               else "No se encontró la dirección en El Salvador. Corrígela o agrega lat/lng en Supabase."})
+            continue
+        encontrado["guardada"] = False
+        if guardar:
+            try:
+                guardar(pid, encontrado["lat"], encontrado["lng"])
+                encontrado["guardada"] = True
+            except Exception:  # noqa: BLE001 — se usa igual para trazar, pero se avisa
+                avisos.append("No se pudieron guardar algunas coordenadas en Supabase (revisa entregas_coordenadas.sql); "
+                              "se usan solo para trazar esta vez.")
+        ubicadas.append(encontrado)
+    aproximadas = sum(1 for u in ubicadas if u["precision"] == "zona")
+    if aproximadas:
+        avisos.append(f"{aproximadas} pedido(s) se ubicaron solo por su zona (ubicación aproximada). Revisa su dirección.")
+    return {"ubicadas": ubicadas, "sin_ubicar": sin_ubicar, "avisos": list(dict.fromkeys(avisos))}

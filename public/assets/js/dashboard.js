@@ -13,7 +13,6 @@
   let eventLayers = null;
   let agentLayer = null;     // ruta que recomienda el agente de seguridad
   let deliveries = [];
-  let manualStops = null; // paradas del planificador multi-paradas; null = ruta del día
   let mapEvents = [];
   let routeChoices = [];
   let selectedRoute = 0;
@@ -24,11 +23,8 @@
   let alertModule = null;
   let notificationsModule = null;
   let drivingMounted = false;      // Conducción en vivo (conduccionVivo.js)
-  let incidentModule = null;
-  let historyModule = null;
   let reportsModule = null;    // reportes automáticos de viaje (reportesViaje.js)
   let availabilityModule = null;
-  let ordersModule = null;
   let recalcTimer = null;
   let centroModule = null;   // centro de control de rutas (centroRutas.js)
   let notifData = null;      // última respuesta de notificaciones (para las alertas de la ruta)
@@ -314,7 +310,7 @@
   }
 
   async function evaluateSafety() {
-    const stops = manualStops || dailyStops();
+    const stops = dailyStops();
     if (!stops.length) {
       showAgent("error", "No hay ruta que evaluar", ["Elige pedidos con coordenadas o calcula una ruta primero."]);
       return;
@@ -343,7 +339,6 @@
       throw new Error("El servicio de entregas devolvió una respuesta no válida.");
     }
     deliveries = response.entregas;
-    if (ordersModule) ordersModule.setData(deliveries);
     pushCentro();
   }
 
@@ -506,7 +501,7 @@
   // Las rutas generadas con «Nuevo viaje» traen su propio origen y destino.
   function routeOrigin() {
     const trip = (currentRoute() || {}).viaje;
-    return trip && !manualStops ? [Number(trip.origen.lat), Number(trip.origen.lng)] : origin;
+    return trip ? [Number(trip.origen.lat), Number(trip.origen.lng)] : origin;
   }
 
   function currentRoute() {
@@ -577,7 +572,7 @@
   }
 
   function routeInputSignature() {
-    return JSON.stringify([routeOrigin(), manualStops || dailyStops()]);
+    return JSON.stringify([routeOrigin(), dailyStops()]);
   }
 
   function riskInputSignature() {
@@ -666,41 +661,9 @@
     return point.place;
   }
 
-  // Recibe el arreglo [origen, ...paradas, destino] de routePlanner.js, resuelve coordenadas
-  // y reutiliza el mismo cálculo y dibujo que la ruta del día.
-  async function calculateCustomRoute(points) {
-    const places = [];
-    for (const point of points) {
-      try {
-        places.push(await geocodePoint(point));
-      } catch (error) {
-        throw new Error("«" + point.text.trim() + "»: " + error.message);
-      }
-    }
-    origin = [places[0].lat, places[0].lng];
-    $("originLabel").textContent = points[0].text.trim();
-    manualStops = places.slice(1).map((place, index) => ({
-      name: points[index + 1].text.trim(),
-      detail: place.label,
-      time: index === places.length - 2 ? "Destino final" : "",
-      lat: place.lat,
-      lng: place.lng
-    }));
-    if (!await calculateRoute()) throw new Error($("noRoute").textContent);
-    lastRouteInput = routeInputSignature();
-    lastRiskInput = riskInputSignature();
-  }
-
-  function resetCustomRoute() {
-    manualStops = null;
-    origin = CENTER.slice();
-    $("originLabel").textContent = "Centro de San Salvador";
-    refreshDashboard();
-  }
-
   // ---- Guardar la ruta trazada (paso 2 → 3 del flujo): queda disponible para asignarle personal ----
   function routeOrderIds() {
-    return manualStops || currentRoute() ? [] : tracedOrders().map(order => String(order.id));
+    return currentRoute() ? [] : tracedOrders().map(order => String(order.id));
   }
 
   function suggestedRouteName() {
@@ -709,9 +672,9 @@
       now.toLocaleTimeString("es-SV", { hour: "2-digit", minute: "2-digit" });
   }
 
-  // Solo se ofrece guardar cuando hay una ruta trazada a partir de pedidos elegidos (no la personalizada).
+  // Solo se ofrece guardar cuando hay una ruta trazada a partir de pedidos elegidos.
   function updateSaveRoute() {
-    const available = !manualStops && !currentRoute() && routeChoices.length > 0 && routeOrderIds().length > 0;
+    const available = !currentRoute() && routeChoices.length > 0 && routeOrderIds().length > 0;
     $("saveRoute").classList.toggle("hidden", !available);
     if (available && !$("saveRouteName").value) $("saveRouteName").value = suggestedRouteName();
   }
@@ -756,20 +719,23 @@
     $("routeOptions").replaceChildren();
     try {
       const route = currentRoute();
-      const chosen = manualStops ? [] : routeAllOrders().filter(window.Pedidos.enCurso);
+      const chosen = routeAllOrders().filter(window.Pedidos.enCurso);
       const missing = chosen.filter(delivery => !hasLocation(delivery));
-      const stops = manualStops || dailyStops();
+      const stops = dailyStops();
       if (!stops.length) {
-        throw new Error(
-          route ? (chosen.length ? "Los pedidos pendientes de esta ruta no tienen coordenadas guardadas." :
+        const error = new Error(
+          route ? (chosen.length ? "Los pedidos pendientes de esta ruta no tienen coordenadas." :
             "Esta ruta no tiene pedidos pendientes por trazar.") :
           !deliveries.some(window.Pedidos.enCurso) ? "No hay pedidos en curso para hoy." :
           !chosen.length ? "Elige al menos un pedido en curso para calcular la ruta." :
-          "Los pedidos elegidos no tienen coordenadas guardadas. Añádelas en Supabase para trazar la ruta.");
+          "Los pedidos elegidos no tienen coordenadas.");
+        error.missing = missing;
+        throw error;
       }
-      $("routeTitle").textContent = manualStops ? "Ruta personalizada" : route ? route.nombre : "Ruta de pedidos (" + stops.length + ")";
+      $("routeTitle").textContent = route ? route.nombre : "Ruta de pedidos (" + stops.length + ")";
       if (missing.length) {
-        $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluirán porque faltan coordenadas. Actualiza lat y lng en Supabase.";
+        $("routeMessage").textContent = missing.length + " pedido(s) elegidos no se incluyen porque no tienen coordenadas.";
+        offerLocate($("routeMessage"), missing);
         $("routeMessage").classList.remove("hidden");
       }
       const calculated = await requestRoutes(stops);
@@ -793,8 +759,53 @@
         $("mRisk").textContent = "–";
       }
       $("noRoute").textContent = error.message || "No se pudo calcular una ruta. Revisa tu conexión e inténtalo de nuevo.";
+      if (error.missing && error.missing.length) offerLocate($("noRoute"), error.missing);
       $("noRoute").classList.remove("hidden");
       return false;
+    }
+  }
+
+  // ---- Pedidos sin coordenadas: «Ubicar pedidos» busca su dirección y guarda lat/lng en Supabase ----
+  // Solo el coordinador puede escribir coordenadas. Nunca se inventan: lo que no se encuentra se informa.
+  function offerLocate(target, missing) {
+    const isCoordinator = (window.Api.session() || {}).role === "coordinador_rutas";
+    if (!isCoordinator) {
+      target.append(" Pide al coordinador que las agregue.");
+      return;
+    }
+    const button = element("button", "inline-action", "Ubicar " + missing.length + " pedido(s) por su dirección");
+    button.type = "button";
+    button.addEventListener("click", () => locateMissing(missing.map(order => String(order.id)), target, button));
+    target.append(" ", button);
+  }
+
+  async function locateMissing(ids, target, button) {
+    button.disabled = true;
+    button.textContent = "Ubicando…";
+    try {
+      const result = await post("/entregas/ubicar", { ids: ids.slice(0, 25) });
+      const found = (result.ubicadas || []).length;
+      const notFound = result.sin_ubicar || [];
+      await loadDeliveries();
+      // Las que no se pudieron guardar en Supabase se usan igual para trazar esta vez.
+      (result.ubicadas || []).filter(item => !item.guardada).forEach(item => {
+        const order = deliveries.find(d => String(d.id) === String(item.id));
+        if (order && !hasLocation(order)) Object.assign(order, { lat: item.lat, lng: item.lng, ubicada: true });
+      });
+      await recalcAndRemember();
+      const lines = [found ? "Se ubicaron " + found + " pedido(s)." : "No se pudo ubicar ningún pedido."];
+      if (notFound.length) {
+        lines.push(notFound.length + " sin ubicar: " + notFound.slice(0, 3).map(item => {
+          const order = deliveries.find(d => String(d.id) === String(item.id));
+          return (order ? order.cliente : item.id) + " (" + item.motivo + ")";
+        }).join("; ") + (notFound.length > 3 ? "…" : ""));
+      }
+      (result.avisos || []).forEach(text => lines.push(text));
+      $("routeMessage").textContent = lines.join(" ");
+      $("routeMessage").classList.remove("hidden");
+    } catch (error) {
+      target.textContent = "No se pudieron ubicar los pedidos: " + (error.message || "inténtalo de nuevo.");
+      target.classList.remove("hidden");
     }
   }
 
@@ -814,19 +825,10 @@
     window.ConduccionVivo.mount($("panelConduccion"));
   }
 
-  function mountIncidentsPanel() {
-    if (incidentModule) return;
-    incidentModule = window.IncidentesViaje.mount($("panelIncidentes"));
-  }
-
-  function mountHistoryPanel() {
-    if (historyModule) return;
-    historyModule = window.HistorialIncidentes.mount($("panelHistorialIncidentes"));
-  }
-
+  // Alertas e incidentes en un solo panel (alertasIncidentes.js): incidentes de viajes en curso + alertas de seguridad.
   function mountAlertPanel() {
     if (alertModule) return;
-    alertModule = window.AlertasSeguridad.mount($("panelAlertas"));
+    alertModule = window.AlertasIncidentes.mount($("panelAlertasIncidentes"));
   }
 
      function mountNotificationsPanel() {
@@ -855,7 +857,6 @@
       deliveries,
       orders: routeAllOrders(),
       result: choice,
-      manual: Boolean(manualStops),
       originLabel: $("originLabel").textContent,
       events: choice ? choice.riskEvents.filter(event => event.severity === "alta" || event.severity === "media") : [],
       notifs: notifData
@@ -869,9 +870,8 @@
     }
   }
 
-  // Elegir una ruta guardada (o null = nueva ruta en borrador). Deja la ruta personalizada, si había una.
+  // Elegir una ruta guardada (o null = nueva ruta en borrador).
   function selectRoute(route) {
-    manualStops = null;
     routeOrderPreview = null;
     routePreviewVersion++;
     centroModule.setActive(route ? route.id : null);
@@ -962,14 +962,14 @@
     await recalcAndRemember();
   }
 
-  // Pedidos en curso: la pantalla completa y el selector de "Planificar rutas" comparten la misma elección.
-  function mountOrderModules() {
-    if (ordersModule) return;
-    ordersModule = window.Pedidos.mountPage($("panelPedidos"), { onGoRoutes: () => setScreen("routes") });
-    ordersModule.setData(deliveries);
+  // Selección de pedidos para la ruta en borrador (casillas de la lista de Tracking; Pedidos.store).
+  let orderSelectionReady = false;
+  function watchOrderSelection() {
+    if (orderSelectionReady) return;
+    orderSelectionReady = true;
     // Al cambiar la elección se vuelve a trazar la ruta (con una pequeña espera para agrupar clics seguidos).
     window.Pedidos.store.subscribe(() => {
-      if (manualStops || currentRoute()) return;
+      if (currentRoute()) return;
       pushCentro(); // la lista refleja la casilla al instante; el trazado se recalcula enseguida
       clearTimeout(recalcTimer);
       recalcTimer = setTimeout(recalcAndRemember, 500);
@@ -989,15 +989,13 @@
   }
 
   function setMonitorTab(name) {
-    const tabs = ["alerts", "notifications", "driving", "incidents", "history"];
+    const tabs = ["alerts", "notifications", "driving"];
     monitorTab = tabs.includes(name) ? name : "events";
 
     $("monitorNotifs").classList.toggle("hidden", monitorTab !== "notifications");
     $("monitorEvents").classList.toggle("hidden", monitorTab !== "events");
     $("monitorAlerts").classList.toggle("hidden", monitorTab !== "alerts");
     $("monitorDriving").classList.toggle("hidden", monitorTab !== "driving");
-    $("monitorIncidents").classList.toggle("hidden", monitorTab !== "incidents");
-    $("monitorHistory").classList.toggle("hidden", monitorTab !== "history");
 
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {
       button.setAttribute(
@@ -1012,21 +1010,16 @@
       mountEventPanel();
     } else if (monitorTab === "driving") {
       mountDrivingPanel();
-    } else if (monitorTab === "incidents") {
-      mountIncidentsPanel();
-    } else if (monitorTab === "history") {
-      mountHistoryPanel();
     } else {
       mountAlertPanel();
     }
   }
 
   function setScreen(name) {
-    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "orders", "monitor", "metrics", "daily", "risk", "reports"] : ["routes", "orders", "monitor", "metrics", "daily"];
+    const allowed = (window.Api.session() || {}).role === "coordinador_rutas" ? ["routes", "monitor", "metrics", "daily", "risk", "reports"] : ["routes", "monitor", "metrics", "daily"];
     const screen = allowed.includes(name) ? name : "routes";
     currentScreen = screen;
     $("routesScreen").classList.toggle("hidden", screen !== "routes");
-    $("ordersScreen").classList.toggle("hidden", screen !== "orders");
     $("riskScreen").classList.toggle("hidden", screen !== "risk");
     $("monitorScreen").classList.toggle("hidden", screen !== "monitor");
     $("metricsScreen").classList.toggle("hidden", screen !== "metrics");
@@ -1034,9 +1027,8 @@
     $("reportsScreen").classList.toggle("hidden", screen !== "reports");
     const headings = {
       routes: ["SEGUIMIENTO DE RUTAS", "Tracking de rutas", "Cree un viaje con «+», vea la ruta óptima de la IA y siga cada pedido."],
-      orders: ["SEGUIMIENTO DE ENTREGAS", "Pedidos en curso", "Pedidos del día que faltan por entregar; elija cuáles van en la ruta."],
       risk: ["ANÁLISIS DE CARGA", "Riesgo de rutas", "Registre monto y tipo de carga; el nivel de riesgo se calcula solo."],
-      monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Consulte eventos especiales e incidentes de seguridad."],
+      monitor: ["CENTRO DE CONTROL", "Monitoreo en Vivo", "Notificaciones, eventos especiales y un solo panel de alertas e incidentes."],
       metrics: ["GESTIÓN OPERATIVA", "Dashboard de métricas", "Evalúe la optimización de rutas, las mitigaciones confirmadas y los tiempos reales de entrega."],
       daily: ["GESTIÓN OPERATIVA", "Empleados y Vehículos", "Revise disponibilidad y asignaciones del día."],
       reports: ["HISTORIAL DE VIAJES", "Reportes de viaje", "Consulte el reporte que se genera automáticamente al completarse cada viaje."]
@@ -1050,8 +1042,6 @@
       if (map) setTimeout(() => map.invalidateSize(), 50);
     } else if (screen === "risk") {
       if (window.RiesgoRutas) window.RiesgoRutas.reload();
-    } else if (screen === "orders") {
-      mountOrderModules();
     } else if (screen === "monitor") {
       setMonitorTab(monitorTab);
     } else if (screen === "metrics") {
@@ -1075,7 +1065,7 @@
     $("refresh").disabled = true;
     setConnectionStatus("Actualizando", false);
     const results = await Promise.allSettled([loadDeliveries(), loadEvents()]);
-    [eventModule, alertModule, incidentModule, historyModule, availabilityModule, reportsModule].forEach(module => {
+    [eventModule, alertModule, availabilityModule, reportsModule].forEach(module => {
       if (module && typeof module.reload === "function") module.reload();
     });
     if (centroModule) centroModule.refresh();
@@ -1139,16 +1129,16 @@
       onChanged: afterRouteChange
     });
     mountMapToolbar();
-    mountOrderModules();
+    watchOrderSelection();
     mountNotificationsPanel();
-    window.IncidentesViaje.iniciar({
+    // Alertas e incidentes: consulta en segundo plano (avisos en pantalla y contador de la pestaña).
+    window.AlertasIncidentes.iniciar({
       onCount: count => {
         const badge = $("incCount");
         badge.textContent = count > 99 ? "99+" : String(count);
         badge.classList.toggle("hidden", count === 0);
       }
     });
-    window.RoutePlanner.mount($("multiRoute"), { onCalculate: calculateCustomRoute, onReset: resetCustomRoute });
     window.addEventListener("app:navigate", event => setScreen(event.detail));
     document.querySelectorAll("[data-monitor-panel]").forEach(button => {
       button.addEventListener("click", () => setMonitorTab(button.dataset.monitorPanel));
@@ -1177,7 +1167,7 @@
       }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
     });
     setScreen(location.hash === "#monitoreo" ? "monitor" : location.hash === "#metricas" ? "metrics" : location.hash === "#personal" ? "daily" :
-      location.hash === "#pedidos" ? "orders" : location.hash === "#riesgo" ? "risk" : location.hash === "#reportes" ? "reports" : "routes");
+      location.hash === "#riesgo" ? "risk" : location.hash === "#reportes" ? "reports" : "routes");
     await refreshDashboard();
     window.setInterval(() => {
       if (!document.hidden) refreshDashboard();
