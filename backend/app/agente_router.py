@@ -5,8 +5,10 @@ Por defecto usa el modo determinista (sin costo de IA); con `usar_llm=true` y OP
 el modelo de OpenAI orquesta las herramientas, y si falla se vuelve al modo determinista.
 """
 import logging
+import os
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -14,6 +16,7 @@ from ..agente_rutas import geo
 from ..agente_rutas.agente import AgenteRutaSegura
 from ..agente_rutas.enrutador import OSRM
 from ..agente_rutas.fuentes_supabase import IncidentesSupabase, TraficoSinDatos, ZonasSupabase
+from ..agente_rutas.google_trafico import consultar_trafico_google
 from .eventos_router import usuario_coordinador
 
 logger = logging.getLogger(__name__)
@@ -36,6 +39,22 @@ def _agente(cliente, ahora: datetime, enrutador=None) -> AgenteRutaSegura:
     return AgenteRutaSegura(IncidentesSupabase(cliente), TraficoSinDatos(), ZonasSupabase(cliente, ahora), enrutador or OSRM())
 
 
+def _agregar_trafico_google(reporte: dict) -> dict:
+    elegido = reporte.get("ruta_elegida") or {}
+    geometria = elegido.get("geometria") or []
+    try:
+        trafico = consultar_trafico_google(os.getenv("GOOGLE_ROUTES_API_KEY"), geometria)
+    except (httpx.HTTPError, ValueError):
+        logger.warning("No se pudo consultar el tráfico de Google Routes.", exc_info=True)
+        trafico = {"disponible": False, "segmentos": []}
+    reporte["trafico_google"] = trafico
+    if not trafico["disponible"]:
+        reporte.setdefault("advertencias", []).append(
+            "Tráfico de Google no disponible; la ruta segura sigue mostrándose sin esta capa."
+        )
+    return reporte
+
+
 @router.post("/ruta-segura")
 def ruta_segura(req: SolicitudRuta, authorization: str | None = Header(default=None)):
     cliente, _ = usuario_coordinador(authorization)
@@ -44,7 +63,8 @@ def ruta_segura(req: SolicitudRuta, authorization: str | None = Header(default=N
         raise HTTPException(422, f"El origen y el destino deben estar a menos de {DISTANCIA_MAXIMA_KM} km.")
     ahora = datetime.now(timezone.utc)
     try:
-        return _agente(cliente, ahora).decidir(o, d, ahora=ahora, usar_llm=req.usar_llm)
+        reporte = _agente(cliente, ahora).decidir(o, d, ahora=ahora, usar_llm=req.usar_llm)
+        return _agregar_trafico_google(reporte)
     except Exception as error:
         logger.exception("Falló el agente de rutas seguras.")
         raise HTTPException(502, "No se pudo evaluar la ruta. Revisa la conexión con el motor de rutas y Supabase.") from error

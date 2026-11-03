@@ -35,6 +35,10 @@ archivos `.env`.
 - `SUPABASE_ANON_KEY`: clave anon/public del proyecto.
 - `SUPABASE_SERVICE_ROLE_KEY`: clave de servicio, solo en el backend; nunca la
   publiques en el navegador ni en el repositorio.
+- `GOOGLE_ROUTES_API_KEY`: opcional; habilita los tramos de tráfico en los mapas
+  del agente y las propuestas de ruta. Guárdala como variable de entorno del
+  backend, no en JavaScript. Requiere Routes API y facturación habilitadas en
+  Google Cloud; Google puede cobrar cada consulta.
 
 Para conservar el acceso con código de empleado, aplica
 [`backend/database/empleados_auth.sql`](backend/database/empleados_auth.sql).
@@ -161,6 +165,10 @@ consultar cada dos minutos y el recorrido se recalcula cuando cambian sus
 coordenadas, el origen o los eventos que afectan al riesgo. **Actualizar ahora**
 permite forzar la consulta. El GPS del navegador es opcional, solo se solicita
 tras pulsar el botón de ubicación y se usa como origen para el cálculo de ruta.
+Si se configura `GOOGLE_ROUTES_API_KEY`, el backend añade al mapa los tramos
+NORMAL, SLOW y TRAFFIC_JAM devueltos por Google Routes, tanto en la evaluación
+como en las propuestas. Esta capa es visual: no cambia la puntuación de riesgo
+ni la ruta elegida por el agente.
 
 Para habilitar la asignación y disponibilidad reales, aplica
 [`backend/database/operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
@@ -209,7 +217,9 @@ en la API y no simula cámaras ni posiciones de unidades.
 3. Usa `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` como comando
    de inicio.
 4. Define en la sección **Environment** las variables `SUPABASE_URL`,
-   `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. Para activar la
+   `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. Para mostrar tráfico
+   agrega `GOOGLE_ROUTES_API_KEY` (Routes API y facturación habilitadas en
+   Google Cloud). Para activar la
    orquestación con OpenAI en la evaluación de rutas seguras, agrega también
    `OPENAI_API_KEY`; opcionalmente define `AGENTE_MODELO` (por defecto
    `gpt-6-luna`). El uso de la API de OpenAI se factura por separado de una

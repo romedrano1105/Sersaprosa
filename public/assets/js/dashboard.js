@@ -150,6 +150,16 @@
       const line = L.polyline(points, { color: "#3ec27a", weight: 5, opacity: 0.95, dashArray: "9 8" }).addTo(agentLayer);
       map.fitBounds(line.getBounds(), { padding: [35, 35], maxZoom: 15 });
     }
+    const colores = { NORMAL: "#2e7d32", SLOW: "#ed9e00", TRAFFIC_JAM: "#d93025" };
+    const trafico = report.trafico_google;
+    if (trafico && trafico.disponible) {
+      trafico.segmentos.forEach(segmento => {
+        const geometria = (segmento.geometria || []).map(point => [point[0], point[1]]);
+        if (geometria.length > 1 && colores[segmento.velocidad]) {
+          L.polyline(geometria, { color: colores[segmento.velocidad], weight: 7, opacity: 0.9 }).addTo(agentLayer);
+        }
+      });
+    }
     const risky = chosen.vetada;
     const resume = chosen.distancia_km + " km · " + Math.round(chosen.duracion_min_ajustada) + " min" +
       (chosen.desvio ? " · desvío para evitar riesgo" : "");
@@ -157,6 +167,16 @@
     (report.riesgos_residuales || []).forEach(text => warnings.push("Riesgo residual: " + text));
     showAgent(risky ? "risk" : "", titulo || (risky ? "Todas las rutas tienen riesgo alto" : "Ruta óptima de la IA"),
       [resume, report.justificacion], warnings);
+    if (trafico && trafico.disponible) {
+      const leyenda = element("div", "agent-traffic-legend");
+      leyenda.append(element("strong", "", "Tráfico Google:"));
+      [["NORMAL", "Normal"], ["SLOW", "Lento"], ["TRAFFIC_JAM", "Congestionado"]].forEach(([velocidad, label]) => {
+        const item = element("span", "", label);
+        item.style.setProperty("--traffic-color", colores[velocidad]);
+        leyenda.append(item);
+      });
+      $("agentPanel").append(leyenda);
+    }
   }
 
   // ---- Rechazo de rutas (rechazoRutas.js): revisar, aceptar o rechazar una propuesta ----
