@@ -20,7 +20,8 @@ const API_PATHS = [
   '/rutas-riesgo',
   '/rutas/',
   '/viajes/',
-  '/agente/'
+  '/agente/',
+  '/empleados/'
 ];
 const TYPES = {
   '.html': 'text/html; charset=utf-8',

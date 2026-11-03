@@ -23,6 +23,7 @@ from .agente_router import router as agente_router
 from .alertas_seguridad_router import router as alertas_router
 from .disponibilidad_router import router as disponibilidad_router
 from .entregas_router import router as entregas_router
+from .empleados_router import router as empleados_router
 from .eventos_router import router as eventos_router
 from .geocodificacion_router import router as geocodificacion_router
 from .historial_incidentes_router import router as historial_incidentes_router
@@ -66,6 +67,7 @@ app.include_router(incidentes_router)
 app.include_router(metricas_router)
 app.include_router(historial_incidentes_router)
 app.include_router(rechazos_router)
+app.include_router(empleados_router)  # /empleados/listar · /guardar · /estado
 # --- ENDPOINT DE VERIFICACIÓN Y AUTENTICACIÓN ---
 class CredencialesEmpleado(BaseModel):
     code: str = Field(min_length=1, max_length=100)

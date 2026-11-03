@@ -44,6 +44,20 @@ class Sesion:
         return geo.bbox(pts, margen_m)
 
 
+def causa_error(e: BaseException) -> str:
+    """Causa legible de un fallo de Supabase/PostgREST: qué falta y dónde, sin datos de usuario."""
+    codigo = str(getattr(e, "code", "") or "")
+    texto = str(getattr(e, "message", "") or e or "").strip()
+    bajo = f"{codigo} {texto}".lower()
+    if codigo in {"PGRST205", "42P01"} or "could not find the table" in bajo or ("relation" in bajo and "does not exist" in bajo):
+        return "falta la tabla en Supabase: " + texto[:110]
+    if codigo in {"PGRST204", "42703"} or "column" in bajo:
+        return "falta una columna en Supabase: " + texto[:110]
+    if codigo == "42501" or "permission denied" in bajo:
+        return "sin permiso de lectura: " + texto[:110]
+    return f"{type(e).__name__}{': ' + texto[:110] if texto else ''}"
+
+
 def _leer_fuente(s: Sesion, nombre: str, leer) -> list:
     """Lee una fuente de datos. Si falla (tabla ausente, RLS, red), sigue sin ella y deja un aviso.
 
@@ -52,7 +66,7 @@ def _leer_fuente(s: Sesion, nombre: str, leer) -> list:
     try:
         return list(leer() or [])
     except Exception as e:  # noqa: BLE001 — cualquier fallo de la fuente se reporta, no se propaga
-        aviso = f"No se pudieron consultar {nombre} ({type(e).__name__}); la ruta se evaluó sin esos datos."
+        aviso = f"No se pudieron consultar {nombre} ({causa_error(e)}); la ruta se evaluó sin esos datos."
         if aviso not in s.avisos:
             s.avisos.append(aviso)
         return []
