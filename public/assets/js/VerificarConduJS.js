@@ -520,7 +520,7 @@
         (D.pendientes || []).length ? h("p", { class: "dsp-pend", role: "status" },
           (D.pendientes.length === 1 ? "La ruta «" + D.pendientes[0].nombre + "» es una propuesta de la IA sin aceptar"
             : D.pendientes.length + " rutas de la IA esperan aceptación") +
-          ": acéptala en Tracking de rutas → «Revisar propuesta» para poder asignarla.") : null,
+          ": acéptala en Tracking de rutas → «Aceptar propuesta» para poder asignarla.") : null,
         h("div", { class: "dsp-cols" },
           panel("Conductores", "driver", D.drivers),
           panel("Guardias", "guard", D.guards),

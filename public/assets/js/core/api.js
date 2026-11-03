@@ -5,6 +5,7 @@
    token. Los módulos nuevos deben usar Api.post en vez de escribir su propio fetch.
 
      Api.session()              → { token, name, code, role, apiBase } o null
+     Api.todayISO()             → fecha de hoy en la zona horaria de El Salvador
      Api.post(ruta, cuerpo)     → JSON de la respuesta; lanza Error con el mensaje del servidor
      Api.get(ruta)              → igual, con GET
 
@@ -58,5 +59,16 @@
   const post = (path, payload) => request("POST", path, payload);
   const get = path => request("GET", path);
 
-  global.Api = { session, post, get };
+  function todayISO(date) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/El_Salvador",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(date || new Date());
+    const part = type => parts.find(value => value.type === type).value;
+    return part("year") + "-" + part("month") + "-" + part("day");
+  }
+
+  global.Api = { session, post, get, todayISO };
 })(window);

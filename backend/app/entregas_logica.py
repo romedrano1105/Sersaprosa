@@ -5,7 +5,10 @@ Estados en la base de datos: pendiente · en_proceso · completada.
 La página (pedidosEnCurso.js) usa: pendiente · proceso · completada.
 """
 import unicodedata
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+ZONA_HORARIA = ZoneInfo("America/El_Salvador")
 
 ROLES_PERMITIDOS = ("ejecutivo_comercial", "coordinador_rutas")
 ESTADOS = ("pendiente", "proceso", "completada")
@@ -29,6 +32,19 @@ def normalizar_estado(valor) -> str:
     return _EQUIVALENCIAS.get(str(valor or "").strip().lower(), "pendiente")
 
 
+def hoy_el_salvador() -> date:
+    return datetime.now(ZONA_HORARIA).date()
+
+
+def limites_utc(fecha: date) -> tuple[str, str]:
+    inicio_local = datetime.combine(fecha, time.min, tzinfo=ZONA_HORARIA)
+    fin_local = inicio_local + timedelta(days=1)
+    return (
+        inicio_local.astimezone(timezone.utc).isoformat(),
+        fin_local.astimezone(timezone.utc).isoformat(),
+    )
+
+
 def a_datetime(valor):
     if valor is None or valor == "":
         return None
@@ -44,9 +60,12 @@ def a_datetime(valor):
 
 def es_de_la_fecha(entrega: dict, fecha: date | None = None) -> bool:
     """FCJ1-55: ¿el pedido está programado para esa fecha? (por defecto, hoy)"""
-    fecha = fecha or date.today()
+    fecha = fecha or hoy_el_salvador()
     f = a_datetime(entrega.get("hora_programada"))
-    return bool(f) and f.date() == fecha
+    if not f:
+        return False
+    fecha_local = f.astimezone(ZONA_HORARIA).date() if f.tzinfo else f.date()
+    return fecha_local == fecha
 
 
 # Caja de El Salvador (con margen). Una coordenada fuera de aquí casi siempre es lat/lng invertidos o un 0,0.
@@ -145,7 +164,7 @@ def construir_respuesta(entregas: list[dict], fecha: date | None = None,
                         estado=None, zona=None, ruta=None) -> dict:
     """Pedidos de la fecha ordenados por hora, con totales y opciones para los filtros.
     Si no hay ninguno, 'entregas' viene vacío y la página muestra el mensaje (FCJ1-60)."""
-    fecha = fecha or date.today()
+    fecha = fecha or hoy_el_salvador()
     del_dia = [formatear(e) for e in entregas if es_de_la_fecha(e, fecha)]
     del_dia.sort(key=lambda e: e["hora"])
     totales = {"todos": len(del_dia), "sin_ruta": sum(1 for e in del_dia if e["sin_ruta"]),

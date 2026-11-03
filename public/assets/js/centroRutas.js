@@ -17,7 +17,7 @@
      const centro = CentroRutas.mount(encabezadoEl, {
        taskContainer: listaEl, post, onSelectRoute(ruta|null), onReorder("reverse"|"optimize"),
        onPreviewOrder(ids), onClearPreview(),
-       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), onReviewRoute(ruta), selection (Pedidos.store),
+       onFocusStop(i), onGoTo(pantalla), onChanged(), onSave(), onNewTrip(), onEditTrip(ruta), onReviewRoute(ruta), onAcceptProposal(ruta), selection (Pedidos.store),
        originNode (fila «Inicio de ruta» que se coloca al inicio de la lista)
      });
      centro.update({ deliveries, orders, result, originLabel, events, notifications });
@@ -623,11 +623,12 @@
           S.editing ? boton("Cancelar edición", "×", cancelarEdicion, S.editing.saving, "Descartar los cambios") : null,
           ruta && ruta.viaje && opts.onEditTrip ? boton("Editar viaje", "✎", () => opts.onEditTrip(ruta), !!a,
             a ? "La ruta ya salió: desasígnala para editar el viaje" : "Cambiar origen, destino, horario, carga o monto") : null,
-          ruta && ruta.viaje && opts.onReviewRoute ? boton("Revisar propuesta", "⊘", () => opts.onReviewRoute(ruta), !!a,
-            a ? "La ruta ya tiene asignación: no se puede rechazar" : "Ver la ruta propuesta, aceptarla o rechazarla") : null,
+          ruta && ruta.viaje && sinAceptar && opts.onAcceptProposal
+            ? boton("Aceptar propuesta", "✓", () => opts.onAcceptProposal(ruta), !!a,
+              a ? "La ruta ya tiene asignación" : "Aceptar la propuesta para habilitar la asignación", "cc-primary") : null,
           boton("Asignar ruta", "＋", abrirAsignar, !ruta || !!a || rechazada || sinAceptar,
             !ruta ? "Guarda la ruta primero" : a ? "La ruta ya está asignada" : rechazada ? "La propuesta fue rechazada: genera una alternativa o acéptala"
-              : sinAceptar ? "Acepta la propuesta (Revisar propuesta) antes de asignarla" : ""),
+              : sinAceptar ? "Acepta la propuesta antes de asignarla" : ""),
           fantasma
             ? boton("Liberar ruta", "⊖", desasignar, false, "Tiene un conductor guardado sin asignación vigente: libérala para poder asignarla")
             : boton("Desasignar ruta", "⊖", desasignar, !ruta || !a, a ? "" : "La ruta no tiene asignación"),
@@ -669,7 +670,7 @@
       if (!coordinador) asignado = h("p", { class: "cc-hint" }, "La asignación la gestiona el coordinador de rutas.");
       else if (!ruta) asignado = h("p", { class: "cc-hint" }, "Ruta sin guardar. Guárdala para asignarle conductor, guardias y vehículo.");
       else if (!a && rechazada) asignado = h("p", { class: "cc-hint" }, "La propuesta fue rechazada: genera una alternativa o acéptala antes de asignarla.");
-      else if (!a && sinAceptar) asignado = h("p", { class: "cc-hint" }, "Acepta la propuesta con «Revisar propuesta» para poder asignarla.");
+      else if (!a && sinAceptar) asignado = h("p", { class: "cc-hint" }, "Acepta la propuesta para poder asignarla.");
       else if (!a) asignado = h("div", {}, h("p", { class: "cc-hint" }, "Todavía sin conductor ni vehículo."), boton("Asignar ahora", "＋", abrirAsignar, false, "", "cc-primary"));
       else {
         const conductor = S.disp ? nombreDe(S.disp.drivers, a.conductor, "nombre") : a.conductor;
