@@ -51,6 +51,25 @@ class AgenteDeterministaTest(unittest.TestCase):
         import json
         json.dumps(self.reporte)
 
+    def test_fuentes_externas_caidas_no_interrumpen_la_evaluacion(self):
+        class FuenteCaida:
+            def activos(self, *_):
+                raise TimeoutError("sin conexión")
+
+            def zonas(self, *_):
+                raise TimeoutError("sin conexión")
+
+            def tramos(self, *_):
+                raise TimeoutError("sin conexión")
+
+        agente = construir_agente(AHORA)
+        agente.fuentes = (FuenteCaida(), FuenteCaida(), FuenteCaida())
+        reporte = agente.decidir(ORIGEN, DESTINO, ahora=AHORA, usar_llm=False)
+
+        self.assertTrue(reporte["ruta_elegida"]["geometria"])
+        self.assertEqual(len(reporte["advertencias"]), 3)
+        self.assertTrue(all("sin conexión" in aviso for aviso in reporte["advertencias"]))
+
 
 class FalsoLLM:
     """Cliente falso con la forma de OpenAI().responses.create."""

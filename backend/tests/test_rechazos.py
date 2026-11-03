@@ -48,6 +48,25 @@ class Cliente:
     def table(self, t): return Consulta(self.db, t, falla_insert=self.sin_tabla and t == "rechazos_ruta")
 
 
+class ClienteUsuario:
+    def __init__(self, db):
+        self.db, self.llamadas = db, []
+
+    def rpc(self, nombre, parametros):
+        self.llamadas.append((nombre, parametros))
+        if nombre != "aceptar_propuesta_ruta_operativa":
+            raise AssertionError("RPC no esperado")
+        ruta = next((fila for fila in self.db["rutas_planificadas"] if fila["id"] == parametros["p_ruta"]), None)
+        if ruta and ruta["estado_propuesta"] == "rechazada":
+            error = RuntimeError("La propuesta está rechazada.")
+            error.code = "P0001"
+            error.message = str(error)
+            raise error
+        if ruta:
+            ruta["estado_propuesta"] = "aceptada"
+        return type("ConsultaRPC", (), {"execute": lambda self: Resp({"id": parametros["p_ruta"], "estado_propuesta": "aceptada"})})()
+
+
 class ClienteFallaFinalizar(Cliente):
     def table(self, tabla):
         consulta = super().table(tabla)
@@ -163,8 +182,15 @@ class FlujoExitosoTest(unittest.TestCase):
 
     def test_aceptar_la_alternativa(self):
         db = base()
-        self.assertEqual(servicio.aceptar_propuesta("RT-1", cliente_servicio=Cliente(db), hoy=HOY)["estado_propuesta"], "aceptada")
+        cliente_usuario = ClienteUsuario(db)
+        self.assertEqual(
+            servicio.aceptar_propuesta("RT-1", cliente_usuario=cliente_usuario)["estado_propuesta"],
+            "aceptada",
+        )
         self.assertEqual(db["rutas_planificadas"][0]["estado_propuesta"], "aceptada")
+        self.assertEqual(cliente_usuario.llamadas, [
+            ("aceptar_propuesta_ruta_operativa", {"p_ruta": "RT-1"})
+        ])
 
     def test_no_rechaza_una_propuesta_ya_aceptada(self):
         db = base(estado_propuesta="aceptada")
@@ -275,7 +301,7 @@ class FlujoFallidoTest(unittest.TestCase):
     def test_no_se_acepta_una_ruta_rechazada_sin_alternativa(self):
         db = self.assert_sin_alternativa(evaluador_falla(SinAlternativa("x")), logica.SIN_RUTA)
         with self.assertRaises(servicio.ErrorRechazo):
-            servicio.aceptar_propuesta("RT-1", cliente_servicio=Cliente(db), hoy=HOY)
+            servicio.aceptar_propuesta("RT-1", cliente_usuario=ClienteUsuario(db))
 
 
 class PropuestaVigenteTest(unittest.TestCase):
@@ -342,7 +368,9 @@ class RouterTest(unittest.TestCase):
 
         self.db = base()
         hoy = mock.patch.object(servicio.rutas_logica, "hoy_el_salvador", return_value=HOY)
-        coord = mock.patch.object(rechazos_router, "usuario_coordinador", return_value=(object(), "Ana"))
+        coord = mock.patch.object(
+            rechazos_router, "usuario_coordinador", return_value=(ClienteUsuario(self.db), "Ana")
+        )
         nube = mock.patch.object(rechazos_router.database, "cliente_servicio", return_value=Cliente(self.db))
         agente = mock.patch.object(rechazos_router, "_agente", return_value=construir_agente(AHORA))
         for parche in (hoy, coord, nube, agente):
@@ -363,6 +391,19 @@ class RouterTest(unittest.TestCase):
         self.assertTrue(cuerpo["alternativa"]["evaluacion"]["ruta_elegida"]["desvio"])     # el desvío, no la directa rechazada
         self.assertEqual(self.db["rechazos_ruta"][0]["usuario"], "Ana")
         self.assertEqual(self.db["rutas_planificadas"][0]["estado_propuesta"], "propuesta")
+
+    def test_aceptar_propuesta_usa_rpc_con_token_de_usuario(self):
+        from unittest import mock
+        from backend.app import rechazos_router
+
+        with mock.patch.object(
+            rechazos_router.database, "cliente_servicio", side_effect=AssertionError("no requiere service role")
+        ):
+            respuesta = self.client.post("/rutas/aceptar-propuesta", json={"ruta_id": "RT-1"})
+
+        self.assertEqual(respuesta.status_code, 200, respuesta.text)
+        self.assertEqual(respuesta.json(), {"ruta_id": "RT-1", "estado_propuesta": "aceptada"})
+        self.assertEqual(self.db["rutas_planificadas"][0]["estado_propuesta"], "aceptada")
 
     def test_si_la_unica_alternativa_esta_vetada_se_informa_y_queda_rechazada(self):
         self.preparar()

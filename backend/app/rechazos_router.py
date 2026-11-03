@@ -31,9 +31,10 @@ def _servicio_y_evaluador(authorization):
         raise HTTPException(503, "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.") from error
     ahora = datetime.now(timezone.utc)
     agente = _agente(cliente, ahora)
-    return usuario, servicio, lambda o, d, excluir: _agregar_trafico_google(
+    evaluar = lambda o, d, excluir: _agregar_trafico_google(
         agente.decidir(o, d, ahora=ahora, usar_llm=False, excluir=excluir)
     )
+    return cliente, usuario, servicio, evaluar
 
 
 def _responder(error: rechazos_servicio.ErrorRechazo):
@@ -42,7 +43,7 @@ def _responder(error: rechazos_servicio.ErrorRechazo):
 
 @router.post("/rechazar")
 def rechazar(req: Rechazo, authorization: str | None = Header(default=None)):
-    usuario, servicio, evaluar = _servicio_y_evaluador(authorization)
+    _, usuario, servicio, evaluar = _servicio_y_evaluador(authorization)
     try:
         return rechazos_servicio.rechazar_ruta(
             req.ruta_id, req.motivo, req.comentario, req.ruta_propuesta, req.ruta_propuesta.get("geometria"),
@@ -53,7 +54,7 @@ def rechazar(req: Rechazo, authorization: str | None = Header(default=None)):
 
 @router.post("/propuesta")
 def propuesta(req: RutaId, authorization: str | None = Header(default=None)):
-    _, servicio, evaluar = _servicio_y_evaluador(authorization)
+    _, _, servicio, evaluar = _servicio_y_evaluador(authorization)
     try:
         return rechazos_servicio.propuesta_vigente(req.ruta_id, cliente_servicio=servicio, evaluar=evaluar)
     except rechazos_servicio.ErrorRechazo as error:
@@ -62,7 +63,7 @@ def propuesta(req: RutaId, authorization: str | None = Header(default=None)):
 
 @router.post("/alternativa")
 def alternativa(req: RutaId, authorization: str | None = Header(default=None)):
-    _, servicio, evaluar = _servicio_y_evaluador(authorization)
+    _, _, servicio, evaluar = _servicio_y_evaluador(authorization)
     try:
         return rechazos_servicio.reintentar_alternativa(req.ruta_id, cliente_servicio=servicio, evaluar=evaluar)
     except rechazos_servicio.ErrorRechazo as error:
@@ -71,16 +72,16 @@ def alternativa(req: RutaId, authorization: str | None = Header(default=None)):
 
 @router.post("/aceptar-propuesta")
 def aceptar_propuesta(req: RutaId, authorization: str | None = Header(default=None)):
-    _, servicio, _ = _servicio_y_evaluador(authorization)
+    cliente, _ = usuario_coordinador(authorization)
     try:
-        return rechazos_servicio.aceptar_propuesta(req.ruta_id, cliente_servicio=servicio)
+        return rechazos_servicio.aceptar_propuesta(req.ruta_id, cliente_usuario=cliente)
     except rechazos_servicio.ErrorRechazo as error:
         raise _responder(error) from error
 
 
 @router.post("/rechazos")
 def historial(req: RutaId, authorization: str | None = Header(default=None)):
-    _, servicio, _ = _servicio_y_evaluador(authorization)
+    _, _, servicio, _ = _servicio_y_evaluador(authorization)
     try:
         return rechazos_servicio.historial(req.ruta_id, cliente_servicio=servicio)
     except rechazos_servicio.ErrorRechazo as error:

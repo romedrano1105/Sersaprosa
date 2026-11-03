@@ -30,6 +30,25 @@
   const FALLOS_PARA_AVISAR = 2;
   const CENTRO = [13.6929, -89.2182]; // San Salvador
   const SALIDA_POR_DEFECTO = { texto: "Centro de San Salvador", lat: 13.6989, lng: -89.1914 }; // igual que Tracking
+  function unidadDemostracion() {
+    return {
+      id: "DEMO-RUTA-1",
+      nombre: "Ruta de demostración · San Salvador – Santa Tecla",
+      conductor: "Conductor de demostración",
+      conductorInfo: { codigo: "DEMO-001", licencia: null },
+      custodios: [],
+      vehiculo: { placa: "DEMO-01", tipo: "Unidad de demostración" },
+      monto: null,
+      riesgo: "Bajo",
+      horario: "",
+      salidaMs: Date.now() - 7 * 60 * 1000,
+      origen: { texto: "San Salvador (demo)", lat: 13.6929, lng: -89.2182 },
+      destino: { texto: "Santa Tecla (demo)", lat: 13.6769, lng: -89.279 },
+      paradas: [],
+      incidentes: [],
+      demo: true
+    };
+  }
   const COLOR_RIESGO = { alto: "#e5484d", medio: "#f5a524", bajo: "#3fb27f" };
   const VELOCIDAD_RESPALDO_KMH = 35;  // solo si OSRM no responde
   const MULTIPLICADORES = [1, 10, 60];
@@ -209,6 +228,30 @@
     return { unidades, sinAsignar, sinTrazado };
   }
 
+  function aplicarTelemetria(unidades, viajes) {
+    const porRuta = new Map((viajes || []).filter(v => v && v.ruta_id).map(v => [String(v.ruta_id), v]));
+    return (unidades || []).map(unidad => {
+      const viaje = porRuta.get(String(unidad.id));
+      const posicion = viaje && viaje.posicion_actual;
+      const lugar = posicion && lugarValido(posicion);
+      return Object.assign({}, unidad, {
+        posReal: lugar ? { lat: lugar.lat, lng: lugar.lng, p: posicion.p } : null
+      });
+    });
+  }
+
+  function modoDemostracion(unidades, motivo) {
+    const resultado = unidades && unidades.length ? unidades : [unidadDemostracion()];
+    const faltanPosiciones = resultado.some(unidad => !unidad.posReal);
+    return {
+      unidades: resultado.map(unidad => Object.assign({}, unidad, { demo: !unidad.posReal })),
+      demo: faltanPosiciones,
+      motivo: motivo || (faltanPosiciones
+        ? "No hay telemetría GPS real para todas las unidades."
+        : "")
+    };
+  }
+
   /* ---------- DOM ---------- */
 
   function h(tag, attrs, ...children) {
@@ -238,6 +281,7 @@
       seleccion: null, seguir: false, filtro: "todos", busca: "",
       mult: 1, relojSim: Date.now(), relojReal: Date.now(),
       cargando: true, errorDatos: "", fallosIncidentes: 0, errorIncidentes: "",
+      demo: false, motivoDemo: "",
       timers: [], iniciado: false, visible: false, geoCola: [], geoActivas: 0
     };
     const el = {};
@@ -376,11 +420,11 @@
         const previa = S.unidades.get(n.id);
         if (previa) {
           const cambioRuta = claveGeo(previa) !== claveGeo(n);
-          Object.assign(previa, n, { dom: previa.dom, marcador: previa.marcador, tarjeta: previa.tarjeta, geo: cambioRuta ? null : previa.geo, posReal: previa.posReal });
+          Object.assign(previa, n, { dom: previa.dom, marcador: previa.marcador, tarjeta: previa.tarjeta, geo: cambioRuta ? null : previa.geo, posReal: n.posReal || null });
           if (cambioRuta) pedirGeometria(previa);
           if (previa.marcador) previa.marcador.setTooltipContent(textoTooltip(previa));
         } else {
-          const u = Object.assign({}, n, { geo: null, pos: null, posReal: null, visto: Date.now() });
+          const u = Object.assign({}, n, { geo: null, pos: null, posReal: n.posReal || null, visto: Date.now() });
           crearMarcador(u);
           S.unidades.set(u.id, u);
           pedirGeometria(u);
@@ -699,6 +743,8 @@
     /* --- datos --- */
     function pintarNotas() {
       const notas = [];
+      if (S.demo) notas.push(["mm-nota-demo",
+        "MODO DEMOSTRACIÓN · " + (S.motivoDemo || "las posiciones son estimadas y no provienen de GPS real.")]);
       if (S.errorDatos) notas.push(["mm-nota-error", S.errorDatos, "Reintentar", () => cargarDatos(true)]);
       if (S.errorIncidentes) notas.push(["mm-nota-warn", S.errorIncidentes, "Reintentar", () => cargarIncidentes(true)]);
       if (S.sinAsignar) notas.push(["mm-nota-info", S.sinAsignar + (S.sinAsignar === 1 ? " ruta de hoy sin conductor asignado" : " rutas de hoy sin conductor asignado") + " (se asigna en Empleados y Vehículos)."]);
@@ -708,7 +754,20 @@
     }
 
     async function cargarDatos(manual) {
-      if (!global.Api || !global.Api.session()) return;
+      if (!global.Api || !global.Api.session()) {
+        const modo = modoDemostracion([], "No hay una sesión conectada; se muestran datos simulados.");
+        S.cargando = false;
+        S.demo = true;
+        S.motivoDemo = modo.motivo;
+        if (global.ConduccionVivo && typeof global.ConduccionVivo.definirRutas === "function") {
+          global.ConduccionVivo.definirRutas([]);
+        }
+        aplicarUnidades(modo.unidades);
+        pintarNotas();
+        pintarLista();
+        tick();
+        return;
+      }
       if (manual) { S.cargando = true; pintarLista(); }
       try {
         const hoy = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -719,16 +778,39 @@
         ]);
         const armado = armarUnidades(rutas && rutas.rutas, disp, S.incidentes, entregas && entregas.entregas);
         S.sinAsignar = armado.sinAsignar;
-        // Conducción en vivo recibe las mismas unidades reales (conductor, vehículo y posición de salida).
+        let unidades = armado.unidades;
+        let motivoDemo = "";
+        if (unidades.length && global.Api.get) {
+          try {
+            const telemetria = await global.Api.get("/viajes/monitoreo/en-vivo");
+            unidades = aplicarTelemetria(unidades, Array.isArray(telemetria) ? telemetria : []);
+          } catch (error) {
+            motivoDemo = "No se pudo consultar la telemetría GPS; se muestran posiciones simuladas.";
+            console.warn("No se pudo consultar la telemetría GPS.", error);
+          }
+        } else if (unidades.length) {
+          motivoDemo = "La API de telemetría no está disponible; se muestran posiciones simuladas.";
+        }
+        const modo = modoDemostracion(unidades, motivoDemo);
+        S.demo = modo.demo;
+        S.motivoDemo = modo.motivo;
+        if (!unidades.length) S.motivoDemo = "No hay rutas asignadas con datos trazables; se muestra una unidad simulada.";
         if (global.ConduccionVivo && typeof global.ConduccionVivo.definirRutas === "function") {
-          global.ConduccionVivo.definirRutas(armado.unidades.map(u => ({
+          global.ConduccionVivo.definirRutas((S.demo ? [] : modo.unidades).map(u => ({
             id: u.id, nombre: u.nombre, conductor: u.conductor, vehiculo: u.vehiculo ? u.vehiculo.placa : "—", lat: u.origen.lat, lng: u.origen.lng
           })));
         }
         S.errorDatos = "";
-        aplicarUnidades(armado.unidades);
+        aplicarUnidades(modo.unidades);
       } catch (error) {
         S.errorDatos = (error && error.message) || "No se pudieron cargar las rutas y los vehículos";
+        const modo = modoDemostracion([], "No hay conexión con rutas y asignaciones; se muestran datos simulados.");
+        S.demo = true;
+        S.motivoDemo = modo.motivo;
+        if (global.ConduccionVivo && typeof global.ConduccionVivo.definirRutas === "function") {
+          global.ConduccionVivo.definirRutas([]);
+        }
+        aplicarUnidades(modo.unidades);
       }
       S.cargando = false;
       pintarNotas();
@@ -826,7 +908,10 @@
   global.MapaMonitoreo = {
     mount,
     instancia: null,
-    util: { distancia, acumulado, puntoEn, horaASalida, avance, peorIncidente, armarUnidades, paradasDeRuta, lugarValido, montoTexto, grupo }
+    util: {
+      distancia, acumulado, puntoEn, horaASalida, avance, peorIncidente, armarUnidades,
+      aplicarTelemetria, modoDemostracion, paradasDeRuta, lugarValido, montoTexto, grupo
+    }
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", autoMontar);

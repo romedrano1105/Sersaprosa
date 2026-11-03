@@ -175,6 +175,7 @@ def obtener_viajes_monitoreo_en_vivo(authorization: str | None = Header(default=
         empleado = relacion_unica(viaje.get("empleados"))
         resultado.append({
             "viaje_id": viaje.get("id"),
+            "ruta_id": viaje.get("ruta_id"),
             "estado": viaje.get("estado"),
             "unidad": vehiculo.get("placa"),
             "modelo": vehiculo.get("tipo"),

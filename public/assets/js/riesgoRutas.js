@@ -307,14 +307,6 @@
         ruta.monto != null ? fmtMonto.format(ruta.monto) : "—";
       fila.insertCell().textContent = ruta.tipo_carga || "—";
       fila.insertCell().append(crearBadge(ruta.nivel_riesgo));
-
-      const boton = document.createElement("button");
-      boton.type = "button";
-      boton.className = "rr-boton rr-boton--link";
-      boton.textContent = "Ver detalle";
-      boton.addEventListener("click", () => mostrarDetalle(ruta.id));
-
-      fila.insertCell().append(boton);
     });
   }
 

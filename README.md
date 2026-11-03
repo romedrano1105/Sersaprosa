@@ -177,15 +177,35 @@ NORMAL, SLOW y TRAFFIC_JAM devueltos por Google Routes, tanto en la evaluación
 como en las propuestas. Esta capa es visual: no cambia la puntuación de riesgo
 ni la ruta elegida por el agente.
 
-Para habilitar la asignación y disponibilidad reales, aplica
-[`backend/database/operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
-en Supabase. El esquema usa empleados activos de `empleados` (con su fecha de
-licencia), vehículos activos de `vehiculos` y rutas del día de
-`rutas_planificadas`; ingresa los vehículos y las rutas planificadas antes de
-usar la asignación. La API valida nuevamente en el servidor el rol, los
-documentos vigentes y que conductor, vehículo y ruta no estén ya asignados.
-En Supabase Auth asigna `app_metadata.role = coordinador_rutas` únicamente a
-las cuentas autorizadas para consultar y asignar rutas.
+Para habilitar el ciclo de creación, aceptación y asignación, aplica las
+migraciones SQL en Supabase **en este orden** (primero en staging):
+
+1. [`backend/database/empleados.sql`](backend/database/empleados.sql)
+2. [`backend/database/operaciones_rutas.sql`](backend/database/operaciones_rutas.sql)
+3. [`backend/database/entregas.sql`](backend/database/entregas.sql)
+4. [`backend/database/viajes.sql`](backend/database/viajes.sql)
+5. [`backend/database/viajes_ruta.sql`](backend/database/viajes_ruta.sql)
+6. [`backend/database/riesgo_rutas.sql`](backend/database/riesgo_rutas.sql)
+7. [`backend/database/metricas_operativas.sql`](backend/database/metricas_operativas.sql)
+   (requiere que ya exista `eventos_especiales`)
+8. [`backend/database/rechazos_ruta.sql`](backend/database/rechazos_ruta.sql)
+9. [`backend/database/edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
+10. [`backend/database/rutas_operativas_seguras.sql`](backend/database/rutas_operativas_seguras.sql)
+11. [`backend/database/empleados_gestion.sql`](backend/database/empleados_gestion.sql)
+
+No ejecutes `empleados_gestion.sql` antes de `rutas_operativas_seguras.sql`:
+sus funciones consultan las tablas de asignaciones que crea esa migración.
+`rutas_operativas_seguras.sql` instala las RPC que usa FastAPI para guardar
+rutas y asignaciones, incluyendo `p_guardias`, y la aceptación transaccional de
+propuestas. No vuelvas a aplicar `operaciones_rutas.sql` después de esa
+migración. Entra a Supabase SQL Editor y ejecuta el contenido de cada archivo
+en el orden indicado; las migraciones no se ejecutan desde la aplicación.
+
+El esquema usa empleados activos de `empleados` (con licencia vigente),
+vehículos activos de `vehiculos` y rutas de `rutas_planificadas`; ingresa
+vehículos válidos antes de asignar. La API y las RPC validan el rol, los
+documentos y que conductor, vehículo y ruta no estén asignados. En Supabase Auth
+asigna `app_metadata.role = coordinador_rutas` únicamente a cuentas autorizadas.
 
 Para mostrar y recorrer las entregas del día, ejecuta
 [`backend/database/entregas_coordenadas.sql`](backend/database/entregas_coordenadas.sql)
@@ -211,11 +231,14 @@ Las funciones `listar_disponibilidad_operativa` y `asignar_ruta_operativa`
 validan el rol del usuario dentro de PostgreSQL y se ejecutan con el token
 autenticado; la consulta de empleados devuelve solo los campos necesarios. No se
 expone la clave `service_role` al navegador ni se concede acceso a `anon`.
-Los mapas, las teselas y el cálculo de rutas dependen de servicios públicos
-externos (OpenStreetMap y OSRM), que pueden limitar solicitudes o dejar de
-responder. El repositorio no tiene una fuente conectada de CCTV o GPS de
-vehículos; por eso el monitoreo muestra eventos/incidentes reales disponibles
-en la API y no simula cámaras ni posiciones de unidades.
+Los mapas, las teselas y el cálculo de rutas dependen de servicios externos
+(OpenStreetMap, OSRM y, si se configura, Google Routes), que pueden limitar
+solicitudes o dejar de responder. Los fallos de las fuentes de incidentes y
+zonas se registran como advertencias y la evaluación sigue sin esos datos; los
+fallos de tráfico dejan la ruta visible sin su capa de tráfico. El monitoreo usa
+GPS si la API lo proporciona; si no hay telemetría, rutas asignadas trazables o
+conexión con los servicios, activa automáticamente `MODO DEMOSTRACIÓN` con
+posiciones simuladas claramente identificadas. No uses esos datos para operar.
 
 ## Despliegue en Render
 
