@@ -228,9 +228,14 @@ class GenerarTest(unittest.TestCase):
 class TiposYRiesgoTest(unittest.TestCase):
     def test_nivel_de_riesgo_como_en_sql(self):
         self.assertEqual(logica.nivel_de_riesgo("500", 0), "Bajo")
-        self.assertEqual(logica.nivel_de_riesgo("500", 2), "Medio")
-        self.assertEqual(logica.nivel_de_riesgo("50000", 1), "Medio")
-        self.assertEqual(logica.nivel_de_riesgo("500000", 1), "Alto")
+        self.assertEqual(logica.nivel_de_riesgo("13", 2), "Bajo")          # poco efectivo ya no es «Medio»
+        self.assertEqual(logica.nivel_de_riesgo("5000", 2), "Medio")
+        self.assertEqual(logica.nivel_de_riesgo("10000", 2), "Alto")
+        self.assertEqual(logica.nivel_de_riesgo("10000", 1), "Medio")       # electrónicos
+        self.assertEqual(logica.nivel_de_riesgo("4999.99", 1), "Bajo")
+        self.assertEqual(logica.nivel_de_riesgo("50000", 1), "Alto")
+        self.assertEqual(logica.nivel_de_riesgo("50000", 0), "Medio")       # documentos
+        self.assertEqual(logica.nivel_de_riesgo("100000", 0), "Alto")
 
     def test_tipos_vacios_se_siembran_y_se_listan(self):
         db = {"tipos_carga": []}

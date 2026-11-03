@@ -73,7 +73,7 @@
 
 .metrics-card > strong {
   color: var(--text, #fff);
-  font: 700 34px/1.1 "Barlow Condensed", sans-serif;
+  font: 700 34px/1.1 "Inter", system-ui, sans-serif;
 }
 
 .metrics-card > small,
@@ -85,7 +85,7 @@
 .metrics-panel h2 {
   margin: 0 0 14px;
   color: var(--text, #fff);
-  font: 600 21px/1.2 "Barlow Condensed", sans-serif;
+  font: 600 21px/1.2 "Inter", system-ui, sans-serif;
 }
 
 .metrics-route-chart {

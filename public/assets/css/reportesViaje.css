@@ -9,7 +9,7 @@
 .rv-muted { color: var(--muted); font-size: 12px; }
 .rv-kicker { color: var(--brand, #5b8cff); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 .rv-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.rv-cabecera h2 { margin: 5px 0 2px; font: 600 22px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.rv-cabecera h2 { margin: 5px 0 2px; font: 600 22px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .rv h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .rv-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
@@ -72,7 +72,7 @@ button.rv-chip:hover { border-color: var(--rv-color); }
 .rv-borde-completo { --rv-color: #4cc38a; }
 .rv-borde-incompleto { --rv-color: var(--mid, #f5a524); }
 .rv-borde-error { --rv-color: var(--high, #e5484d); }
-.rv-modal h3 { margin: 0 28px 0 0; font: 600 24px "Barlow Condensed", sans-serif; }
+.rv-modal h3 { margin: 0 28px 0 0; font: 600 24px "Inter", system-ui, sans-serif; }
 .rv-modal h3 .rv-pastilla { font-family: "Inter", system-ui, sans-serif; }
 .rv-modal h4 { margin: 10px 0 2px; color: var(--muted); font-size: 13px; font-weight: 600; }
 .rv-modal p { margin: 0; }

@@ -15,7 +15,7 @@
   color: var(--nt-text);
   font-family: "Inter", system-ui, sans-serif;
 }
-.nt h2 { margin: 5px 0 0; font: 600 21px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.nt h2 { margin: 5px 0 0; font: 600 21px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .nt-kicker { color: var(--nt-teal); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
 
 /* Avisos de arriba (como los de Monitoreo en Vivo) */
@@ -24,7 +24,7 @@
 .nt-critical { background: #2b1a1c; border-color: #6c2930; }
 .nt-warning { background: #2a2216; border-color: #64411e; }
 .nt-neutral { background: #1c1e21; border-color: #3d4047; }
-.nt-symbol { width: 35px; height: 35px; display: grid; place-items: center; flex: none; border-radius: 4px; font: 700 18px "Barlow Condensed", sans-serif; }
+.nt-symbol { width: 35px; height: 35px; display: grid; place-items: center; flex: none; border-radius: 4px; font: 700 18px "Inter", system-ui, sans-serif; }
 .nt-critical .nt-symbol { color: var(--nt-red); background: #4a171d; }
 .nt-warning .nt-symbol { color: var(--nt-orange); background: #4b2d12; }
 .nt-neutral .nt-symbol { color: var(--nt-gray); background: #2b2e33; }
@@ -34,7 +34,7 @@
 .nt-critical .nt-banner-copy span { color: var(--nt-red); }
 .nt-warning .nt-banner-copy span { color: var(--nt-orange); }
 .nt-neutral .nt-banner-copy span { color: var(--nt-gray); }
-.nt-banner-copy strong { margin-top: 4px; font: 600 16px "Barlow Condensed", sans-serif; overflow-wrap: anywhere; }
+.nt-banner-copy strong { margin-top: 4px; font: 600 16px "Inter", system-ui, sans-serif; overflow-wrap: anywhere; }
 .nt-banner-copy small { margin-top: 3px; color: var(--nt-muted); font-size: 10px; }
 .nt-banner > button { flex: none; padding: 8px 11px; color: #d9dce1; background: transparent; border: 1px solid #ffffff2b; border-radius: 4px; cursor: pointer; font-size: 10px; }
 .nt-banner > button:hover:not(:disabled) { border-color: #ffffff70; }
@@ -69,7 +69,7 @@
 .nt-chip { padding: 3px 7px; color: #d9dce1; background: #ffffff12; border-radius: 3px; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .nt-level { color: var(--c); font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .nt-new { margin-left: auto; padding: 2px 6px; color: #ffffff; background: var(--nt-teal); border-radius: 3px; font-size: 7px; font-weight: 700; letter-spacing: .1em; }
-.nt-item strong { display: block; font: 600 17px/1.2 "Barlow Condensed", sans-serif; overflow-wrap: anywhere; }
+.nt-item strong { display: block; font: 600 17px/1.2 "Inter", system-ui, sans-serif; overflow-wrap: anywhere; }
 .nt-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; color: var(--nt-muted); font-size: 10px; }
 .nt-warn { margin: 9px 0 0; padding: 7px 9px; color: var(--nt-muted); background: #ffffff0d; border-left: 3px solid var(--nt-gray); font-size: 10px; }
 .nt-item-action { display: flex; align-items: center; flex: none; max-width: 150px; text-align: right; }
