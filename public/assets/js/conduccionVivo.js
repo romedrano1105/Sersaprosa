@@ -29,12 +29,9 @@
   };
   const MAX_REGISTRO = 500, MAX_ALERTAS = 5, FILAS_REGISTRO = 50;
 
-  // Rutas en curso (ejemplo). Reemplazar con definirRutas([...]) al conectar las rutas reales.
-  let rutas = [
-    { id: "RT-1", nombre: "Ruta Centro", conductor: "Ana López", vehiculo: "P123-456", lat: 13.69, lng: -89.22 },
-    { id: "RT-2", nombre: "Ruta Norte", conductor: "Luis Pérez", vehiculo: "P789-012", lat: 13.72, lng: -89.19 },
-    { id: "RT-3", nombre: "Ruta Sur", conductor: "Marta Rivas", vehiculo: "P345-678", lat: 13.65, lng: -89.17 }
-  ];
+  // Rutas en curso REALES: las entrega el mapa de Monitoreo en vivo (mapaMonitoreo.js) con definirRutas([...])
+  // a partir de las asignaciones de hoy (conductor y vehículo de Supabase). Sin asignaciones, la lista queda vacía.
+  let rutas = [];
   let pantalla = null;
 
   /* ---------- Almacenamiento ---------- */
@@ -168,6 +165,7 @@
 
         // FCJ1-142 y FCJ1-143: rutas en curso, velocidad y «Sin señal»
         h("h3", {}, "Rutas en curso"),
+        !filas.length ? h("p", { class: "cv-vacio" }, "No hay rutas en curso con conductor y vehículo asignados hoy.") :
         h("div", { class: "cv-scroll" }, h("table", { class: "cv-tabla" },
           h("thead", {}, h("tr", {}, ["Ruta", "Conductor", "Vehículo", "Velocidad", "Estado", "Última lectura"].map(t => h("th", { scope: "col" }, t)))),
           h("tbody", {}, filas.map(f => {

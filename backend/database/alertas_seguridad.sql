@@ -228,10 +228,19 @@ $$;
 
 revoke all on function public.purgar_alertas_seguridad_expiradas() from public, anon, authenticated;
 
-create extension if not exists pg_cron with schema extensions;
-select cron.unschedule(jobid) from cron.job where jobname = 'purga-alertas-seguridad-90-dias';
-select cron.schedule(
-  'purga-alertas-seguridad-90-dias',
-  '15 3 * * *',
-  'select public.purgar_alertas_seguridad_expiradas();'
-);
+-- Purga automática diaria con pg_cron. Es opcional: si pg_cron no se puede activar desde aquí, las tablas y
+-- funciones quedan creadas igual y solo se avisa (actívalo en Supabase → Database → Extensions → pg_cron
+-- y vuelve a ejecutar este archivo).
+do $$
+begin
+  create extension if not exists pg_cron with schema extensions;
+  perform cron.unschedule(jobid) from cron.job where jobname = 'purga-alertas-seguridad-90-dias';
+  perform cron.schedule(
+    'purga-alertas-seguridad-90-dias',
+    '15 3 * * *',
+    'select public.purgar_alertas_seguridad_expiradas();'
+  );
+exception when others then
+  raise notice 'pg_cron no está disponible (%): la purga automática de alertas de 90 días queda sin programar.', sqlerrm;
+end
+$$;

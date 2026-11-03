@@ -154,3 +154,8 @@
   .mm-alerta .mm-pulse { animation: none; }
   .mm-bar span, .mm-arrow, .mm-d-icono { transition: none; }
 }
+
+/* Paradas (pedidos) de la ruta seleccionada, numeradas en orden de visita */
+.mm-parada-wrap { background: none; border: 0; }
+.mm-parada { display: grid; place-items: center; width: 22px; height: 22px; color: #0b0d10; font: 700 11px/1 "Inter", system-ui, sans-serif; background: var(--c, #5b8cff); border: 2px solid #fff; border-radius: 50%; box-shadow: 0 1px 4px #0008; }
+.mm-card-custodios { color: var(--muted, #9a9fa8); font-size: 11px; }
