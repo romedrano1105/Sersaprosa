@@ -12,7 +12,7 @@ from postgrest.exceptions import APIError
 from pydantic import BaseModel, Field
 
 from . import database, lugares, viajes_servicio
-from .agente_router import _agente
+from .agente_router import _agente, _agregar_trafico_google
 from .eventos_router import usuario_coordinador
 from .geocodificacion_router import buscar_lugares, geocodificar
 
@@ -53,7 +53,9 @@ def _dependencias(authorization):
     return dict(
         usuario=usuario, cliente_usuario=cliente,
         cliente_servicio=servicio, geocodificar=geocodificar,
-        evaluar=lambda o, d: agente.decidir(o, d, ahora=ahora, usar_llm=False),
+        evaluar=lambda o, d: _agregar_trafico_google(
+            agente.decidir(o, d, ahora=ahora, usar_llm=False)
+        ),
     )
 
 

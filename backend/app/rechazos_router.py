@@ -6,7 +6,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from . import database, rechazos_servicio
-from .agente_router import _agente
+from .agente_router import _agente, _agregar_trafico_google
 from .eventos_router import usuario_coordinador
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,9 @@ def _servicio_y_evaluador(authorization):
         raise HTTPException(503, "Falta configurar SUPABASE_SERVICE_ROLE_KEY en el servidor.") from error
     ahora = datetime.now(timezone.utc)
     agente = _agente(cliente, ahora)
-    return usuario, servicio, lambda o, d, excluir: agente.decidir(o, d, ahora=ahora, usar_llm=False, excluir=excluir)
+    return usuario, servicio, lambda o, d, excluir: _agregar_trafico_google(
+        agente.decidir(o, d, ahora=ahora, usar_llm=False, excluir=excluir)
+    )
 
 
 def _responder(error: rechazos_servicio.ErrorRechazo):
