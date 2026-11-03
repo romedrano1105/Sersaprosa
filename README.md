@@ -209,7 +209,11 @@ en la API y no simula cámaras ni posiciones de unidades.
 3. Usa `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` como comando
    de inicio.
 4. Define en la sección **Environment** las variables `SUPABASE_URL`,
-   `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`.
+   `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. Para activar la
+   orquestación con OpenAI en la evaluación de rutas seguras, agrega también
+   `OPENAI_API_KEY`; opcionalmente define `AGENTE_MODELO` (por defecto
+   `gpt-6-luna`). El uso de la API de OpenAI se factura por separado de una
+   suscripción de ChatGPT.
 5. Aplica `backend/database/entregas_coordenadas.sql` en Supabase y completa
    coordenadas verificadas en las entregas que deban incluirse en el mapa.
 

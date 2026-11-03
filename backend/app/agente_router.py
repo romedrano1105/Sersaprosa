@@ -1,8 +1,8 @@
 """POST /agente/ruta-segura: el agente de IA evalúa una ruta origen→destino con datos reales de Supabase.
 
 Solo coordinador. Lee con el token del usuario (RLS). Motor de rutas: OSRM desde el servidor.
-Por defecto usa el modo determinista (sin costo de IA); con `usar_llm=true` y ANTHROPIC_API_KEY
-el modelo orquesta las herramientas, y si falla se vuelve al modo determinista.
+Por defecto usa el modo determinista (sin costo de IA); con `usar_llm=true` y OPENAI_API_KEY
+el modelo de OpenAI orquesta las herramientas, y si falla se vuelve al modo determinista.
 """
 import logging
 from datetime import datetime, timezone

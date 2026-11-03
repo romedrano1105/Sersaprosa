@@ -1,6 +1,9 @@
+import json
+import os
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from backend.agente_rutas import geo
 from backend.agente_rutas.ejemplo import DESTINO, ORIGEN, construir_agente
@@ -50,14 +53,22 @@ class AgenteDeterministaTest(unittest.TestCase):
 
 
 class FalsoLLM:
-    """Cliente falso con la forma de anthropic.Anthropic().messages.create."""
+    """Cliente falso con la forma de OpenAI().responses.create."""
 
     def __init__(self, pasos):
-        self.pasos, self.messages = list(pasos), SimpleNamespace(create=self._crear)
+        self.pasos, self.requests = list(pasos), []
+        self.responses = SimpleNamespace(create=self._crear)
 
     def _crear(self, **kw):
+        self.requests.append(kw)
         nombre, args = self.pasos.pop(0)
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", id=f"t{len(self.pasos)}", name=nombre, input=args)])
+        llamada = SimpleNamespace(
+            type="function_call",
+            call_id=f"t{len(self.pasos)}",
+            name=nombre,
+            arguments=json.dumps(args),
+        )
+        return SimpleNamespace(id=f"r{len(self.pasos)}", output=[llamada])
 
 
 class AgenteLLMTest(unittest.TestCase):
@@ -77,10 +88,28 @@ class AgenteLLMTest(unittest.TestCase):
         llm = FalsoLLM(self.PASOS + [("elegir_ruta", {"ruta_id": "R2", "justificacion": "Se evitó Z-01 por asalto reciente."})])
         r = construir_agente(AHORA, cliente=llm).decidir(ORIGEN, DESTINO, ahora=AHORA)
         self.assertEqual(r["justificacion"], "Se evitó Z-01 por asalto reciente.")
+        primera = llm.requests[0]
+        self.assertEqual(primera["tools"][0]["type"], "function")
+        self.assertEqual(primera["tools"][0]["name"], "obtener_rutas_candidatas")
+        self.assertEqual(primera["max_output_tokens"], 1500)
+        self.assertTrue(any(
+            item.get("type") == "function_call_output"
+            for item in llm.requests[1]["input"]
+            if isinstance(item, dict)
+        ))
+
+    def test_api_key_de_openai_habilita_el_modelo_por_defecto(self):
+        llm = FalsoLLM(self.PASOS + [("elegir_ruta", {"ruta_id": "R2", "justificacion": "Ruta segura."})])
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-api-key"}), \
+                patch("openai.OpenAI", return_value=llm) as crear_cliente:
+            reporte = construir_agente(AHORA).decidir(ORIGEN, DESTINO, ahora=AHORA)
+
+        self.assertEqual(reporte["modo"], "llm")
+        crear_cliente.assert_called_once_with()
 
     def test_si_el_modelo_falla_cae_al_modo_determinista(self):
         class Roto:
-            messages = SimpleNamespace(create=lambda **kw: (_ for _ in ()).throw(ConnectionError("sin red")))
+            responses = SimpleNamespace(create=lambda **kw: (_ for _ in ()).throw(ConnectionError("sin red")))
         r = construir_agente(AHORA, cliente=Roto()).decidir(ORIGEN, DESTINO, ahora=AHORA)
         self.assertEqual(r["modo"], "determinista")
         self.assertTrue(r["advertencias"])

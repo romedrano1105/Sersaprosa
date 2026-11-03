@@ -2,7 +2,7 @@
 
 Escenario simulado (San Salvador): la ruta directa cruza un hotspot nivel 5, pasa junto a un
 asalto reportado hace 15 min y atraviesa congestión severa. El agente debe rodearlo por el sur.
-Usa un motor de rutas simulado (sin red). Con ANTHROPIC_API_KEY el razonamiento lo hace el LLM.
+Usa un motor de rutas simulado (sin red). Con OPENAI_API_KEY el razonamiento lo hace el LLM.
 """
 from __future__ import annotations
 
