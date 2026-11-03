@@ -24,7 +24,7 @@ class SinAlternativa(RuntimeError):
     """Se pidió una alternativa excluyendo rutas rechazadas y el motor no tiene otra ruta que ofrecer."""
 
 
-MODELO_POR_DEFECTO = os.getenv("AGENTE_MODELO", "claude-sonnet-5-5")
+MODELO_POR_DEFECTO = os.getenv("AGENTE_MODELO", "gpt-6-luna")
 MAX_ITERACIONES = 10
 
 INSTRUCCIONES = """Eres un agente de seguridad vial para logística. Debes elegir la ruta más segura y razonable entre dos puntos.
@@ -56,7 +56,7 @@ class AgenteRutaSegura:
         """
         s = self._sesion(origen, destino, ahora, excluir)
         if usar_llm is None:
-            usar_llm = self.cliente is not None or bool(os.getenv("ANTHROPIC_API_KEY"))
+            usar_llm = self.cliente is not None or bool(os.getenv("OPENAI_API_KEY"))
         modo, advertencias = "determinista", []
         if usar_llm:
             try:
@@ -89,20 +89,43 @@ class AgenteRutaSegura:
     def _ciclo_llm(self, s: h.Sesion) -> None:
         cliente = self.cliente
         if cliente is None:
-            import anthropic  # import tardío: dependencia opcional
-            cliente = anthropic.Anthropic()
-        mensajes = [{"role": "user", "content": f"Origen (lat,lng): {s.origen}. Destino: {s.destino}. "
-                     f"Hora actual UTC: {s.ahora.isoformat()}. Elige la ruta más segura."}]
+            from openai import OpenAI
+            cliente = OpenAI()
+        herramientas = [
+            {
+                "type": "function",
+                "name": esquema["name"],
+                "description": esquema["description"],
+                "parameters": esquema["input_schema"],
+                "strict": False,
+            }
+            for esquema in h.ESQUEMAS
+        ]
+        entradas = [{
+            "role": "user",
+            "content": f"Origen (lat,lng): {s.origen}. Destino: {s.destino}. "
+                       f"Hora actual UTC: {s.ahora.isoformat()}. Elige la ruta más segura.",
+        }]
         for _ in range(MAX_ITERACIONES):
-            r = cliente.messages.create(model=self.modelo, max_tokens=1500, system=INSTRUCCIONES,
-                                        tools=h.ESQUEMAS, messages=mensajes)
-            mensajes.append({"role": "assistant", "content": r.content})
-            usos = [b for b in r.content if getattr(b, "type", "") == "tool_use"]
-            if not usos:
+            respuesta = cliente.responses.create(
+                model=self.modelo,
+                instructions=INSTRUCCIONES,
+                max_output_tokens=1500,
+                tools=herramientas,
+                input=entradas,
+            )
+            llamadas = [item for item in respuesta.output if getattr(item, "type", "") == "function_call"]
+            if not llamadas:
                 break
-            resultados = [{"type": "tool_result", "tool_use_id": u.id,
-                           "content": json.dumps(h.ejecutar(s, u.name, u.input), ensure_ascii=False)} for u in usos]
-            mensajes.append({"role": "user", "content": resultados})
+            entradas.extend(respuesta.output)
+            for llamada in llamadas:
+                argumentos = json.loads(llamada.arguments)
+                resultado = h.ejecutar(s, llamada.name, argumentos)
+                entradas.append({
+                    "type": "function_call_output",
+                    "call_id": llamada.call_id,
+                    "output": json.dumps(resultado, ensure_ascii=False),
+                })
             if s.eleccion is not None:
                 break
         if s.eleccion is None or not s.evaluaciones:

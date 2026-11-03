@@ -11,7 +11,7 @@ backend/agente_rutas/
   enrutador.py     OSRM real, enrutador simulado y generación de rutas candidatas y desvíos
   puntuacion.py    ponderación: costo = km + minutos (con tráfico) + penalización de riesgo; vetos
   herramientas.py  tools del agente + esquemas de Tool Calling + estado de la consulta (Sesion)
-  agente.py        AgenteRutaSegura: ciclo con LLM (Anthropic tool use) o modo determinista
+  agente.py        AgenteRutaSegura: ciclo con OpenAI function calling o modo determinista
   ejemplo.py       escenario ejecutable      datos/escenario_demo.json
 ```
 
@@ -32,7 +32,7 @@ Los pesos están en `puntuacion.Pesos` (se pueden ajustar por cliente o por tipo
 ```text
 pip install -r backend/agente_rutas/requirements.txt
 python -m backend.agente_rutas.ejemplo                       # simulado, sin red ni API key
-ANTHROPIC_API_KEY=... python -m backend.agente_rutas.ejemplo # el LLM orquesta las tools (modelo: AGENTE_MODELO)
+OPENAI_API_KEY=... python -m backend.agente_rutas.ejemplo # OpenAI orquesta las tools (modelo: AGENTE_MODELO)
 python -m unittest backend.tests.test_agente_rutas
 ```
 ```python
@@ -48,7 +48,8 @@ En la pantalla «Planificar rutas», el botón **🛡 Evaluar seguridad** (barra
 - Incidentes: `alertas_seguridad` + marchas/cierres de `eventos_especiales` con coordenadas (`fuentes_supabase.py`).
 - Zonas: hotspots dinámicos = celdas de ~550 m con ≥3 puntos (alta=2, media=1) en 30 días; ≥3 nivel 3, ≥4 nivel 4, ≥6 nivel 5.
 - Tráfico: sin fuente; el reporte lo indica en `advertencias`. Falta conectar una API de tráfico.
-- `usar_llm=true` requiere `pip install anthropic` y `ANTHROPIC_API_KEY` en Render.
+- `usar_llm=true` requiere `pip install -r backend/agente_rutas/requirements.txt` y `OPENAI_API_KEY` en Render.
+- El modelo predeterminado es `gpt-6-luna`; puedes cambiarlo con `AGENTE_MODELO`.
 
 ## Pasar a datos reales
 Implementa `activos(caja, ahora)`, `tramos(caja)` y `zonas(caja)` (ver `fuentes.py`) sobre tu API de reportes,

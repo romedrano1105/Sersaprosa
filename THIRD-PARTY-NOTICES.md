@@ -29,12 +29,16 @@ directas.
 | h2 | 4.4.1 | MIT | [PyPI](https://pypi.org/project/h2/) |
 | hpack | 4.2.0 | MIT | [PyPI](https://pypi.org/project/hpack/) |
 | httpcore | 1.0.9 | BSD-3-Clause | [PyPI](https://pypi.org/project/httpcore/) |
+| httpcore2 | 2.16.0 | BSD-3-Clause | [PyPI](https://pypi.org/project/httpcore2/) |
 | httpx | 0.28.1 | BSD-3-Clause | [PyPI](https://pypi.org/project/httpx/) |
+| httpx2 | 2.16.0 | BSD-3-Clause | [PyPI](https://pypi.org/project/httpx2/) |
 | hyperframe | 6.1.0 | MIT | [PyPI](https://pypi.org/project/hyperframe/) |
 | idna | 3.20 | BSD-3-Clause | [PyPI](https://pypi.org/project/idna/) |
+| jiter | 0.18.0 | MIT | [PyPI](https://pypi.org/project/jiter/) |
 | multidict | 7.0.0 | Apache-2.0 | [PyPI](https://pypi.org/project/multidict/) |
 | networkx | 3.7 | BSD-3-Clause | [PyPI](https://pypi.org/project/networkx/) |
 | numpy | 2.5.3 | BSD-3-Clause | [PyPI](https://pypi.org/project/numpy/) |
+| openai | 3.42.1 | MIT | [PyPI](https://pypi.org/project/openai/) |
 | opentelemetry-api | 1.45.1 | Apache-2.0 | [PyPI](https://pypi.org/project/opentelemetry-api/) |
 | osmnx | 2.1.1 | MIT | [PyPI](https://pypi.org/project/osmnx/) |
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause | [PyPI](https://pypi.org/project/packaging/) |
@@ -52,6 +56,7 @@ directas.
 | requests | 2.34.2 | Apache-2.0 | [PyPI](https://pypi.org/project/requests/) |
 | shapely | 2.2.0 | BSD-3-Clause | [PyPI](https://pypi.org/project/shapely/) |
 | six | 1.17.0 | MIT | [PyPI](https://pypi.org/project/six/) |
+| sniffio | 1.3.1 | MIT OR Apache-2.0 | [PyPI](https://pypi.org/project/sniffio/) |
 | starlette | 1.7.0 | BSD-3-Clause | [PyPI](https://pypi.org/project/starlette/) |
 | storage3 | 2.32.0 | MIT | [PyPI](https://pypi.org/project/storage3/) |
 | StrEnum | 0.4.15 | MIT | [PyPI](https://pypi.org/project/StrEnum/) |
@@ -61,16 +66,11 @@ directas.
 | typing-inspection | 0.4.4 | MIT | [PyPI](https://pypi.org/project/typing-inspection/) |
 | typing_extensions | 4.16.0 | PSF-2.0 | [PyPI](https://pypi.org/project/typing-extensions/) |
 | tzdata | 2026.5 | Apache-2.0 | [PyPI](https://pypi.org/project/tzdata/) |
+| truststore | 0.10.5 | MIT | [PyPI](https://pypi.org/project/truststore/) |
 | urllib3 | 2.8.0 | MIT | [PyPI](https://pypi.org/project/urllib3/) |
 | uvicorn | 0.35.0 | BSD-3-Clause | [PyPI](https://pypi.org/project/uvicorn/) |
 | websockets | 15.0.1 | BSD-3-Clause | [PyPI](https://pypi.org/project/websockets/) |
 | yarl | 1.25.1 | Apache-2.0 | [PyPI](https://pypi.org/project/yarl/) |
-
-### Dependencias opcionales
-
-| Paquete | Versión declarada | Licencia | Proyecto y avisos |
-|---|---:|---|---|
-| anthropic | `>=0.40` en `backend/agente_rutas/requirements.txt` | MIT | [PyPI](https://pypi.org/project/anthropic/) |
 
 ## Bibliotecas del navegador y tipografías
 

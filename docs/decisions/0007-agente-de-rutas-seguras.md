@@ -7,7 +7,7 @@
 Se necesita evaluar rutas con incidentes, tráfico y zonas de riesgo y justificar la elección. Un LLM redacta bien pero no debe decidir seguridad solo, y el proyecto no tiene fuente de tráfico ni tabla de zonas peligrosas.
 
 ## Decisión
-Paquete `backend/agente_rutas/` con herramientas (tools) que calculan y un agente que las orquesta. Las reglas de ponderación y los vetos viven en código (`puntuacion.py`); el LLM (Anthropic, Tool Calling) decide qué consultar y redacta la justificación, y `elegir_ruta` rechaza una ruta vetada si existe una segura. Sin API key o si el modelo falla, el agente funciona en modo determinista. Se expone como `POST /agente/ruta-segura` (solo coordinador, lectura con su token, ADR 0002); el LLM es opt-in (`usar_llm`).
+Paquete `backend/agente_rutas/` con herramientas (tools) que calculan y un agente que las orquesta. Las reglas de ponderación y los vetos viven en código (`puntuacion.py`); el LLM de OpenAI (function calling) decide qué consultar y redacta la justificación, y `elegir_ruta` rechaza una ruta vetada si existe una segura. Sin API key o si el modelo falla, el agente funciona en modo determinista. Se expone como `POST /agente/ruta-segura` (solo coordinador, lectura con su token, ADR 0002); el LLM es opt-in (`usar_llm`).
 Fuentes reales: incidentes desde `alertas_seguridad` y `eventos_especiales` (marchas y cierres con coordenadas); zonas como hotspots calculados con las alertas de 30 días; tráfico sin fuente (`TraficoSinDatos`), y el reporte lo advierte.
 
 ## Alternativas consideradas
