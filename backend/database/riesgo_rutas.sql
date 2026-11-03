@@ -45,12 +45,24 @@ returns boolean language sql stable set search_path = '' as $$
 $$;
 
 -- Umbrales provisionales (pendientes de aclarar en FCJ1-98).
+-- Nivel de riesgo por monto según la sensibilidad del tipo de carga (umbrales en USD; ajústalos aquí).
+--   sensibilidad 0 (documentos, mercancía general): Bajo < 10,000 · Medio < 100,000 · Alto ≥ 100,000
+--   sensibilidad 1 (medicamentos, electrónicos):    Bajo <  5,000 · Medio <  50,000 · Alto ≥  50,000
+--   sensibilidad 2 (efectivo, joyería):             Bajo <  1,000 · Medio <  10,000 · Alto ≥  10,000
+-- La misma tabla está en backend/app/viajes_logica.py (nivel_de_riesgo).
+create or replace function public.nivel_riesgo_por_monto(p_monto numeric, p_sensibilidad smallint)
+returns text language sql immutable set search_path = '' as $$
+  select case
+    when p_monto >= (case p_sensibilidad when 2 then 10000 when 1 then 50000 else 100000 end) then 'Alto'
+    when p_monto >= (case p_sensibilidad when 2 then 1000 when 1 then 5000 else 10000 end) then 'Medio'
+    else 'Bajo'
+  end
+$$;
+
 create or replace function public.calcular_nivel_riesgo(p_monto numeric, p_tipo_carga_id smallint)
 returns text language plpgsql security definer set search_path = '' as $$
 declare
   v_sens smallint;
-  v_nivel_monto int;
-  v_puntaje int;
 begin
   if not public.es_coordinador_rutas() then
     raise exception 'no_autorizado' using errcode = '42501';
@@ -65,14 +77,7 @@ begin
     raise exception 'tipo_invalido' using errcode = 'P0001';
   end if;
 
-  v_nivel_monto := case when p_monto < 10000 then 0
-                        when p_monto < 100000 then 1
-                        else 2 end;
-  v_puntaje := v_nivel_monto + v_sens;
-
-  return case when v_puntaje <= 1 then 'Bajo'
-              when v_puntaje = 2 then 'Medio'
-              else 'Alto' end;
+  return public.nivel_riesgo_por_monto(p_monto, v_sens);
 end $$;
 
 create or replace function public.especificar_riesgo_ruta(
@@ -129,6 +134,8 @@ begin
 end $$;
 
 revoke all on function public.es_coordinador_rutas() from public, anon;
+revoke all on function public.nivel_riesgo_por_monto(numeric, smallint) from public, anon;
+grant execute on function public.nivel_riesgo_por_monto(numeric, smallint) to authenticated;
 revoke all on function public.calcular_nivel_riesgo(numeric, smallint) from public, anon;
 revoke all on function public.especificar_riesgo_ruta(text, numeric, smallint) from public, anon;
 revoke all on function public.listar_rutas_riesgo(text) from public, anon;
@@ -138,5 +145,13 @@ grant execute on function public.calcular_nivel_riesgo(numeric, smallint) to aut
 grant execute on function public.especificar_riesgo_ruta(text, numeric, smallint) to authenticated;
 grant execute on function public.listar_rutas_riesgo(text) to authenticated;
 grant execute on function public.listar_tipos_carga() to authenticated;
+
+-- Recalcula con la tabla de umbrales actual el nivel de las rutas que ya tienen monto y tipo de carga.
+update public.rutas_planificadas r
+set nivel_riesgo = public.nivel_riesgo_por_monto(r.monto, t.sensibilidad)
+from public.tipos_carga t
+where t.id = r.tipo_carga_id
+  and r.monto is not null
+  and r.nivel_riesgo is distinct from public.nivel_riesgo_por_monto(r.monto, t.sensibilidad);
 
 notify pgrst, 'reload schema';

@@ -11,7 +11,7 @@
 .cc-head { display: grid; gap: 12px; }
 .cc-head-main { display: grid; gap: 4px; min-width: 0; }
 .cc-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.cc-title h2 { font: 600 28px/1.1 "Barlow Condensed", sans-serif; letter-spacing: .01em; }
+.cc-title h2 { font: 600 28px/1.1 "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .cc-back { display: grid; place-items: center; width: 34px; height: 34px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; font-size: 18px; cursor: pointer; }
 .cc-back:hover, .cc-back[aria-expanded="true"] { color: var(--route); border-color: var(--route); }
 .cc-id { color: var(--faint); font-size: 12px; letter-spacing: .02em; }
@@ -59,7 +59,7 @@
 @media (max-width: 1100px) { .cc-widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .cc-widgets { grid-template-columns: minmax(0, 1fr); } }
 .cc-card { display: flex; flex-direction: column; gap: 10px; min-height: 150px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
-.cc-card h3 { font: 600 17px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.cc-card h3 { font: 600 17px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .cc-hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .cc-driver { display: flex; gap: 12px; align-items: flex-start; }
 .cc-driver > div:last-child { display: grid; gap: 2px; min-width: 0; }
@@ -68,20 +68,20 @@
 .cc-pill { justify-self: start; padding: 1px 8px; color: var(--low); background: #5b8cff18; border-radius: 99px; font-size: 11px; font-weight: 700; }
 .cc-tiles { display: flex; flex-wrap: wrap; gap: 10px; }
 .cc-tile { display: grid; flex: 1 1 90px; place-items: center; align-content: center; gap: 2px; min-width: 84px; min-height: 92px; padding: 8px 10px; border: 1px solid; border-radius: 6px; font: inherit; color: inherit; text-align: center; }
-.cc-tile b { font: 700 28px/1 "Barlow Condensed", sans-serif; }
+.cc-tile b { font: 700 28px/1 "Inter", system-ui, sans-serif; }
 .cc-tile span { font-size: 11px; }
 .cc-t-red { color: #ff9aa0; background: #e5484d14; border-color: #e5484d66; }
 .cc-t-amber { color: var(--mid); background: #f5a52414; border-color: #f5a52466; }
 .cc-t-ok { color: var(--muted); background: transparent; border-color: var(--line); }
 .cc-stats { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
 .cc-stats > div + div { border-left: 1px solid var(--line); }
-.cc-stats b { display: block; font: 700 34px/1 "Barlow Condensed", sans-serif; }
+.cc-stats b { display: block; font: 700 34px/1 "Inter", system-ui, sans-serif; }
 .cc-stats span { color: var(--muted); font-size: 12px; }
 .cc-done { display: flex; align-items: center; gap: 14px; }
 .cc-donut { width: 78px; height: 78px; flex: none; }
 .cc-donut-track { stroke: var(--line); }
 .cc-donut-fill { stroke: var(--route); }
-.cc-donut-text { fill: var(--text); font: 700 20px "Barlow Condensed", sans-serif; }
+.cc-donut-text { fill: var(--text); font: 700 20px "Inter", system-ui, sans-serif; }
 .cc-donut-sub { fill: var(--muted); font: 500 8px "Inter", sans-serif; }
 .cc-legend { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
 .cc-legend li::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: var(--faint); }
@@ -91,7 +91,7 @@
 .cc-l-pend::before { background: var(--mid) !important; }
 
 /* Lista de pedidos (columna izquierda) */
-.cc-tasks-title { margin: 4px 0 -4px; font: 600 22px "Barlow Condensed", sans-serif; letter-spacing: .02em; }
+.cc-tasks-title { margin: 4px 0 -4px; font: 600 22px "Inter", system-ui, sans-serif; letter-spacing: 0; }
 .cc-tasks-title small { color: var(--faint); font: 400 12px "Inter", sans-serif; }
 .cc-count { color: var(--muted); font-weight: 500; }
 .cc-tools { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -136,7 +136,7 @@
 .cc-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: #02060ccc; }
 .cc-modal { width: min(560px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column; color: var(--text, #f2f3f5); background: var(--panel, #1f2124); border: 1px solid var(--line, #33363c); border-radius: 10px; box-shadow: 0 24px 60px #000a; }
 .cc-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--line, #33363c); }
-.cc-modal-head h3 { margin: 0; font: 600 20px "Barlow Condensed", sans-serif; }
+.cc-modal-head h3 { margin: 0; font: 600 20px "Inter", system-ui, sans-serif; }
 .cc-x { width: 34px; height: 34px; color: inherit; background: transparent; border: 0; border-radius: 6px; font-size: 22px; cursor: pointer; }
 .cc-x:hover { background: #ffffff12; }
 .cc-modal-body { display: grid; gap: 12px; padding: 16px 18px; overflow: auto; }
