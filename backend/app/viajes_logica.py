@@ -125,9 +125,13 @@ TIPOS_CARGA_BASE = (
 )
 
 
+# Umbrales en USD (Medio desde, Alto desde) por sensibilidad del tipo de carga.
+# Misma tabla que nivel_riesgo_por_monto() en riesgo_rutas.sql: si cambias una, cambia la otra.
+UMBRALES_RIESGO = {0: (10000, 100000), 1: (5000, 50000), 2: (1000, 10000)}
+
+
 def nivel_de_riesgo(monto, sensibilidad: int) -> str:
-    """Mismo cálculo que calcular_nivel_riesgo() de riesgo_rutas.sql (umbrales provisionales)."""
+    """Bajo / Medio / Alto según el monto y la sensibilidad (0..2) del tipo de carga."""
     monto = Decimal(str(monto))
-    por_monto = 0 if monto < 10000 else 1 if monto < 100000 else 2
-    puntaje = por_monto + int(sensibilidad)
-    return "Bajo" if puntaje <= 1 else "Medio" if puntaje == 2 else "Alto"
+    medio, alto = UMBRALES_RIESGO.get(int(sensibilidad), UMBRALES_RIESGO[0])
+    return "Alto" if monto >= alto else "Medio" if monto >= medio else "Bajo"

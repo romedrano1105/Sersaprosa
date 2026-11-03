@@ -1,6 +1,6 @@
 /* Conducción en vivo (conduccionVivo.js). Usa las variables de dashboard.css. */
 .cv { color: var(--text); }
-.cv h2 { margin: 0 0 4px; font: 700 24px/1.2 "Barlow Condensed", sans-serif; }
+.cv h2 { margin: 0 0 4px; font: 700 24px/1.2 "Inter", system-ui, sans-serif; }
 .cv h3 { margin: 22px 0 10px; font-size: 14px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .cv p { margin: 0; }
 .cv-muted { color: var(--muted); font-size: 13px; }
