@@ -319,6 +319,51 @@ begin
 end;
 $$;
 
+create or replace function public.aceptar_propuesta_ruta_operativa(p_ruta text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_hoy date := timezone('America/El_Salvador', now())::date;
+  v_ruta public.rutas_planificadas%rowtype;
+begin
+  if (auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'coordinador_rutas' then
+    raise exception 'Solo el coordinador de rutas puede aceptar propuestas.' using errcode = '42501';
+  end if;
+
+  select * into v_ruta
+  from public.rutas_planificadas
+  where id = p_ruta
+  for update;
+  if not found or v_ruta.fecha <> v_hoy then
+    raise exception 'La ruta ya no existe o no es de hoy.' using errcode = 'P0001';
+  end if;
+  if v_ruta.estado_propuesta = 'rechazada' then
+    raise exception 'La propuesta está rechazada y no se puede aceptar.' using errcode = 'P0001';
+  end if;
+  if v_ruta.estado_propuesta = 'aceptada' then
+    return jsonb_build_object('id', p_ruta, 'estado_propuesta', 'aceptada');
+  end if;
+  if exists (
+    select 1 from public.asignaciones_ruta
+    where ruta_id = p_ruta and fecha_operativa = v_hoy
+  ) then
+    raise exception 'La ruta ya tiene una asignación vigente.' using errcode = 'P0001';
+  end if;
+  if v_ruta.origen_lat is null or v_ruta.destino_lat is null then
+    raise exception 'La ruta no tiene una propuesta de viaje válida para aceptar.' using errcode = '22023';
+  end if;
+
+  update public.rutas_planificadas
+  set estado_propuesta = 'aceptada'
+  where id = p_ruta;
+
+  return jsonb_build_object('id', p_ruta, 'estado_propuesta', 'aceptada');
+end;
+$$;
+
 drop function if exists public.asignar_ruta_operativa(text, text, text, text);
 
 create or replace function public.asignar_ruta_operativa(
@@ -577,6 +622,9 @@ grant execute on function public.guardar_viaje_operativo(text, text[], text, dou
 
 revoke all on function public.actualizar_ruta_operativa(text, text, text[], text) from public, anon;
 grant execute on function public.actualizar_ruta_operativa(text, text, text[], text) to authenticated;
+
+revoke all on function public.aceptar_propuesta_ruta_operativa(text) from public, anon;
+grant execute on function public.aceptar_propuesta_ruta_operativa(text) to authenticated;
 
 revoke all on function public.asignar_ruta_operativa(text, text, text, text, text[]) from public, anon;
 grant execute on function public.asignar_ruta_operativa(text, text, text, text, text[]) to authenticated;

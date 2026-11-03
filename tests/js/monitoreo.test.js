@@ -74,3 +74,33 @@ test("coordenadas inválidas no se usan", () => {
   assert.equal(u.lugarValido({ lat: 0, lng: 0 }), null);
   assert.deepEqual(plano(u.lugarValido({ texto: "X", lat: "13.7", lng: "-89.2" })), { texto: "X", lat: 13.7, lng: -89.2 });
 });
+
+test("sin rutas trazables activa automáticamente una unidad marcada como demo", () => {
+  const u = cargar();
+  const modo = u.modoDemostracion([], "sin asignaciones");
+  assert.equal(modo.demo, true);
+  assert.equal(modo.motivo, "sin asignaciones");
+  assert.equal(modo.unidades.length, 1);
+  assert.equal(modo.unidades[0].demo, true);
+  assert.match(modo.unidades[0].nombre, /demostración/i);
+});
+
+test("rutas asignadas sin telemetría se muestran como demo, no como GPS real", () => {
+  const u = cargar();
+  const unidades = u.armarUnidades(RUTAS, DISP, [], ENTREGAS).unidades;
+  const modo = u.modoDemostracion(unidades);
+  assert.equal(modo.demo, true);
+  assert.match(modo.motivo, /GPS real/i);
+  assert.ok(modo.unidades.every(unidad => unidad.demo));
+});
+
+test("solo una posición GPS válida evita el modo demo", () => {
+  const u = cargar();
+  const unidades = [{ id: "R-1", origen: { lat: 13.7, lng: -89.2 }, posReal: null }];
+  const conGps = u.aplicarTelemetria(unidades, [
+    { ruta_id: "R-1", posicion_actual: { lat: 13.71, lng: -89.21 } }
+  ]);
+  const modo = u.modoDemostracion(conGps);
+  assert.equal(modo.demo, false);
+  assert.deepEqual(plano(modo.unidades[0].posReal), { lat: 13.71, lng: -89.21 });
+});

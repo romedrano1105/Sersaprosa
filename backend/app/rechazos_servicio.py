@@ -10,7 +10,7 @@ import logging
 from datetime import date, datetime, timezone
 
 from ..agente_rutas.agente import SinAlternativa
-from . import rechazos_logica as logica
+from . import rechazos_logica as logica, rpc_utils
 from . import rutas_logica, viajes_logica
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,10 @@ def _ruta_editable(cliente_servicio, ruta_id: str, hoy: date) -> dict:
         asignada = bool(fila) and bool(cliente_servicio.table("asignaciones_ruta").select("ruta_id")
                                        .eq("ruta_id", ruta_id).eq("fecha_operativa", hoy.isoformat()).limit(1).execute().data)
     except Exception as error:
-        raise ErrorRechazo(503, "No se pudo consultar la ruta. Revisa Supabase.") from error
+        logger.exception("No se pudo consultar la ruta %s y su asignación.", ruta_id)
+        raise ErrorRechazo(
+            503, "No se pudo consultar la ruta. Verifica operaciones_rutas.sql y rutas_operativas_seguras.sql en Supabase."
+        ) from error
     if not fila or str(fila.get("fecha") or "")[:10] != hoy.isoformat():
         raise ErrorRechazo(404, "La ruta no existe o no es de hoy.")
     if viajes_logica.ruta_ya_salio(fila, asignada):
@@ -166,17 +169,28 @@ def propuesta_vigente(ruta_id, *, cliente_servicio, evaluar, hoy: date | None = 
             "estado_propuesta": fila.get("estado_propuesta") or "propuesta", "rechazos": len(trazados)}
 
 
-def aceptar_propuesta(ruta_id, *, cliente_servicio, hoy: date | None = None) -> dict:
-    hoy = hoy or rutas_logica.hoy_el_salvador()
-    fila = _ruta_editable(cliente_servicio, ruta_id, hoy)
-    if fila.get("estado_propuesta") == "rechazada":
-        raise ErrorRechazo(409, "La ruta está rechazada y sin alternativa: no hay propuesta que aceptar.")
-    if fila.get("estado_propuesta") == "aceptada":
-        return {"ruta_id": ruta_id, "estado_propuesta": "aceptada"}
+def aceptar_propuesta(ruta_id, *, cliente_usuario) -> dict:
     try:
-        _marcar_estado(cliente_servicio, ruta_id, "aceptada")
+        resultado = cliente_usuario.rpc(
+            "aceptar_propuesta_ruta_operativa", {"p_ruta": ruta_id}
+        ).execute().data
     except Exception as error:
+        logger.exception("No se pudo aceptar la ruta %s.", ruta_id)
+        if rpc_utils.funcion_ausente(error):
+            raise ErrorRechazo(
+                503, "Falta aplicar backend/database/rutas_operativas_seguras.sql en Supabase."
+            ) from error
+        codigo = str(getattr(error, "code", "") or "")
+        if codigo == "P0001":
+            raise ErrorRechazo(409, str(getattr(error, "message", "La ruta ya no se puede aceptar."))) from error
+        if codigo == "22023":
+            raise ErrorRechazo(422, str(getattr(error, "message", "La ruta no tiene una propuesta válida."))) from error
+        if codigo == "42501":
+            raise ErrorRechazo(403, "Solo el coordinador de rutas puede aceptar propuestas.") from error
         raise ErrorRechazo(503, "No se pudo aceptar la ruta. Revisa Supabase.") from error
+    if not isinstance(resultado, dict) or resultado.get("id") != ruta_id:
+        logger.error("La función de aceptación devolvió una respuesta no válida para %s.", ruta_id)
+        raise ErrorRechazo(502, "Supabase no confirmó la aceptación de la ruta.")
     return {"ruta_id": ruta_id, "estado_propuesta": "aceptada"}
 
 

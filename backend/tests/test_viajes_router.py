@@ -33,6 +33,7 @@ class Cliente:
         self.filtro = None
         self.viajes = [{
             "id": "V-1",
+            "ruta_id": "R-1",
             "estado": "en_curso",
             "vehiculos": {"placa": "P-123", "tipo": "Camión"},
             "empleados": {"nombre": "Ana"},
@@ -62,6 +63,7 @@ class MonitoreoViajesTest(unittest.TestCase):
         self.assertIn("entregas(", cliente.columnas)
         self.assertEqual(cliente.filtro, ("estado", ["en_curso", "asignado", "en_transito"]))
         self.assertEqual(resultado[0]["unidad"], "P-123")
+        self.assertEqual(resultado[0]["ruta_id"], "R-1")
         self.assertEqual(resultado[0]["modelo"], "Camión")
         self.assertEqual(resultado[0]["conductor"], "Ana")
         self.assertIsNone(resultado[0]["posicion_actual"])
