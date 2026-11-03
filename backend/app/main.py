@@ -92,6 +92,13 @@ def version():
     )
 
 
+@app.get("/salud", include_in_schema=False)
+def salud():
+    """Estado de la conexión con Supabase: variables (sí/no), URL y tablas. No expone claves ni datos."""
+    datos = database.diagnostico()
+    return JSONResponse(datos, status_code=200 if datos.get("ok") else 503, headers={"Cache-Control": "no-store"})
+
+
 @app.post("/login")
 def login(credenciales: CredencialesEmpleado, request: Request):
     ip = request.client.host if request.client else "desconocido"

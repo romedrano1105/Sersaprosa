@@ -57,5 +57,19 @@ class RutasDeHoy(unittest.TestCase):
         self.assertEqual(logica.rutas_de_hoy(None, date(2026, 10, 20)), [])
 
 
+
+class ConciliarAsignaciones(unittest.TestCase):
+    def test_detecta_fantasmas_y_rechazadas(self):
+        from backend.app import rutas_logica
+        r = rutas_logica.conciliar_asignaciones([
+            {"id": "A", "nombre": "Asignada", "conductor": "Ana"},
+            {"id": "F", "nombre": "Fantasma", "conductor": "Luis"},
+            {"id": "L", "nombre": "Libre", "conductor": ""},
+            {"id": "X", "nombre": "Rechazada", "conductor": None, "estado_propuesta": "rechazada"},
+        ], ["A"])
+        self.assertEqual(r["fantasmas"], [{"id": "F", "nombre": "Fantasma", "conductor": "Luis"}])
+        self.assertEqual(r["rechazadas"], ["X"])
+
 if __name__ == "__main__":
     unittest.main()
+

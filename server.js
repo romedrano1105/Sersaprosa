@@ -9,6 +9,7 @@ const API_ORIGIN = new URL(process.env.API_ORIGIN || 'http://127.0.0.1:8000');
 const API_TRANSPORT = API_ORIGIN.protocol === 'https:' ? require('https') : http;
 const API_PATHS = [
   '/login',
+  '/salud',
   '/generar-ruta',
   '/entregas/',
   '/eventos/',
