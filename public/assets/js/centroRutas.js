@@ -281,39 +281,6 @@
     }
 
     /* ---- acciones ---- */
-    function abrirEditar() {
-      const ruta = activa();
-      if (!ruta) return;
-      const propios = new Set(pedidosDeRuta(S.deliveries, ruta).filter(enCurso).map(p => String(p.id)));
-      const candidatos = S.deliveries.filter(enCurso).sort(porHora);
-      const nombre = h("input", { type: "text", maxlength: "80", value: ruta.nombre, "aria-label": "Nombre de la ruta", class: "cc-input" });
-      const marcas = new Map();
-      const lista = h("ul", { class: "cc-checklist" }, candidatos.map(p => {
-        const caja = h("input", { type: "checkbox", checked: propios.has(String(p.id)) });
-        marcas.set(String(p.id), caja);
-        return h("li", {}, h("label", {}, caja,
-          h("span", {}, h("strong", {}, p.cliente || "Sin cliente"),
-            h("small", {}, (p.hora || "--:--") + " · " + (p.zona || "Sin zona") + (p.ruta && norm(p.ruta) !== norm(ruta.nombre) ? " · hoy en «" + p.ruta + "»" : "")))));
-      }));
-      const guardar = h("button", { type: "button", class: "cc-btn cc-primary" }, "Guardar cambios");
-      const caja = abrirModal("Editar ruta", [h("label", { class: "cc-field" }, h("span", {}, "Nombre de la ruta"), nombre),
-        h("p", { class: "cc-hint" }, "Pedidos de la ruta (solo los que siguen en curso):"), lista],
-      [h("button", { type: "button", class: "cc-btn", onclick: cerrarModal }, "Cancelar"), guardar]);
-      guardar.addEventListener("click", async () => {
-        const ids = [...marcas].filter(([, c]) => c.checked).map(([id]) => id);
-        guardar.disabled = true;
-        try {
-          await opts.post("/rutas/actualizar", { id: ruta.id, nombre: nombre.value, pedidos: ids });
-          cerrarModal();
-          aviso("ok", "Ruta actualizada.");
-          await tras({ seleccionar: ruta.id });
-        } catch (error) {
-          errorEn(caja, error.message);
-          guardar.disabled = false;
-        }
-      });
-    }
-
     function editarOrden() {
       const ruta = activa();
       if (!ruta) return;
@@ -649,7 +616,6 @@
             : ruta ? "ID " + ruta.id + (ruta.zona ? " · " + ruta.zona : "") : "Sin guardar · elige pedidos y guarda la ruta"),
           h("div", { class: "cc-metrics" }, metricas)),
         coordinador ? h("div", { class: "cc-actions" },
-          boton("Editar ruta", "✎", abrirEditar, !ruta, ruta ? "" : "Guarda la ruta primero"),
           boton("Editar orden", "↕", editarOrden, !ruta || !!a || !!(ruta && ruta.conductor) || !!S.editing,
             a || ruta && ruta.conductor ? "La ruta ya salió (tiene conductor asignado). Desasígnala antes de editar." : "Cambiar manualmente el orden de los pedidos"),
           S.editing ? boton("Guardar orden", "💾", () => guardarOrden(false), S.editing.saving ||
