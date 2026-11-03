@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 from fastapi import HTTPException
@@ -17,16 +18,72 @@ class ConsultaRPC:
         return type("Respuesta", (), {"data": self.resultado})()
 
 
+class ConsultaTabla:
+    def __init__(self, filas):
+        self.filas = filas
+
+    def select(self, _columnas):
+        return self
+
+    def eq(self, columna, valor):
+        self.filas = [fila for fila in self.filas if fila.get(columna) == valor]
+        return self
+
+    def execute(self):
+        return type("Respuesta", (), {"data": self.filas})()
+
+
 class Cliente:
-    def __init__(self, resultado=None, error=None):
+    def __init__(self, resultado=None, error=None, rutas=None):
         self.resultado, self.error, self.llamadas = resultado, error, []
+        self.rutas = rutas or []
 
     def rpc(self, nombre, parametros):
         self.llamadas.append((nombre, parametros))
         return ConsultaRPC(self.resultado, self.error)
 
+    def table(self, nombre):
+        if nombre != "rutas_planificadas":
+            raise AssertionError(f"Tabla inesperada: {nombre}")
+        return ConsultaTabla(self.rutas[:])
+
 
 class EscriturasRutaTest(unittest.TestCase):
+    def test_listar_devuelve_rutas_aceptadas_sin_asignacion_y_avisa_propuestas(self):
+        hoy = date(2026, 11, 2)
+        cliente = Cliente(
+            resultado={
+                "drivers": [{"id": "C1"}],
+                "guards": [],
+                "vehicles": [{"id": "V1"}],
+                "routes": [],
+                "pending": [],
+                "assignments": [{"ruta": "ASIGNADA", "conductor": "C1", "vehiculo": "V1", "guardias": []}],
+            },
+            rutas=[
+                {"id": "IA-ACEPTADA", "nombre": "Ruta IA", "fecha": hoy.isoformat(), "metodo_creacion": "ia",
+                 "estado_propuesta": "aceptada", "conductor": None},
+                {"id": "IA-PENDIENTE", "nombre": "Pendiente", "fecha": hoy.isoformat(), "metodo_creacion": "ia",
+                 "estado_propuesta": "propuesta", "conductor": None},
+                {"id": "MANUAL", "nombre": "Ruta manual", "fecha": hoy.isoformat(), "metodo_creacion": "manual",
+                 "estado_propuesta": "aceptada", "conductor": None},
+                {"id": "RECHAZADA", "nombre": "Rechazada", "fecha": hoy.isoformat(), "metodo_creacion": "ia",
+                 "estado_propuesta": "rechazada", "conductor": None},
+                {"id": "ASIGNADA", "nombre": "Ya asignada", "fecha": hoy.isoformat(), "metodo_creacion": "ia",
+                 "estado_propuesta": "aceptada", "conductor": "C1"},
+            ],
+        )
+        with (
+            patch.object(disponibilidad_router, "_coordinador", return_value=(cliente, "Ana")),
+            patch.object(disponibilidad_router.rutas_logica, "hoy_el_salvador", return_value=hoy),
+        ):
+            resultado = disponibilidad_router.listar("******")
+
+        self.assertEqual([ruta["id"] for ruta in resultado["routes"]], ["IA-ACEPTADA", "MANUAL"])
+        self.assertEqual([ruta["id"] for ruta in resultado["pendientes_aceptar"]], ["IA-PENDIENTE"])
+        self.assertEqual(resultado["inconsistencias"], [])
+        self.assertEqual(resultado["totals"], {"drivers": 1, "guards": 0, "vehicles": 1})
+
     def test_asignar_envia_guardias_aunque_la_lista_este_vacia(self):
         cliente = Cliente({
             "ruta": "R1", "conductor": "C1", "vehiculo": "V1",

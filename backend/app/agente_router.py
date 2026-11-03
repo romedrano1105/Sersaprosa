@@ -56,7 +56,7 @@ def _agregar_trafico_google(reporte: dict) -> dict:
     if not trafico["disponible"]:
         if not clave:
             advertencias.append("Tráfico de Google no disponible: falta configurar GOOGLE_ROUTES_API_KEY en el servidor; "
-                                "la ruta se evaluó sin congestión ni accidentes viales.")
+                                "se conserva la ruta, distancia y duración del motor vial sin ajuste de congestión.")
         elif fallo:
             advertencias.append("Tráfico de Google no disponible: Google Routes no respondió (revisa que la clave tenga "
                                 "habilitada la Routes API); la ruta segura sigue mostrándose sin esta capa.")

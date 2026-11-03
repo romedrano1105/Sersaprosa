@@ -64,6 +64,7 @@
   /* ============ Utilidades ============ */
   // DAY = milisegundos de un día; DOCS = qué documentos vencen en cada tipo (los guardias no tienen).
   const DAY = 864e5;
+  const REQUEST_TIMEOUT_MS = 20000;
   const DOCS = {
     driver: [["licencia", "Licencia"]],
     guard: [],
@@ -260,19 +261,29 @@
     // 401 = sesión vencida: avisa a la página con onUnauthorized. Otros errores usan 'error' o 'detail' (FastAPI).
     async function post(url, body) {
       const s = getSession();
-      const r = await fetch(url, {
-        method: "POST",
-        headers: Object.assign({ "Content-Type": "application/json" }, s && s.token ? { Authorization: "Bearer " + s.token } : {}),
-        body: JSON.stringify(body)
-      });
-      if (r.status === 401) {
-        if (typeof cfg.onUnauthorized === "function") cfg.onUnauthorized();
-        throw new Error("Sesión vencida. Inicie sesión de nuevo.");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: Object.assign({ "Content-Type": "application/json" }, s && s.token ? { Authorization: "Bearer " + s.token } : {}),
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+        if (r.status === 401) {
+          if (typeof cfg.onUnauthorized === "function") cfg.onUnauthorized();
+          throw new Error("Sesión vencida. Inicie sesión de nuevo.");
+        }
+        let data = null;
+        try { data = await r.json(); } catch (e) { /* sin cuerpo */ }
+        if (!r.ok) throw new Error((data && (data.error || data.detail)) || ("Error " + r.status));
+        return data;
+      } catch (e) {
+        if (e.name === "AbortError") throw new Error("La consulta tardó demasiado. Revise la conexión e intente de nuevo.");
+        throw e;
+      } finally {
+        clearTimeout(timeout);
       }
-      let data = null;
-      try { data = await r.json(); } catch (e) { /* sin cuerpo */ }
-      if (!r.ok) throw new Error((data && (data.error || data.detail)) || ("Error " + r.status));
-      return data;
     }
 
     // Carga conductores, guardias, vehículos, rutas y asignaciones (del servidor, o de los datos demo).
@@ -519,7 +530,9 @@
       const dSel = D.drivers.find(x => x.id === S.d), vSel = D.vehicles.find(x => x.id === S.v);
       const gSel = D.guards.filter(x => S.g.includes(x.id));
       const routeSel = h("select", { class: "dsp-select", "aria-label": "Ruta" },
-        D.routes.length ? D.routes.map((r, index) => h("option", { value: r.id, selected: index === 0 }, r.id + " · " + r.nombre)) : h("option", { value: "" }, "No hay rutas sin asignar"));
+        D.routes.length ? D.routes.map((r, index) => h("option", { value: r.id, selected: index === 0 }, r.id + " · " + r.nombre))
+          : h("option", { value: "" }, "No hay rutas listas para asignar"));
+      routeSel.disabled = !D.routes.length;
       const can = !!(dSel && vSel && D.routes.length && !S.saving);
       const chips = gSel.length
         ? h("div", { class: "dsp-chips" }, gSel.map(g => h("span", { class: "dsp-chip" }, g.nombre,
@@ -531,7 +544,12 @@
           h("div", {}, h("div", { class: "dsp-lbl" }, "Conductor"), h("div", { class: "dsp-val" }, dSel ? dSel.nombre : "Elija un conductor disponible")),
           h("div", {}, h("div", { class: "dsp-lbl" }, "Guardias (" + gSel.length + ")"), h("div", { class: "dsp-val" }, chips)),
           h("div", {}, h("div", { class: "dsp-lbl" }, "Vehículo"), h("div", { class: "dsp-val" }, vSel ? vSel.placa + " · " + (vSel.tipo || "") : "Elija un vehículo disponible")),
-          h("div", {}, h("div", { class: "dsp-lbl" }, "Ruta"), routeSel),
+          h("div", {}, h("div", { class: "dsp-lbl" }, "Ruta"), routeSel,
+            D.routes.length ? null : h("div", { class: "dsp-meta", role: "status" },
+              "Solo se muestran rutas de hoy aceptadas y sin asignación activa. ",
+              h("button", {
+                type: "button", class: "dsp-btn", disabled: S.loading, onclick: load
+              }, S.loading ? "Actualizando…" : "Actualizar rutas"))),
           h("div", {}, h("button", { type: "button", class: "dsp-btn dsp-primary", disabled: !can, onclick: () => doAssign(routeSel.value) }, S.saving ? "Guardando…" : "Asignar ruta")))));
 
       // Historial de hoy: aquí quedan establecidos conductor, guardias y vehículo en su ruta.

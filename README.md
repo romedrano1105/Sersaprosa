@@ -133,7 +133,11 @@ flujo de trabajo del día:
    asignación de conductor, guardias y vehículo a las rutas guardadas. Las rutas
    rechazadas no se ofrecen para asignar; las de la IA se asignan después de aceptar su propuesta y las
    armadas a mano nacen aceptadas (`rutas_operativas_seguras.sql`). Una ruta con conductor guardado sin
-   asignación vigente se libera con «Liberar ruta» (`desasignar_ruta_operativa`).
+   asignación vigente se libera con «Liberar ruta» (`desasignar_ruta_operativa`). El selector valida las
+   rutas de hoy contra las asignaciones activas; las propuestas pendientes se muestran aparte y, si no hay
+   rutas elegibles, permite actualizar la lista sin crear rutas ficticias.
+   Google Routes es opcional: sin su clave se conserva la geometría, distancia y duración del motor vial,
+   pero la evaluación no ajusta el tiempo por congestión de Google.
 3. **Riesgo de rutas**: monto, tipo de carga y nivel de riesgo (solo coordinador).
 4. **Monitoreo en Vivo**: el mapa **Unidades en ruta** (`mapaMonitoreo.js`) muestra cada ruta con asignación
    vigente: conductor y custodios reales, vehículo, monto y riesgo. Al elegir una unidad dibuja la ruta completa
