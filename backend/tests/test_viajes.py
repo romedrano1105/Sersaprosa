@@ -137,6 +137,24 @@ class Cliente:
                     "id": ruta["id"], "nombre": ruta["nombre"], "fecha": ruta["fecha"],
                     "entregas": ruta["entregas"], "nivel_riesgo": ruta["nivel_riesgo"],
                 })
+            hoy_rutas = {r["id"]: r for r in self.db.get("rutas_planificadas", [])}
+            if nombre == "consultar_viaje_editable":
+                ruta = hoy_rutas.get(params["p_ruta"])
+                if not ruta:
+                    return Resp(None)
+                asignada = any(a.get("ruta_id") == ruta["id"] for a in self.db.get("asignaciones_ruta", []))
+                return Resp({**ruta, "asignada": asignada})
+            if nombre == "actualizar_viaje_operativo":
+                ruta = hoy_rutas[params["p_ruta"]]
+                if ruta.get("conductor") or any(a.get("ruta_id") == ruta["id"] for a in self.db.get("asignaciones_ruta", [])):
+                    raise SimpleNamespace_error("P0001", "La ruta ya salió.")
+                ruta.update({
+                    "origen_texto": params["p_origen"], "origen_lat": params["p_origen_lat"], "origen_lng": params["p_origen_lng"],
+                    "destino_texto": params["p_destino"], "destino_lat": params["p_destino_lat"],
+                    "destino_lng": params["p_destino_lng"], "hora_salida": params["p_hora_salida"],
+                    "monto": params["p_monto"], "tipo_carga_id": params["p_tipo_carga_id"], "estado_propuesta": "propuesta",
+                })
+                return Resp({"id": ruta["id"], "nombre": ruta["nombre"], "entregas": ruta["entregas"], "nivel_riesgo": "Medio"})
             return Resp({"ruta_id": params["p_ruta_id"], "nivel_riesgo": "Medio"})
         return SimpleNamespace(execute=ejecutar)
 
@@ -284,8 +302,29 @@ class EditarTest(unittest.TestCase):
         fila = db["rutas_planificadas"][0]
         self.assertEqual(fila["destino_texto"], "Santa Tecla")
         self.assertEqual(fila["estado_propuesta"], "propuesta")
-        parametros = next(params for nombre, params in cli.llamadas if nombre == "especificar_riesgo_ruta")
+        parametros = next(params for nombre, params in cli.llamadas if nombre == "actualizar_viaje_operativo")
         self.assertEqual(parametros["p_monto"], "99")
+        self.assertEqual(r["viaje"]["nivel_riesgo"], "Medio")
+
+    def test_no_usa_la_clave_de_servicio(self):
+        """El fallo real en producción: la clave service_role no podía leer las tablas."""
+        rid, db = self.crear()
+
+        class SinPermiso:
+            def table(self, *_):
+                raise SimpleNamespace_error("42501", "permission denied for table rutas_planificadas")
+        r = servicio.actualizar_viaje(rid, {**OK, "monto": "500"}, usuario="Ana", cliente_usuario=Cliente(db),
+                                      cliente_servicio=SinPermiso(), geocodificar=geo, evaluar=evaluar, hoy=HOY)
+        self.assertEqual(r["ruta"]["id"], rid)
+        self.assertEqual(db["rutas_planificadas"][0]["monto"], "500")
+
+    def test_sin_la_migracion_lo_dice(self):
+        rid, db = self.crear()
+        with self.assertRaises(servicio.ErrorViaje) as cm:
+            servicio.actualizar_viaje(rid, OK, usuario="Ana", cliente_usuario=Cliente(db, sin_funciones=True),
+                                      geocodificar=geo, evaluar=evaluar, hoy=HOY)
+        self.assertEqual(cm.exception.estado, 503)
+        self.assertIn("editar_viaje.sql", cm.exception.mensaje)
 
     def test_no_edita_si_la_ruta_ya_salio(self):
         rid, db = self.crear()

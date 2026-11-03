@@ -32,14 +32,58 @@ create table if not exists public.alertas_seguridad (
   )
 );
 
-create table if not exists public.alertas_seguridad_auditoria (
-  id bigint generated always as identity primary key,
-  alerta_id uuid not null references public.alertas_seguridad(id) on delete cascade,
-  revisor uuid not null,
-  revisor_nombre text not null,
-  fecha timestamptz not null default now(),
-  comentario text not null
-);
+-- Si alguna de estas tablas ya existía con otra forma (una versión anterior), se le agregan las columnas que falten
+-- en lugar de fallar. No se borra ni se cambia nada de lo que ya tenga.
+alter table public.viajes_finalizados
+  add column if not exists fecha_finalizacion timestamptz default now(),
+  add column if not exists ruta text,
+  add column if not exists conductor text,
+  add column if not exists alertas_count integer not null default 0;
+
+alter table public.alertas_seguridad
+  add column if not exists id uuid default gen_random_uuid(),
+  add column if not exists viaje_id text,
+  add column if not exists fecha timestamptz default now(),
+  add column if not exists tipo text,
+  add column if not exists severidad text,
+  add column if not exists estado text default 'pendiente',
+  add column if not exists descripcion text,
+  add column if not exists lat double precision,
+  add column if not exists lng double precision,
+  add column if not exists comentario text,
+  add column if not exists revisado_por uuid,
+  add column if not exists revisado_en timestamptz;
+
+-- La auditoría usa el mismo tipo de id que ya tenga alertas_seguridad (uuid en tablas nuevas).
+do $$
+declare
+  v_tipo text;
+  v_unico boolean;
+begin
+  if to_regclass('public.alertas_seguridad_auditoria') is not null then
+    return;
+  end if;
+  select format_type(a.atttypid, a.atttypmod) into v_tipo
+  from pg_attribute a
+  where a.attrelid = 'public.alertas_seguridad'::regclass and a.attname = 'id' and not a.attisdropped;
+  select exists (
+    select 1 from pg_index i
+    join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+    where i.indrelid = 'public.alertas_seguridad'::regclass and i.indisunique and i.indnatts = 1 and a.attname = 'id'
+  ) into v_unico;
+  execute format(
+    'create table public.alertas_seguridad_auditoria (
+       id bigint generated always as identity primary key,
+       alerta_id %s not null %s,
+       revisor uuid not null,
+       revisor_nombre text not null,
+       fecha timestamptz not null default now(),
+       comentario text not null
+     )',
+    v_tipo,
+    case when v_unico then 'references public.alertas_seguridad(id) on delete cascade' else '' end);
+end
+$$;
 
 create index if not exists ix_viajes_finalizados_fecha
   on public.viajes_finalizados(fecha_finalizacion desc);

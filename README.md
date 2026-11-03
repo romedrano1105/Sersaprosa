@@ -196,6 +196,8 @@ migraciones SQL en Supabase **en este orden** (primero en staging):
 9. [`backend/database/edicion_orden_rutas.sql`](backend/database/edicion_orden_rutas.sql)
 10. [`backend/database/rutas_operativas_seguras.sql`](backend/database/rutas_operativas_seguras.sql)
 11. [`backend/database/empleados_gestion.sql`](backend/database/empleados_gestion.sql)
+12. [`backend/database/editar_viaje.sql`](backend/database/editar_viaje.sql)
+   («Editar viaje» en Tracking con el JWT del coordinador, sin clave de servicio)
 
 No ejecutes `empleados_gestion.sql` antes de `rutas_operativas_seguras.sql`:
 sus funciones consultan las tablas de asignaciones que crea esa migración.
