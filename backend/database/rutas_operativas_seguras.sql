@@ -585,7 +585,7 @@ begin
       where r.fecha = v_hoy
         and not exists (select 1 from public.asignaciones_ruta a where a.ruta_id = r.id and a.fecha_operativa = v_hoy)
         and r.estado_propuesta is distinct from 'rechazada'
-        and not (r.metodo_creacion = 'ia' and r.estado_propuesta is distinct from 'aceptada')
+        and (coalesce(r.metodo_creacion, '') <> 'ia' or r.estado_propuesta = 'aceptada')
     ), '[]'::jsonb),
     'pending', coalesce((
       select jsonb_agg(jsonb_build_object('id', r.id, 'nombre', r.nombre) order by r.nombre)

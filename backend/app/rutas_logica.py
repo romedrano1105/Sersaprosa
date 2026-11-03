@@ -93,3 +93,28 @@ def conciliar_asignaciones(rutas_hoy, ids_asignadas) -> dict:
         if fila.get("estado_propuesta") == "rechazada" and rid not in asignadas:
             rechazadas.append(rid)
     return {"fantasmas": fantasmas, "rechazadas": rechazadas}
+
+
+def rutas_para_asignar(rutas_hoy, asignaciones) -> tuple[list[dict], list[dict]]:
+    """Devuelve rutas elegibles y propuestas IA pendientes, según asignaciones activas."""
+    asignadas = {str(fila.get("ruta")) for fila in asignaciones or [] if fila.get("ruta") is not None}
+    disponibles, pendientes = [], []
+    for fila in rutas_hoy or []:
+        ruta_id = str(fila.get("id") or "")
+        if not ruta_id or ruta_id in asignadas:
+            continue
+
+        estado = str(fila.get("estado_propuesta") or "").strip().lower()
+        metodo = str(fila.get("metodo_creacion") or "").strip().lower()
+        if estado == "rechazada":
+            continue
+        if metodo == "ia" and estado != "aceptada":
+            if estado == "propuesta":
+                pendientes.append({"id": ruta_id, "nombre": str(fila.get("nombre") or "")})
+            continue
+
+        disponibles.append({"id": ruta_id, "nombre": str(fila.get("nombre") or "")})
+
+    disponibles.sort(key=lambda ruta: ruta["nombre"].lower())
+    pendientes.sort(key=lambda ruta: ruta["nombre"].lower())
+    return disponibles, pendientes

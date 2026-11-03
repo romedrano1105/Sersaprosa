@@ -70,6 +70,20 @@ class ConciliarAsignaciones(unittest.TestCase):
         self.assertEqual(r["fantasmas"], [{"id": "F", "nombre": "Fantasma", "conductor": "Luis"}])
         self.assertEqual(r["rechazadas"], ["X"])
 
+
+class RutasParaAsignar(unittest.TestCase):
+    def test_filtra_asignadas_rechazadas_y_propuestas_ia_sin_aceptar(self):
+        disponibles, pendientes = logica.rutas_para_asignar([
+            {"id": "IA", "nombre": "Ruta IA", "metodo_creacion": "ia", "estado_propuesta": "aceptada"},
+            {"id": "P", "nombre": "Pendiente", "metodo_creacion": "ia", "estado_propuesta": "propuesta"},
+            {"id": "R", "nombre": "Rechazada", "metodo_creacion": "ia", "estado_propuesta": "rechazada"},
+            {"id": "M", "nombre": "Manual", "metodo_creacion": "manual", "estado_propuesta": "aceptada"},
+            {"id": "L", "nombre": "Ruta heredada", "metodo_creacion": None, "estado_propuesta": None},
+            {"id": "A", "nombre": "Asignada", "metodo_creacion": "manual", "estado_propuesta": "aceptada"},
+        ], [{"ruta": "A"}])
+
+        self.assertEqual([ruta["id"] for ruta in disponibles], ["M", "L", "IA"])
+        self.assertEqual(pendientes, [{"id": "P", "nombre": "Pendiente"}])
+
 if __name__ == "__main__":
     unittest.main()
-

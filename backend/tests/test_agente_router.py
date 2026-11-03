@@ -40,7 +40,9 @@ class AgenteRouterGoogleTrafficTest(unittest.TestCase):
 
         consultar.assert_called_once_with(None, reporte["ruta_elegida"]["geometria"])
         self.assertTrue(resultado["ruta_elegida"])
+        self.assertEqual(resultado["ruta_elegida"]["geometria"], [[13.7, -89.2], [13.8, -89.1]])
         self.assertTrue(resultado["advertencias"])
+        self.assertIn("motor vial", resultado["advertencias"][0])
 
     def test_un_solo_aviso_de_trafico_que_dice_que_falta(self):
         reporte = {"ruta_elegida": {"geometria": [[13.7, -89.2], [13.8, -89.1]]},
