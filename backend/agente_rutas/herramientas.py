@@ -37,10 +37,25 @@ class Sesion:
     consultadas: set = field(default_factory=set)  # fuentes ya consultadas (se refrescan si cambia el corredor)
     excluir: list = field(default_factory=list)    # NUEVO: trazados de rutas rechazadas: no se vuelven a proponer
     hubo_exclusion: bool = False                   # NUEVO: True si se descartó alguna candidata por estar en `excluir`
+    avisos: list = field(default_factory=list)     # fuentes que no respondieron (la evaluación sigue sin ellas)
 
     def caja(self, margen_m: float = MARGEN_POR_DEFECTO_M):
         pts = [self.origen, self.destino] + [p for r in self.rutas for p in r.puntos]
         return geo.bbox(pts, margen_m)
+
+
+def _leer_fuente(s: Sesion, nombre: str, leer) -> list:
+    """Lee una fuente de datos. Si falla (tabla ausente, RLS, red), sigue sin ella y deja un aviso.
+
+    Sin esto, una tabla faltante en Supabase tumbaba todo el cálculo de la ruta con un error genérico.
+    """
+    try:
+        return list(leer() or [])
+    except Exception as e:  # noqa: BLE001 — cualquier fallo de la fuente se reporta, no se propaga
+        aviso = f"No se pudieron consultar {nombre} ({type(e).__name__}); la ruta se evaluó sin esos datos."
+        if aviso not in s.avisos:
+            s.avisos.append(aviso)
+        return []
 
 
 # ---------------------------------------------------------------- herramientas
@@ -48,7 +63,7 @@ class Sesion:
 def consultar_incidentes(s: Sesion, margen_m: float = MARGEN_POR_DEFECTO_M) -> dict:
     """Reportes policiales y bloqueos vigentes en el corredor origen-destino."""
     s.consultadas.add("incidentes")
-    s.incidentes = s.incidentes_src.activos(s.caja(margen_m), s.ahora)
+    s.incidentes = _leer_fuente(s, "los incidentes", lambda: s.incidentes_src.activos(s.caja(margen_m), s.ahora))
     return {"total": len(s.incidentes), "incidentes": [{
         "id": i.id, "tipo": i.tipo, "gravedad": i.gravedad, "radio_m": i.radio_m,
         "hace_min": round((s.ahora - i.reportado_en).total_seconds() / 60), "descripcion": i.descripcion,
@@ -58,7 +73,7 @@ def consultar_incidentes(s: Sesion, margen_m: float = MARGEN_POR_DEFECTO_M) -> d
 def consultar_trafico(s: Sesion, margen_m: float = MARGEN_POR_DEFECTO_M) -> dict:
     """Congestión, accidentes viales y velocidad promedio en el corredor."""
     s.consultadas.add("trafico")
-    s.trafico = s.trafico_src.tramos(s.caja(margen_m))
+    s.trafico = _leer_fuente(s, "los datos de tráfico", lambda: s.trafico_src.tramos(s.caja(margen_m)))
     return {"total": len(s.trafico), "tramos": [{
         "id": t.id, "nombre": t.nombre, "tipo": t.tipo, "velocidad_kmh": t.velocidad_kmh,
         "flujo_libre_kmh": t.flujo_libre_kmh} for t in s.trafico]}
@@ -67,7 +82,7 @@ def consultar_trafico(s: Sesion, margen_m: float = MARGEN_POR_DEFECTO_M) -> dict
 def consultar_zonas_peligrosas(s: Sesion, margen_m: float = MARGEN_POR_DEFECTO_M) -> dict:
     """Geocercas de riesgo que tocan el corredor."""
     s.consultadas.add("zonas")
-    s.zonas = s.zonas_src.zonas(s.caja(margen_m))
+    s.zonas = _leer_fuente(s, "las zonas de riesgo", lambda: s.zonas_src.zonas(s.caja(margen_m)))
     return {"total": len(s.zonas), "zonas": [{"id": z.id, "nombre": z.nombre, "nivel": z.nivel, "motivo": z.motivo}
                                              for z in sorted(s.zonas, key=lambda x: -x.nivel)]}
 

@@ -32,6 +32,11 @@ $$;
 create unique index if not exists rutas_planificadas_fecha_nombre_uq
   on public.rutas_planificadas (fecha, nombre);
 
+-- Rutas manuales creadas antes como 'propuesta': no tienen nada que revisar y quedaban sin poder asignarse.
+update public.rutas_planificadas
+set estado_propuesta = 'aceptada'
+where metodo_creacion = 'manual' and estado_propuesta = 'propuesta';
+
 create table if not exists public.asignaciones_guardias (
   id uuid primary key default gen_random_uuid(),
   asignacion_id uuid not null references public.asignaciones_ruta(id) on delete cascade,
@@ -96,10 +101,11 @@ begin
     raise exception 'El nombre o la lista de pedidos no es válida.' using errcode = '22023';
   end if;
 
+  -- Una ruta armada a mano no tiene propuesta de la IA que revisar: nace aceptada para poder asignarla.
   insert into public.rutas_planificadas (
-    id, nombre, fecha, entregas, creado_por, orden_pedidos, metodo_creacion
+    id, nombre, fecha, entregas, creado_por, orden_pedidos, metodo_creacion, estado_propuesta
   ) values (
-    v_id, btrim(p_nombre), v_hoy, cardinality(p_pedidos), v_usuario, p_pedidos, 'manual'
+    v_id, btrim(p_nombre), v_hoy, cardinality(p_pedidos), v_usuario, p_pedidos, 'manual', 'aceptada'
   );
 
   update public.entregas
@@ -376,8 +382,14 @@ begin
   from public.rutas_planificadas
   where id = p_ruta
   for update;
-  if not found or v_ruta.fecha <> v_hoy or coalesce(v_ruta.conductor, '') <> '' then
+  -- La asignación vigente es la que manda: un conductor guardado sin asignación (estado fantasma) no bloquea.
+  if not found or v_ruta.fecha <> v_hoy or exists (
+    select 1 from public.asignaciones_ruta where ruta_id = p_ruta and fecha_operativa = v_hoy
+  ) then
     raise exception 'La ruta ya no está disponible para hoy.' using errcode = 'P0001';
+  end if;
+  if v_ruta.estado_propuesta = 'rechazada' then
+    raise exception 'La propuesta fue rechazada: genera una alternativa o acéptala antes de asignarla.' using errcode = 'P0001';
   end if;
   if v_ruta.estado_propuesta is distinct from 'aceptada' then
     raise exception 'La propuesta de ruta debe aceptarse antes de asignarla.' using errcode = 'P0001';
@@ -436,12 +448,13 @@ as $$
 declare
   v_hoy date := timezone('America/El_Salvador', now())::date;
   v_asignacion public.asignaciones_ruta%rowtype;
+  v_conductor text;
 begin
   if (auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'coordinador_rutas' then
     raise exception 'No tiene permiso para desasignar rutas.' using errcode = '42501';
   end if;
 
-  perform 1
+  select conductor into v_conductor
   from public.rutas_planificadas
   where id = p_ruta and fecha = v_hoy
   for update;
@@ -454,6 +467,11 @@ begin
   where ruta_id = p_ruta and fecha_operativa = v_hoy
   for update;
   if not found then
+    -- Estado fantasma: conserva el conductor sin asignación vigente. Se libera para poder asignarla.
+    if coalesce(btrim(v_conductor), '') <> '' then
+      update public.rutas_planificadas set conductor = null where id = p_ruta;
+      return jsonb_build_object('ruta', p_ruta, 'desasignada', true, 'reparada', true);
+    end if;
     raise exception 'La ruta no tiene una asignación para hoy.' using errcode = 'P0001';
   end if;
 
